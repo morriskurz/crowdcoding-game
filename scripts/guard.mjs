@@ -35,6 +35,11 @@ export const FROZEN = [
   "apps/client/src/net.ts",
   "apps/streamer/",
   ".github/",
+  // Presentation pipeline: CI runs it from main, so a PR cannot weaken the gates that judge it;
+  // freezing it also keeps a gate-weakening change from reaching main through a ship vote.
+  "scripts/present/",
+  "scripts/gates/",
+  "scripts/scenarios/",
 ];
 
 const matches = (entry, file) => (entry.endsWith("/") ? file.startsWith(entry) : file === entry);

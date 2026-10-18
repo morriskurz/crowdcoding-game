@@ -156,3 +156,9 @@ test("f/ branch: unplanned game file fails; plan read from HEAD via GUARD_BASE",
     assert.match(r.stdout, /guard ok/);
   } finally { f.done(); }
 });
+
+test("checkDiff: presentation pipeline is frozen for agent branches", () => {
+  for (const f of ["scripts/gates/ocr.mjs", "scripts/present/run.mjs", "scripts/scenarios/chase.mjs", "scripts/gates/slur-hashes.json"]) {
+    assert.match(checkDiff([f], [])[0], /changed frozen/, f);
+  }
+});
