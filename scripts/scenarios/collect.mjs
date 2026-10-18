@@ -1,10 +1,18 @@
 import { steer } from "./helpers.mjs";
 
-// Every bot heads for the nearest pellet (ties broken by entity order). Shows eating and growth.
+// Bots fan out from the spawn point, then each greedily collects the nearest pellet.
+// Shows eating and growth.
+const BOTS = 8;
+const SPREAD_TICKS = 45;
+
 export default {
-  bots: 8,
-  description: "8 bots greedily collect the nearest pellet",
+  bots: BOTS,
+  description: "8 bots fan out for 3 s, then greedily collect the nearest pellet",
   input(tick, i, view) {
+    if (tick < SPREAD_TICKS) {
+      const a = (i / BOTS) * Math.PI * 2;
+      return { dx: Math.round(Math.cos(a) * 2) / 2, dy: Math.round(Math.sin(a) * 2) / 2, action: false };
+    }
     const me = view.bot(i);
     if (!me) return { dx: 0, dy: 0, action: false };
     let best = null;

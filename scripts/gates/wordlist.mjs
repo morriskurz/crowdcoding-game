@@ -20,7 +20,8 @@ export const collapse = (w) => w.replace(/(.)\1+/g, "$1");
 
 /** Exact forms of one token: letters as written, and leet-decoded. */
 export function forms(token) {
-  const lower = token.toLowerCase();
+  // trailing "!" is punctuation, not a leet "i"
+  const lower = token.toLowerCase().replace(/^[^a-z0-9@$|!]+|[^a-z0-9$]+$/g, "");
   const leet = [...lower].map((c) => LEET[c] ?? c).join("").replace(/[^a-z]/g, "");
   const plain = lower.replace(/[^a-z]/g, "");
   return [...new Set([plain, leet].filter(Boolean))];
