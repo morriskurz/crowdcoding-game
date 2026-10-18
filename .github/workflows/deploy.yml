@@ -43,6 +43,8 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile --ignore-scripts
+      # Static assets for wrangler (assets.directory = apps/client/dist). No secrets in this step.
+      - run: pnpm --filter @tcg/client build
       - name: wrangler deploy
         run: pnpm dlx wrangler@4.115.0 deploy --var "BUILD_VERSION:$(git rev-parse --short HEAD)"
         env:
