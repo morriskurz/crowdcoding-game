@@ -31,8 +31,11 @@ export function parseArgs(argv) {
 }
 
 export function tail(text, n = TAIL_LINES) {
-  // drop ANSI colour codes, keep the last n non-empty lines
-  return text.replace(/\x1b\[[0-9;]*m/g, "").split("\n").filter((l) => l.trim()).slice(-n).join("\n");
+  // drop ANSI colour codes; the first error-looking lines (what a builder needs) + the last few lines
+  const lines = text.replace(/\x1b\[[0-9;]*m/g, "").split("\n").filter((l) => l.trim());
+  const errs = lines.filter((l) => /error|fail|assert|expected|GUARD|✗|×/i.test(l) && !/ERR_PNPM_RECURSIVE|ELIFECYCLE/.test(l)).slice(0, n - 4);
+  const last = lines.slice(-Math.max(4, n - errs.length));
+  return [...new Set([...errs, ...last])].map((l) => l.slice(0, 300)).join("\n");
 }
 
 /** Workerd in a pinned wrangler can be older than wrangler.jsonc's compatibility_date. */

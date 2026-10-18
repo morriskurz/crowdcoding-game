@@ -9,8 +9,13 @@ test("parseArgs", () => {
   assert.throws(() => parseArgs(["--skip", "lint"]), /unknown step/);
 });
 
-test("tail strips ANSI and blank lines", () => {
-  assert.equal(tail("a\n\n\x1b[31mb\x1b[0m\nc\n", 2), "b\nc");
+test("tail strips ANSI, keeps first error lines plus the end", () => {
+  assert.equal(tail("a\n\n\x1b[31mb\x1b[0m\nc\n", 2), "a\nb\nc".split("\n").slice(-4).join("\n"));
+  const log = ["x", "assets.ts(12,30): error TS2339: Property 'pelletGlowRadius' does not exist", ...Array(30).fill("noise"), " ELIFECYCLE  Command failed with exit code 2."].join("\n");
+  const t = tail(log);
+  assert.match(t.split("\n")[0], /error TS2339/);
+  assert.match(t, /ELIFECYCLE/);
+  assert.ok(t.split("\n").length <= 12);
 });
 
 test("maxCompatDate reads workerd's newest supported date", () => {
