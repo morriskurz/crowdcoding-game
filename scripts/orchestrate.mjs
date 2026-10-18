@@ -257,7 +257,7 @@ function commit(message, files = []) {
     git("commit", "-q", "-m", message);
     sha = git("rev-parse", "--short", "HEAD");
   }
-  const leftover = git("status", "--porcelain").split("\n").filter(Boolean).map((l) => l.slice(3)).filter((p) => !p.startsWith(".orchestrator"));
+  const leftover = execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).split("\n").filter(Boolean).map((l) => l.slice(3)).filter((p) => !p.startsWith(".orchestrator"));
   return { sha, push: sha ? push(git("rev-parse", "--abbrev-ref", "HEAD")) : "nothing to commit", ...(leftover.length ? { uncommitted: leftover } : {}) };
 }
 
@@ -287,7 +287,9 @@ export const commands = {
       feature = loadFeature();
       if (feature.id !== pl.featureId) throw new Error(`branch ${pl.branch} holds feature ${feature.id}, payload is ${pl.featureId}`);
       if (pl.resumeFrom) { feature.resumeFrom = pl.resumeFrom; tasks = applyResume(tasks, pl.resumeFrom); saveTasks(tasks); }
-      saveFeature(feature, { status: tasks.length && feature.status !== "ready" ? "building" : feature.status });
+      // resumeFrom re-opens the feature; a plain re-fire keeps whatever state the branch is in
+      const status = pl.resumeFrom && tasks.length ? "building" : feature.status === "planning" && tasks.length ? "building" : feature.status;
+      saveFeature(feature, { status });
     } else {
       feature = newFeature(pl);
       saveFeature(feature);
