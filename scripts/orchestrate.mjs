@@ -358,6 +358,7 @@ export const commands = {
     saveState(s);
     const feature = loadFeature();
     let committed = null;
+    if (res.next === "done") saveFeature(feature);
     if (res.next === "done") committed = commit(`${feature.branch}: ${id} done (${t.attempts.map((a) => a.tier).join(">")})\n\n${t.title}`, t.files);
     else if (res.next === "resplit" || res.next === "feature-failed") {
       if (res.next === "feature-failed") saveFeature(feature, { status: "failed" });
