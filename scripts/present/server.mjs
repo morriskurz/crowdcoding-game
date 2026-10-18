@@ -73,18 +73,30 @@ export async function startServer({ root, port, seed = 1337, scenario, version =
   const costs = [];
   let viewer = null;
   let timer = null;
+  // The recorder freezes the sim at a tick to screenshot both sides at exactly the same state.
+  let holdAt = null;
 
   const server = http.createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://x");
+    if (url.pathname === "/__hold") {
+      const at = Number(url.searchParams.get("at"));
+      holdAt = Number.isFinite(at) && at > 0 ? at : null;
+      res.end("ok");
+      return;
+    }
     if (url.pathname === "/__state") {
       res.setHeader("content-type", "application/json");
-      res.end(JSON.stringify({ tick: sim.world.tick, started: !!timer, exceptions: sim.exceptions, scenario: sim.scenario.name, seed, gamePkg, simCostsMs: costs }));
+      res.end(JSON.stringify({ tick: sim.world.tick, started: !!timer, holdAt, exceptions: sim.exceptions, scenario: sim.scenario.name, seed, gamePkg, simCostsMs: costs }));
       return;
     }
     const rel = path.normalize(decodeURIComponent(url.pathname)).replace(/^([/\\]|\.\.)+/, "");
     let file = path.join(dist, rel || "index.html");
     if (!file.startsWith(dist) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(dist, "index.html");
     res.setHeader("content-type", MIME[path.extname(file)] ?? "application/octet-stream");
+    // Cross-origin isolation: performance.now() at 5us instead of 100us resolution, so sub-ms
+    // frame costs are measurable.
+    res.setHeader("cross-origin-opener-policy", "same-origin");
+    res.setHeader("cross-origin-embedder-policy", "require-corp");
     fs.createReadStream(file).pipe(res);
   });
 
@@ -99,6 +111,7 @@ export async function startServer({ root, port, seed = 1337, scenario, version =
       ws.send(JSON.stringify({ t: "hello", version, tick: sim.world.tick, draining: false }));
       if (!timer) {
         timer = setInterval(() => {
+          if (holdAt !== null && sim.world.tick >= holdAt) return;
           const t0 = performance.now();
           sim.step();
           const msg = JSON.stringify(shared.snapMessage(sim.world, version, false));
