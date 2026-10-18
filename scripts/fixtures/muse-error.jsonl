@@ -1,0 +1,3 @@
+{"type":"step_start","timestamp":1792352059000,"sessionID":"ses_err","part":{"id":"prt_1","messageID":"msg_1","sessionID":"ses_err","type":"step-start"}}
+{"type":"step_finish","timestamp":1792352059200,"sessionID":"ses_err","part":{"id":"prt_2","reason":"tool-calls","messageID":"msg_1","sessionID":"ses_err","type":"step-finish","tokens":{"total":3100,"input":3000,"output":100,"reasoning":0,"cache":{"write":0,"read":0}},"cost":0.0003}}
+{"type":"error","timestamp":1792352059460,"sessionID":"ses_err","error":{"name":"UnknownError","data":{"message":"Unexpected server error. Check server logs for details.","ref":"err_09c0b814"}}}

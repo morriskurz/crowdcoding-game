@@ -7,7 +7,9 @@
     "build": "turbo run build",
     "check": "turbo run check",
     "test": "turbo run test",
-    "guard": "node scripts/guard.mjs"
+    "guard": "node scripts/guard.mjs",
+    "test:agent": "node --test scripts/muse.test.mjs scripts/feed-hook.test.mjs scripts/orchestrate.test.mjs scripts/gates.test.mjs",
+    "gates": "node scripts/gates.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
