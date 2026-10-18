@@ -5,7 +5,8 @@
   "main": "./index.ts",
   "types": "./index.ts",
   "dependencies": {
-    "@tcg/shared": "workspace:^"
+    "@tcg/shared": "workspace:^",
+    "@tcg/kit": "workspace:^"
   },
   "scripts": {
     "check": "tsc --noEmit -p tsconfig.json",
