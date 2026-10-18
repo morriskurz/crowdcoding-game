@@ -10,7 +10,8 @@ export function connect(
 ): PartySocket {
   const party = opts.env === "live" ? "live" : "preview";
   const ws = new PartySocket({
-    host: import.meta.env.VITE_PARTY_HOST ?? "127.0.0.1:1999",
+    // Production: the Worker that serves the client also hosts the rooms, so use the same host.
+    host: import.meta.env.VITE_PARTY_HOST ?? (import.meta.env.PROD ? location.host : "127.0.0.1:1999"),
     party,
     room: roomName,
     query: { name: (opts.name ?? "anon").slice(0, 16) },
