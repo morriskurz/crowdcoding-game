@@ -25,7 +25,7 @@ export const DENY = [
   /\bfrom\s+["']fs["']/,            // bare 'fs'
   /\bfrom\s+["'](ws|net|http|https|dgram|cluster)["']/,
 ];
-export const ALLOW_IMPORT = [/^@tcg\/shared/, /^@tcg\/game-template/, /^partyserver/, /^partysocket/, /^\.\//, /^\.\.\//, /^tmi\.js$/, /^ws$/, /^vitest$/];
+export const ALLOW_IMPORT = [/^@tcg\/shared/, /^@tcg\/kit$/, /^@tcg\/game-template/, /^partyserver/, /^partysocket/, /^\.\//, /^\.\.\//, /^tmi\.js$/, /^ws$/, /^vitest$/];
 
 // Frozen paths (spec §8). Entries ending in "/" are directory prefixes.
 export const FROZEN = [
