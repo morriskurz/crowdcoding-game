@@ -1,4 +1,5 @@
 import type { Entity, World } from "./sim/world.js";
+import type { Ack, PackedInput } from "./sim/predict.js";
 import { z } from "zod";
 
 // Client -> server: inputs only. No code, no URLs, no free text.
@@ -7,6 +8,8 @@ export const InputSchema = z.object({
   dx: z.number().min(-1).max(1),
   dy: z.number().min(-1).max(1),
   action: z.boolean().optional().default(false),
+  // v4: increasing per connection, echoed back in snap.acks for client-side reconciliation.
+  seq: z.number().int().min(0).max(2 ** 31).optional(),
 });
 export type ClientInput = z.infer<typeof InputSchema>;
 
@@ -31,17 +34,23 @@ export interface SnapMessage {
   entities?: Record<string, Entity>;
   names?: Record<string, string>;
   rng?: number;
+  // v4: everything a client needs to rebuild the World and replay unconfirmed inputs (prediction).
+  nextId?: number;
+  acks?: Record<string, Ack>;
+  inputs?: Record<string, PackedInput>;
   // v2 (agar-only), derived from entities. Deprecated: drop when no v2 client is left (§12, 1 week).
   players: Record<string, LegacyPlayer>;
   pellets: { x: number; y: number }[];
 }
 
-export function snapMessage(w: World, version: string, draining: boolean): SnapMessage {
+export interface SnapExtra { acks?: Record<string, Ack>; inputs?: Record<string, PackedInput> }
+
+export function snapMessage(w: World, version: string, draining: boolean, extra: SnapExtra = {}): SnapMessage {
   const players: Record<string, LegacyPlayer> = {};
   const pellets: { x: number; y: number }[] = [];
   for (const e of Object.values(w.entities)) {
     if (e.kind === "player") players[e.id] = { id: e.id, name: w.names[e.id] ?? e.id, x: e.x, y: e.y, dx: e.vx, dy: e.vy, size: e.r, alive: true };
     else if (e.kind === "pellet") pellets.push({ x: e.x, y: e.y });
   }
-  return { t: "snap", tick: w.tick, version, draining, entities: w.entities, names: w.names, rng: w.rng, players, pellets };
+  return { t: "snap", tick: w.tick, version, draining, entities: w.entities, names: w.names, rng: w.rng, nextId: w.nextId, ...extra, players, pellets };
 }

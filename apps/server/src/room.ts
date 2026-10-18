@@ -1,5 +1,5 @@
 import { Server, type Connection } from "partyserver";
-import { InputSchema, createWorld, joinPlayer, leavePlayer, runTick, snapMessage, type Input, type World } from "@tcg/shared";
+import { InputAcks, InputSchema, createWorld, joinPlayer, leavePlayer, packInput, runTick, snapMessage, type Input, type PackedInput, type World } from "@tcg/shared";
 import { rules } from "@tcg/game-template";
 import { RateLimit } from "./ratelimit.js";
 import { TickGuard } from "./tick.js";
@@ -14,6 +14,8 @@ export class Room extends Server {
   buckets = new Map<string, RateLimit>();
   // Clients send inputs only on change; the server holds the last one per player (spec §3).
   inputs: Record<string, Input> = {};
+  // Which input seq each tick applied, echoed in snapshots for client reconciliation.
+  acks = new InputAcks();
   buildVersion: string = "v1";
   tickTimer: ReturnType<typeof setInterval> | null = null;
   tickGuard = new TickGuard(this.ctx.storage, TICK_MS, TICK_BUDGET_MS);
@@ -37,6 +39,7 @@ export class Room extends Server {
     const raw = (url.searchParams.get("name") ?? conn.id).slice(0, 16);
     joinPlayer(this.world, rules, conn.id, raw);
     this.inputs[conn.id] = { dx: 0, dy: 0, action: false };
+    this.acks.join(conn.id);
     conn.send(JSON.stringify({ t: "hello", version: this.buildVersion, tick: this.world.tick, draining: this.draining }));
   }
 
@@ -45,6 +48,7 @@ export class Room extends Server {
     if (!(conn.id in this.world.names)) return; // rejected as full: never joined
     leavePlayer(this.world, rules, conn.id);
     delete this.inputs[conn.id];
+    this.acks.leave(conn.id);
   }
 
   async onMessage(sender: Connection, msg: string | ArrayBuffer | ArrayBufferView) {
@@ -57,12 +61,16 @@ export class Room extends Server {
     const r = InputSchema.safeParse(parsed);
     if (!r.success) return;
     if (!(sender.id in this.inputs) || this.draining) return;
+    if (!this.acks.received(sender.id, r.data.seq)) return; // reordered: keep the newer input
     this.inputs[sender.id] = { dx: r.data.dx, dy: r.data.dy, action: r.data.action };
   }
 
   onTick() {
     runTick(this.world, rules, this.inputs);
-    this.broadcast(JSON.stringify(snapMessage(this.world, this.buildVersion, this.draining)));
+    this.acks.ticked(Object.keys(this.inputs));
+    const inputs: Record<string, PackedInput> = {};
+    for (const id in this.inputs) inputs[id] = packInput(this.inputs[id]);
+    this.broadcast(JSON.stringify(snapMessage(this.world, this.buildVersion, this.draining, { acks: this.acks.acks, inputs })));
   }
 
   // called by deploy pipeline: stop accepting inputs, let old room drain
