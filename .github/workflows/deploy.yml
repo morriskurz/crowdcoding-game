@@ -1,0 +1,54 @@
+name: deploy
+# Trusted: the only workflow that can read CLOUDFLARE_API_TOKEN, via Environment "live"
+# restricted to the main branch. Code reaches main only by bot merge after a ship vote. Spec §8/§9.
+# main still contains agent-written code, so the token is exposed to one step only (wrangler deploy),
+# and the install in that job skips lifecycle scripts.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Commit to deploy (rollback to last good). Defaults to main."
+        required: false
+        default: main
+permissions:
+  contents: read
+concurrency:
+  group: deploy-live
+  cancel-in-progress: false
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { ref: "${{ inputs.ref || github.sha }}", fetch-depth: 0, persist-credentials: false }
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/guard.mjs
+      - run: pnpm -r check
+      - run: pnpm -r test
+      - run: pnpm --filter @tcg/client build
+
+  deploy-live:
+    needs: gates
+    runs-on: ubuntu-latest
+    environment: live
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { ref: "${{ inputs.ref || github.sha }}", persist-credentials: false }
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: wrangler deploy
+        run: pnpm dlx wrangler@4.115.0 deploy --var "BUILD_VERSION:$(git rev-parse --short HEAD)"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      - name: smoke live (no secrets)
+        run: node scripts/smoke.mjs "${WORKER_WS}/parties/live/main"
+        env:
+          WORKER_WS: ${{ vars.WORKER_WS }}

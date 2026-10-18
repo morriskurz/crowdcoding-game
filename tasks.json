@@ -1,0 +1,5 @@
+[
+  { "id": "t1", "title": "feature slice: rules.ts only", "estMin": 20, "done": false },
+  { "id": "t2", "title": "assets.ts sfx + sprite", "estMin": 15, "done": false },
+  { "id": "t3", "title": "smoke 30 bots green", "estMin": 10, "done": false }
+]

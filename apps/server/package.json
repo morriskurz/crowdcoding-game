@@ -1,0 +1,21 @@
+{
+  "name": "@tcg/server",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run && node --test ../../scripts/guard.test.mjs"
+  },
+  "dependencies": {
+    "@tcg/game-template": "workspace:^",
+    "@tcg/shared": "workspace:*",
+    "partyserver": "^0.2.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260702.1",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

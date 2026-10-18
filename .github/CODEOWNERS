@@ -1,0 +1,2 @@
+# Workflows and repo config are owner-only. Agents never change these (spec §8).
+/.github/ @morriskurz
