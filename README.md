@@ -6,9 +6,10 @@ The game behind a 24/7 Twitch stream where chat votes on features and AI agents 
 
 | Path | What | Who changes it |
 |---|---|---|
-| `packages/shared` | Generic entity sim, deterministic physics, protocol | frozen (owner) |
+| `packages/shared` | Generic entity sim, deterministic physics, protocol, client prediction | frozen (owner) |
+| `packages/kit` | Canvas2D/WebAudio helpers for `assets.ts`: camera, interpolation, particles, trails, glow, tweens, sfx bank ([API](packages/kit/README.md)) | frozen (owner) |
 | `packages/games/<slug>` | This week's game: `rules.ts`, `config.ts`, `assets.ts` | agents, via `f/*` branches |
-| `apps/client` | Canvas2D client, renders server snapshots | frozen (owner) |
+| `apps/client` | Host page (WebSocket + postMessage bridge) and the game page in `<iframe sandbox="allow-scripts">`: predicts you, interpolates others | frozen (owner) |
 | `apps/server` | Cloudflare Worker + Durable Object room, 15 Hz authoritative tick | frozen (owner) |
 | `scripts/guard.mjs` | Lint gate: import allowlist, banned patterns, frozen files, plan-diff (agent branches) | frozen (owner) |
 | `.github/workflows` | `ci.yml` (no secrets, every branch), `deploy.yml` (`main` only, Environment `live`) | owner only |
@@ -23,6 +24,13 @@ pnpm install
 
 ```bash
 node scripts/guard.mjs && pnpm -r check && pnpm -r test && pnpm --filter @tcg/client build
+```
+
+Sandbox + CSP check against a running Worker (`wrangler dev` serves `apps/client/dist` on :8787):
+
+```bash
+pnpm --filter @tcg/client build && npx wrangler dev &
+node scripts/sandbox-check.mjs http://127.0.0.1:8787
 ```
 
 Repository settings (Environment, secrets, branch protection): `docs/github-setup.md`.

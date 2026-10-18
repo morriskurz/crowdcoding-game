@@ -37,7 +37,7 @@ let curMe: Entity | null = null;
 let offX = 0, offY = 0;
 
 // Exposed for the headless check and debugging (the frame is cross-origin to the host anyway).
-const stats = { frames: 0, snaps: 0, predicted: false, pending: 0, corrections: 0 };
+const stats = { frames: 0, snaps: 0, predicted: false, pending: 0, corrections: 0, me: null as { x: number; y: number } | null };
 (globalThis as { __tcg?: unknown }).__tcg = stats;
 
 function toHost(m: GameMessage): void {
@@ -143,6 +143,7 @@ function frame(now: number): void {
     list = list.filter((e) => e.id !== me);
     list.push(mine);
   } else mine = list.find((e) => e.id === me);
+  stats.me = mine ? { x: mine.x, y: mine.y } : null;
   if (mine) fx.camera.follow(mine.x, mine.y, stats.frames === 1);
   fx.camera.update(fx.dt);
 
