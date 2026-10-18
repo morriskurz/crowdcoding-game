@@ -50,6 +50,19 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      # A fresh deploy takes a few seconds to reach every edge; smoke only once /health serves this commit.
+      - name: wait for new version (no secrets)
+        run: |
+          want=$(git rev-parse --short HEAD)
+          url="https://${WORKER_WS#wss://}/health"
+          for i in $(seq 1 45); do
+            got=$(curl -s -m 5 "$url" | sed -n 's/.*"version":"\([^"]*\)".*/\1/p')
+            [ "$got" = "$want" ] && { echo "live serves $want after $((i*2))s"; exit 0; }
+            sleep 2
+          done
+          echo "timeout: $url serves '${got:-none}', expected $want"; exit 1
+        env:
+          WORKER_WS: ${{ vars.WORKER_WS }}
       - name: smoke live (no secrets)
         run: node scripts/smoke.mjs "${WORKER_WS}/parties/live/main"
         env:
