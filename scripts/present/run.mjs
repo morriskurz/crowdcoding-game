@@ -20,7 +20,7 @@ import { filterCaptions } from "../gates/wordlist.mjs";
 import { flashGate } from "../gates/flash.mjs";
 import { audioGate } from "../gates/audio.mjs";
 import { ocrGate } from "../gates/ocr.mjs";
-import { frameTimeGate } from "../gates/frametime.mjs";
+import { compare, frameTimeGate, summarize } from "../gates/frametime.mjs";
 
 export const PORTS = { before: 8787, after: 8788 };
 
@@ -105,7 +105,14 @@ export async function runPresentation({ before, after, out, pr = null, headSha =
   };
   timings.total = Date.now() - t0;
   fs.writeFileSync(path.join(out, "index.json"), JSON.stringify(index, null, 2) + "\n");
-  const report = { index, seed, secs, shotTicks: a?.shotTicks ?? sides.before?.shotTicks ?? null, requestedScenario: feature.requestedScenario, simExceptions: { before: sides.before?.exceptions ?? null, after: a?.exceptions ?? null }, gates: details, timingsMs: timings, errors };
+  // Informational only: after vs before from this same runner (the gate uses the stored main baseline).
+  let frameTimeSameRun = null;
+  if (a && sides.before) {
+    const sum = (s) => summarize(JSON.parse(fs.readFileSync(s.frames, "utf8")));
+    const b = sum(sides.before);
+    frameTimeSameRun = compare(sum(a), { sha: "before", scenarios: { [b.scenario]: b } });
+  }
+  const report = { index, seed, secs, frameTimeSameRun, shotTicks: a?.shotTicks ?? sides.before?.shotTicks ?? null, requestedScenario: feature.requestedScenario, simExceptions: { before: sides.before?.exceptions ?? null, after: a?.exceptions ?? null }, gates: details, timingsMs: timings, errors };
   fs.writeFileSync(path.join(out, "report.json"), JSON.stringify(report, null, 2) + "\n");
   return { index, report, ok: errors.length === 0 && !Object.values(gates).includes("fail") };
 }

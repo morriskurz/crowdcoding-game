@@ -1,0 +1,45 @@
+name: present-baseline
+# Frame-time baseline for main: records every presentation scenario headless and uploads
+# frametime-baseline.json as artifact `frametime-baseline`, which present.yml compares PRs against.
+# No secrets. main contains agent-written code, so it is treated like ci.yml: read-only token,
+# install without lifecycle scripts.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: present-baseline
+  cancel-in-progress: true
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { persist-credentials: false }
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: { node-version: 22, cache: pnpm }
+      - name: install ffmpeg
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends ffmpeg
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: chrome (system if present, else pinned Chromium for the locked playwright-core)
+        run: |
+          if [ -x /usr/bin/google-chrome ]; then
+            echo "CHROME_PATH=/usr/bin/google-chrome" >> "$GITHUB_ENV"
+            /usr/bin/google-chrome --version
+          else
+            node node_modules/playwright-core/cli.js install --with-deps chromium
+          fi
+      - name: record baseline
+        run: node scripts/present/baseline.mjs --root . --out baseline --sha "$GITHUB_SHA"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: frametime-baseline
+          path: baseline/frametime-baseline.json
+          if-no-files-found: error
+          retention-days: 90
