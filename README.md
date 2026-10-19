@@ -12,6 +12,7 @@ The game behind a 24/7 Twitch stream where chat votes on features and AI agents 
 | `apps/client` | Host page (WebSocket + postMessage bridge) and the game page in `<iframe sandbox="allow-scripts">`: predicts you, interpolates others | frozen (owner) |
 | `apps/server` | Cloudflare Worker + Durable Object room, 15 Hz authoritative tick | frozen (owner) |
 | `scripts/guard.mjs` | Lint gate: import allowlist, banned patterns, frozen files, plan-diff (agent branches) | frozen (owner) |
+| `CLAUDE.md`, `.claude/`, `scripts/{orchestrate,gates,muse,feed-hook}.mjs` | Agent side: orchestrator instructions, builder subagents, gates, Muse wrapper, feed hooks. Protocol: `docs/ORCHESTRATOR.md` | owner |
 | `.github/workflows` | `ci.yml` (no secrets, every branch), `deploy.yml` (`main` only, Environment `live`) | owner only |
 
 Agents only push `f/<id>-slug` branches. A change reaches `main` only after a viewer ship vote, and only `main` deploys.
