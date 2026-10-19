@@ -75,6 +75,11 @@ export class TickGuard {
     return ok;
   }
 
+  /** The tick loop stopped (empty room): the next run() is a fresh start, not one slow tick. */
+  pause(): void {
+    this.prevStart = null;
+  }
+
   /** Current (in-memory) minute plus persisted previous minutes, newest first. */
   async stats(): Promise<{ current: MinuteStats; recent: MinuteStats[] }> {
     this.rollover(this.clock());

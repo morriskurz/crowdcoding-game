@@ -30,7 +30,11 @@ A new game every week; older games stay playable as archives.
 | `/parties/<party>/main` (or any other room name) | this week's game; `/parties/<party>/<this week's slug>` is an alias of `main` |
 | `/parties/<party>/<old slug>` | that game's archive room: playable, `archived: true` in `hello`, every `snap` and `/health?room=<old slug>` |
 
-The weekly bootstrap only adds `packages/games/<slug>/` (stamped with `tcg.created`); once it ships, it is the current game. Nothing else is registered by hand. Slugs that are routes (`game`, `games`, `assets`, `parties`, `health`, `drain`, `main`, ...) are refused.
+Archived games are frozen: they get no new features. `orchestrate.mjs start` refuses a payload for a non-current game (unless it is a bootstrap) and `scripts/guard.mjs` refuses `f/*` diffs that touch an archived game's directory (`docs/ORCHESTRATOR.md`).
+
+Rooms cost ~nothing while empty: a room's 15 Hz tick runs only while at least one player is connected; the last disconnect stops it, the next connect restarts it (the main room always has the stream viewer). An archived room with players is filled up to 6 players with server-side bots (`apps/server/src/bots.ts`: they join through the game's own rules and get a deterministic input each tick, no WebSocket); they leave with the last player. `/health` reports `bots` and `ticking`.
+
+The weekly bootstrap copies the base game `packages/games/template` to a new `packages/games/<slug>/` (stamped with `tcg.created`); once it ships, it is the current game. Nothing else is registered by hand. Slugs that are routes (`game`, `games`, `assets`, `parties`, `health`, `drain`, `main`, ...) are refused.
 
 ## Run locally
 

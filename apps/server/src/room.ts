@@ -3,11 +3,16 @@ import { InputAcks, InputSchema, createWorld, joinPlayer, leavePlayer, packInput
 import { CURRENT_SLUG, GAMES, gameForRoom, type Game } from "@tcg/games";
 import { RateLimit } from "./ratelimit.js";
 import { TickGuard } from "./tick.js";
+import { Bots, botTarget, isBotId } from "./bots.js";
 
 // One Durable Object = one room. Authoritative 15Hz on setInterval, never alarms (spec §3, §13 cost).
+// The interval runs only while at least one player is connected: Durable Object duration is billed
+// while the object is kept busy, so an empty room stops ticking and the next connect restarts it
+// (the main room always has the stream viewer connected, so it never stops).
 // The room's name picks its game (@tcg/games gameForRoom): "main" and test rooms run the current
 // game; a room named after an older game's slug runs that game as an archive (still playable,
-// flagged `archived` in hello, snapshots and /health).
+// flagged `archived` in hello, snapshots and /health). An archived room with players is filled up
+// with server-side bots (bots.ts), removed again when the last player leaves.
 const MAX_PLAYERS = 100;
 const TICK_MS = 1000 / 15;
 const TICK_BUDGET_MS = 50; // spec §9: tick p95 > 50ms is a rollback trigger
@@ -25,6 +30,7 @@ export class Room extends Server {
   draining = false;
   game: Game = GAMES[CURRENT_SLUG];
   archived = false;
+  bots = new Bots();
 
   async onStart() {
     this.buildVersion = (this.env as any)?.BUILD_VERSION ?? "v1";
@@ -32,13 +38,33 @@ export class Room extends Server {
     this.game = GAMES[g.slug];
     this.archived = g.archived;
     this.game.rules.init?.(this.world);
-    if (!this.tickTimer) {
+    // No tick yet: the first connect starts it (a /health probe must not keep an empty room busy).
+  }
+
+  /** Real (WebSocket) players that joined; bots are not counted. */
+  humans(): number {
+    return Object.keys(this.inputs).length;
+  }
+
+  /** After every join/leave: bots for archived rooms, and tick only while somebody is connected. */
+  syncRoom() {
+    const humans = this.humans();
+    this.bots.sync(this.world, this.game.rules, botTarget(this.archived, humans));
+    if (humans > 0 && !this.tickTimer) {
       this.tickTimer = setInterval(() => this.tickGuard.run(() => this.onTick()), TICK_MS);
+    } else if (humans === 0 && this.tickTimer) {
+      clearInterval(this.tickTimer);
+      this.tickTimer = null;
+      this.tickGuard.pause();
     }
   }
 
   onConnect(conn: Connection, ctx: { request: Request }) {
-    if (Object.keys(this.world.names).length >= MAX_PLAYERS) {
+    if (isBotId(conn.id)) { // client-chosen id (_pk) must not take over a bot
+      conn.close();
+      return;
+    }
+    if (this.humans() >= MAX_PLAYERS) {
       conn.send(JSON.stringify({ t: "full" }));
       conn.close();
       return;
@@ -48,15 +74,17 @@ export class Room extends Server {
     joinPlayer(this.world, this.game.rules, conn.id, raw);
     this.inputs[conn.id] = { dx: 0, dy: 0, action: false };
     this.acks.join(conn.id);
+    this.syncRoom();
     conn.send(JSON.stringify({ t: "hello", version: this.buildVersion, tick: this.world.tick, draining: this.draining, game: this.game.slug, title: this.game.title, archived: this.archived }));
   }
 
   onClose(conn: Connection) {
     this.buckets.delete(conn.id);
-    if (!(conn.id in this.world.names)) return; // rejected as full: never joined
+    if (!(conn.id in this.inputs)) return; // rejected (full, or a bot id): never joined
     leavePlayer(this.world, this.game.rules, conn.id);
     delete this.inputs[conn.id];
     this.acks.leave(conn.id);
+    this.syncRoom();
   }
 
   async onMessage(sender: Connection, msg: string | ArrayBuffer | ArrayBufferView) {
@@ -74,10 +102,12 @@ export class Room extends Server {
   }
 
   onTick() {
-    runTick(this.world, this.game.rules, this.inputs);
+    // Bots (archived rooms only) get their input from the world before the step, like a client would.
+    const all = this.bots.ids.length ? { ...this.inputs, ...this.bots.inputs(this.world, this.draining) } : this.inputs;
+    runTick(this.world, this.game.rules, all);
     this.acks.ticked(Object.keys(this.inputs));
     const inputs: Record<string, PackedInput> = {};
-    for (const id in this.inputs) inputs[id] = packInput(this.inputs[id]);
+    for (const id in all) inputs[id] = packInput(all[id]);
     this.broadcast(JSON.stringify(snapMessage(this.world, this.buildVersion, this.draining, { acks: this.acks.acks, inputs, ...this.archiveFlag() })));
   }
 
@@ -107,6 +137,8 @@ export class Room extends Server {
         draining: this.draining,
         game: this.game.slug,
         archived: this.archived,
+        bots: this.bots.ids.length,
+        ticking: this.tickTimer !== null,
         ticks: await this.tickGuard.stats(),
       });
     }
