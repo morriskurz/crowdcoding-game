@@ -44,9 +44,13 @@ on stream.
 
 ## Agent inputs (at the PR head, all untrusted)
 
-- `feature.json`: `{id, spec, slug, branch, status, scenario?}`. `featureId` comes from `id`.
+- `feature.json`: `{id, spec, slug, game?, branch, status, scenario?}`. `featureId` comes from `id`.
   `scenario` must name one of `scripts/scenarios` (`idle-crowd` (default), `chase`, `collect`).
   Any other value falls back to the default.
+  `game` (written by `orchestrate.mjs start`) is the game directory both sides present, loaded through
+  the game registry (`@tcg/games`). A side whose checkout has no such game (the before side of a weekly
+  bootstrap) presents that checkout's current game; an invalid value is ignored. `index.json` records
+  `game: {before, after}`.
 - `captions.json` (optional): array of strings. Non-strings and captions containing a listed word
   are dropped. Control and bidi characters are stripped. Each caption is capped at 140 chars, and
   at most 20 are kept.
@@ -54,7 +58,8 @@ on stream.
 ## Trust
 
 - No secrets, and the token is read-only (`contents: read`, plus `actions: read` to download the
-  baseline artifact). Installs skip lifecycle scripts.
+  baseline artifact). Installs skip lifecycle scripts, so `server.mjs` generates each checkout's game
+  registry itself (`scripts/registry.mjs` from the main checkout).
 - The pipeline code always comes from the main checkout. From the PR head, only the game, the
   client, `feature.json` and `captions.json` are used.
 - `scripts/present/`, `scripts/gates/` and `scripts/scenarios/` are frozen in `scripts/guard.mjs`.

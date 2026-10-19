@@ -3,10 +3,12 @@
 // game page (/game): agent-written code. Loaded in <iframe sandbox="allow-scripts">, and the
 //                    `sandbox` directive keeps it sandboxed even when opened top-level.
 
+// game page (/<slug>/game, built as /games/<slug>.html): one per game, same policy.
+
 export const GAME_PATHS = new Set(["/game", "/game.html", "/game/"]);
 
 export function isGamePage(pathname: string): boolean {
-  return GAME_PATHS.has(pathname);
+  return GAME_PATHS.has(pathname) || /^\/[a-z0-9][a-z0-9-]{0,39}\/game(\.html)?\/?$/.test(pathname) || /^\/games\//.test(pathname);
 }
 
 function base(url: URL): string[] {

@@ -29,9 +29,6 @@ importers:
 
   apps/client:
     dependencies:
-      '@tcg/game-template':
-        specifier: workspace:^
-        version: link:../../packages/games/template
       '@tcg/kit':
         specifier: workspace:^
         version: link:../../packages/kit
@@ -54,9 +51,9 @@ importers:
 
   apps/server:
     dependencies:
-      '@tcg/game-template':
+      '@tcg/games':
         specifier: workspace:^
-        version: link:../../packages/games/template
+        version: link:../../packages/registry
       '@tcg/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -94,6 +91,22 @@ importers:
         version: 2.1.9(@types/node@26.6.5)
 
   packages/kit:
+    devDependencies:
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@26.6.5)
+
+  packages/registry:
+    dependencies:
+      '@tcg/kit':
+        specifier: workspace:^
+        version: link:../kit
+      '@tcg/shared':
+        specifier: workspace:*
+        version: link:../shared
     devDependencies:
       typescript:
         specifier: ^5.6.0

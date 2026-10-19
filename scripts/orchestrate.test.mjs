@@ -110,17 +110,30 @@ test("applyResume restarts the named task and everything after it", () => {
   assert.equal(applyResume(ts, "nope"), ts);
 });
 
-test("resolveGame: payload.game, bootstrap slug, else server's game package", () => {
+test("resolveGame: bootstrap slug, payload.game, else the registry's current (newest) game", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "orch-"));
-  fs.mkdirSync(path.join(dir, "apps/server"), { recursive: true });
-  fs.mkdirSync(path.join(dir, "packages/games/week7"), { recursive: true });
-  fs.writeFileSync(path.join(dir, "apps/server/package.json"), JSON.stringify({ dependencies: { "@tcg/game-week7": "workspace:^" } }));
-  fs.writeFileSync(path.join(dir, "packages/games/week7/package.json"), JSON.stringify({ name: "@tcg/game-week7" }));
+  for (const [slug, created] of [["template", "2026-10-18"], ["week7", "2026-10-25"]]) {
+    fs.mkdirSync(path.join(dir, "packages/games", slug), { recursive: true });
+    fs.writeFileSync(path.join(dir, "packages/games", slug, "index.ts"), "export {};\n");
+    fs.writeFileSync(path.join(dir, "packages/games", slug, "package.json"), JSON.stringify({ name: `@tcg/game-${slug}`, tcg: { created } }));
+  }
   assert.equal(resolveGame({ slug: "x" }, dir), "week7");
-  assert.equal(resolveGame({ slug: "x", game: "other" }, dir), "other");
+  assert.equal(resolveGame({ slug: "x", game: "template" }, dir), "template");
   assert.equal(resolveGame({ slug: "new", bootstrap: true }, dir), "new");
   assert.equal(resolveGame({ slug: "x" }, os.tmpdir()), "template");
   fs.rmSync(dir, { recursive: true });
+});
+
+test("multi-game: reserved bootstrap slugs, feature.json game, no package.json tasks", () => {
+  for (const slug of ["main", "game", "games", "assets", "parties", "health"]) {
+    assert.throws(() => parsePayload({ featureId: "1", slug, spec: "s", bootstrap: true }), /reserved/, slug);
+    assert.equal(parsePayload({ featureId: "1", slug, spec: "s" }).slug, slug); // a feature slug is only a branch name
+  }
+  const f = newFeature({ ...parsePayload({ featureId: "7", slug: "s", spec: "x" }), game: "week7" }, new Date(0));
+  assert.deepEqual(Object.keys(f), ["id", "spec", "slug", "game", "branch", "status", "updatedAt"]);
+  assert.deepEqual(validateFeature(f), []);
+  assert.ok(validateFeature({ ...f, game: "../x" }).length);
+  assert.match(validateTasks([task({ tier: "sonnet", files: [G + "package.json"] })], G).join("\n"), /bootstrap only/);
 });
 
 test("parseArgs", () => {

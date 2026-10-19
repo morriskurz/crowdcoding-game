@@ -9,7 +9,7 @@ import { pathToFileURL } from "node:url";
 //    and every changed file under packages/games/ is listed in the committed task plan
 //    (tasks.json at HEAD). Branch = GITHUB_HEAD_REF, else GITHUB_REF_NAME, else git HEAD.
 
-export const ROOTS = ["packages/games", "apps/client/src", "apps/server/src"];
+export const ROOTS = ["packages/games", "packages/registry", "apps/client/src", "apps/server/src"];
 
 // bare fetch( banned (agents have no legit use). stub.fetch / env.ASSETS.fetch allowed (dot before).
 export const DENY = [
@@ -25,7 +25,7 @@ export const DENY = [
   /\bfrom\s+["']fs["']/,            // bare 'fs'
   /\bfrom\s+["'](ws|net|http|https|dgram|cluster)["']/,
 ];
-export const ALLOW_IMPORT = [/^@tcg\/shared/, /^@tcg\/kit$/, /^@tcg\/game-template/, /^partyserver/, /^partysocket/, /^\.\//, /^\.\.\//, /^tmi\.js$/, /^ws$/, /^vitest$/];
+export const ALLOW_IMPORT = [/^@tcg\/shared/, /^@tcg\/kit$/, /^@tcg\/games$/, /^partyserver/, /^partysocket/, /^\.\//, /^\.\.\//, /^tmi\.js$/, /^ws$/, /^vitest$/];
 
 // Frozen paths (spec §8). Entries ending in "/" are directory prefixes.
 export const FROZEN = [
@@ -33,6 +33,9 @@ export const FROZEN = [
   "packages/kit/",
   "apps/server/src/room.ts",
   "apps/client/src/net.ts",
+  // Game registry: generated from packages/games/* (scripts/registry.mjs), so a new game needs no edit here.
+  "packages/registry/",
+  "scripts/registry.mjs",
   "apps/streamer/",
   ".github/",
   // Presentation pipeline: CI runs it from main, so a PR cannot weaken the gates that judge it;
@@ -42,6 +45,7 @@ export const FROZEN = [
   "scripts/scenarios/",
 ];
 
+const GAME_PKG = /^packages\/games\/[^/]+\/package\.json$/;
 const matches = (entry, file) => (entry.endsWith("/") ? file.startsWith(entry) : file === entry);
 const norm = (p) => p.replace(/^\.\//, "");
 
@@ -77,6 +81,10 @@ export function checkDiff(changed, plan) {
   if (unplanned.length) {
     errors.push(`GUARD changed files not in committed tasks.json plan: ${unplanned.join(",")}${plan ? "" : " (no tasks.json at HEAD)"}`);
   }
+  // A game's package.json carries registry metadata (tcg.created picks the current game): only the
+  // bootstrap task, whose plan entry is the whole new directory, may write it.
+  const meta = games.filter((f) => GAME_PKG.test(f) && !unplanned.includes(f) && !(plan ?? []).some((e) => e.endsWith("/") && matches(e, f)));
+  if (meta.length) errors.push(`GUARD game package.json changes only via the bootstrap task (directory plan entry): ${meta.join(",")}`);
   return errors;
 }
 

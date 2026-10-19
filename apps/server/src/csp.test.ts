@@ -33,4 +33,12 @@ describe("csp", () => {
     expect(pageHeaders(new URL("https://h/game"))["Content-Security-Policy"]).toContain("sandbox allow-scripts");
     expect(hostCsp(new URL("http://127.0.0.1:8787/"))).toContain("connect-src 'self' ws://127.0.0.1:8787");
   });
+
+  it("every game's page is sandboxed, also when its built path is opened directly", () => {
+    for (const p of ["/agar/game", "/agar/game/", "/week-2/game", "/games/agar", "/games/agar.html"]) {
+      expect(isGamePage(p), p).toBe(true);
+      expect(pageHeaders(new URL(`https://h${p}`))["Content-Security-Policy"]).toContain("sandbox allow-scripts");
+    }
+    for (const p of ["/agar", "/agar/", "/agar/gamex", "/a/b/game"]) expect(isGamePage(p), p).toBe(false);
+  });
 });

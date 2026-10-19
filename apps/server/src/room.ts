@@ -1,10 +1,13 @@
 import { Server, type Connection } from "partyserver";
 import { InputAcks, InputSchema, createWorld, joinPlayer, leavePlayer, packInput, runTick, snapMessage, type Input, type PackedInput, type World } from "@tcg/shared";
-import { rules } from "@tcg/game-template";
+import { CURRENT_SLUG, GAMES, gameForRoom, type Game } from "@tcg/games";
 import { RateLimit } from "./ratelimit.js";
 import { TickGuard } from "./tick.js";
 
 // One Durable Object = one room. Authoritative 15Hz on setInterval, never alarms (spec §3, §13 cost).
+// The room's name picks its game (@tcg/games gameForRoom): "main" and test rooms run the current
+// game; a room named after an older game's slug runs that game as an archive (still playable,
+// flagged `archived` in hello, snapshots and /health).
 const MAX_PLAYERS = 100;
 const TICK_MS = 1000 / 15;
 const TICK_BUDGET_MS = 50; // spec §9: tick p95 > 50ms is a rollback trigger
@@ -20,10 +23,15 @@ export class Room extends Server {
   tickTimer: ReturnType<typeof setInterval> | null = null;
   tickGuard = new TickGuard(this.ctx.storage, TICK_MS, TICK_BUDGET_MS);
   draining = false;
+  game: Game = GAMES[CURRENT_SLUG];
+  archived = false;
 
   async onStart() {
     this.buildVersion = (this.env as any)?.BUILD_VERSION ?? "v1";
-    rules.init?.(this.world);
+    const g = gameForRoom(this.name);
+    this.game = GAMES[g.slug];
+    this.archived = g.archived;
+    this.game.rules.init?.(this.world);
     if (!this.tickTimer) {
       this.tickTimer = setInterval(() => this.tickGuard.run(() => this.onTick()), TICK_MS);
     }
@@ -37,16 +45,16 @@ export class Room extends Server {
     }
     const url = new URL(ctx.request?.url ?? "http://x/?name=anon");
     const raw = (url.searchParams.get("name") ?? conn.id).slice(0, 16);
-    joinPlayer(this.world, rules, conn.id, raw);
+    joinPlayer(this.world, this.game.rules, conn.id, raw);
     this.inputs[conn.id] = { dx: 0, dy: 0, action: false };
     this.acks.join(conn.id);
-    conn.send(JSON.stringify({ t: "hello", version: this.buildVersion, tick: this.world.tick, draining: this.draining }));
+    conn.send(JSON.stringify({ t: "hello", version: this.buildVersion, tick: this.world.tick, draining: this.draining, game: this.game.slug, title: this.game.title, archived: this.archived }));
   }
 
   onClose(conn: Connection) {
     this.buckets.delete(conn.id);
     if (!(conn.id in this.world.names)) return; // rejected as full: never joined
-    leavePlayer(this.world, rules, conn.id);
+    leavePlayer(this.world, this.game.rules, conn.id);
     delete this.inputs[conn.id];
     this.acks.leave(conn.id);
   }
@@ -66,11 +74,16 @@ export class Room extends Server {
   }
 
   onTick() {
-    runTick(this.world, rules, this.inputs);
+    runTick(this.world, this.game.rules, this.inputs);
     this.acks.ticked(Object.keys(this.inputs));
     const inputs: Record<string, PackedInput> = {};
     for (const id in this.inputs) inputs[id] = packInput(this.inputs[id]);
-    this.broadcast(JSON.stringify(snapMessage(this.world, this.buildVersion, this.draining, { acks: this.acks.acks, inputs })));
+    this.broadcast(JSON.stringify(snapMessage(this.world, this.buildVersion, this.draining, { acks: this.acks.acks, inputs, ...this.archiveFlag() })));
+  }
+
+  // Snapshots of the current game stay byte-identical; archived rooms add {archived, game}.
+  archiveFlag(): { archived?: true; game?: string } {
+    return this.archived ? { archived: true, game: this.game.slug } : {};
   }
 
   // called by deploy pipeline: stop accepting inputs, let old room drain
@@ -92,6 +105,8 @@ export class Room extends Server {
         players: Object.keys(this.world.names).length,
         tick: this.world.tick,
         draining: this.draining,
+        game: this.game.slug,
+        archived: this.archived,
         ticks: await this.tickGuard.stats(),
       });
     }

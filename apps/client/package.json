@@ -9,7 +9,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@tcg/game-template": "workspace:^",
     "@tcg/kit": "workspace:^",
     "@tcg/shared": "workspace:*",
     "partysocket": "^1.0.0"

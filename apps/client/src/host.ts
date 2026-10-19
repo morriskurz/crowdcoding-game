@@ -7,15 +7,22 @@ import { SendBudget, parseGameMessage, type HostMessage } from "./bridge.js";
 
 const frame = document.getElementById("game") as HTMLIFrameElement;
 const banner = document.getElementById("banner")!;
+const archivedBadge = document.getElementById("archived")!;
 let ready = false;
 let status: HostMessage | null = null;
 let seenVersion: string | null = null;
 let draining = false;
 const budget = new SendBudget(8, 8, performance.now());
 
+// /            this week's game, room ?room= (default main)
+// /<slug>      an older game: its own page /<slug>/game and its archive room <slug> (the Worker
+//              only serves this page for known slugs; the server decides what is archived)
 // ?room=main&env=preview|live&name=you&drain=60
 const q = new URLSearchParams(location.search);
-const roomName = (q.get("room") ?? "main").replace(/[^a-z0-9-_]/gi, "").slice(0, 32) || "main";
+const slug = /^\/([a-z0-9][a-z0-9-]{0,39})\/?$/.exec(location.pathname)?.[1] ?? null;
+const roomName = slug ?? ((q.get("room") ?? "main").replace(/[^a-z0-9-_]/gi, "").slice(0, 32) || "main");
+frame.src = slug ? `/${slug}/game` : "/game";
+let archived = false;
 const env = q.get("env") === "live" ? "live" : "preview";
 const name = (q.get("name") ?? "anon").slice(0, 16);
 
@@ -31,7 +38,14 @@ function setStatus(text: string): void {
   post(status);
 }
 
+function showArchived(title: string): void {
+  archived = true;
+  document.getElementById("archived-title")!.textContent = title ? `: ${title}` : "";
+  archivedBadge.hidden = false;
+}
+
 const ws = connect(roomName, (snap) => {
+  if (snap.archived === true && !archived) showArchived(typeof snap.game === "string" ? snap.game : "");
   if (snap.draining === true && !draining) { draining = true; setStatus("draining — new build coming, finish run"); }
   post({ t: "snap", snap });
 }, (hello) => {
@@ -46,7 +60,8 @@ const ws = connect(roomName, (snap) => {
     setTimeout(() => location.reload(), secs * 1000);
   } else {
     draining = false;
-    setStatus(`live ${hello.version ?? "?"} [${env}:${roomName}] — WASD play`);
+    if (hello.archived === true) showArchived(String(hello.title ?? hello.game ?? ""));
+    setStatus(`${archived ? "archived" : "live"} ${hello.version ?? "?"} [${env}:${roomName}] — WASD play`);
     seenVersion = hello.version ?? seenVersion;
   }
 }, { env, name });

@@ -20,6 +20,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { currentSlug, isGameSlug, listGames } from "./registry.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const TIERS = ["muse", "sonnet", "opus"];
@@ -47,6 +48,8 @@ export function parsePayload(raw) {
   const slug = slugify(p.slug);
   if (!slug) throw new Error("payload.slug is empty after sanitising");
   const out = { featureId, spec: p.spec, slug, branch: `f/${featureId}-${slug}`, bootstrap: p.bootstrap === true };
+  // A bootstrap slug becomes a URL (/<slug>) and a room name: it may not shadow a route.
+  if (out.bootstrap && !isGameSlug(slug)) throw new Error(`payload.slug "${slug}" is reserved; pick another game name`);
   if (p.resumeFrom != null) out.resumeFrom = String(p.resumeFrom);
   if (p.game != null) {
     const g = slugify(p.game);
@@ -57,7 +60,7 @@ export function parsePayload(raw) {
 }
 
 export function newFeature(pl, now = new Date()) {
-  const f = { id: pl.featureId, spec: pl.spec, slug: pl.slug, branch: pl.branch, status: "planning" };
+  const f = { id: pl.featureId, spec: pl.spec, slug: pl.slug, ...(pl.game ? { game: pl.game } : {}), branch: pl.branch, status: "planning" };
   if (pl.resumeFrom) f.resumeFrom = pl.resumeFrom;
   f.updatedAt = now.toISOString();
   return f;
@@ -65,11 +68,12 @@ export function newFeature(pl, now = new Date()) {
 
 export function validateFeature(f) {
   const errs = [];
-  const keys = ["id", "spec", "slug", "branch", "status", "resumeFrom", "updatedAt"];
+  const keys = ["id", "spec", "slug", "game", "branch", "status", "resumeFrom", "updatedAt"];
   for (const k of Object.keys(f ?? {})) if (!keys.includes(k)) errs.push(`feature.json: unknown key ${k}`);
   for (const k of ["id", "spec", "slug", "branch", "updatedAt"]) if (typeof f?.[k] !== "string") errs.push(`feature.json: ${k} must be a string`);
   if (!STATUSES.includes(f?.status)) errs.push(`feature.json: bad status ${f?.status}`);
   if (f?.resumeFrom != null && typeof f.resumeFrom !== "string") errs.push("feature.json: resumeFrom must be a string");
+  if (f?.game != null && !isGameSlug(f.game)) errs.push("feature.json: game must be a game directory name");
   if (f?.branch && f.branch !== `f/${f.id}-${f.slug}`) errs.push("feature.json: branch must be f/<id>-<slug>");
   return errs;
 }
@@ -113,6 +117,7 @@ export function validateTasks(tasks, gameDir) {
     }
     const names = t.files.map((f) => f.slice(gameDir.length));
     if (names.some((n) => n.endsWith("/"))) errs.push(`${at}: directory entries are for the bootstrap task only`);
+    if (names.includes("package.json")) errs.push(`${at}: package.json (registry metadata) is written by bootstrap only`);
     const src = names.filter((n) => !n.endsWith(".test.ts"));
     const tests = names.filter((n) => n.endsWith(".test.ts"));
     if (src.length > 1 || tests.length > 1 || (src.length === 1 && tests.length === 1 && tests[0] !== src[0].replace(/\.ts$/, ".test.ts"))) {
@@ -186,19 +191,11 @@ export function applyResume(tasks, from) {
   return tasks.map((t, k) => (k < i ? t : { id: t.id, title: t.title, tier: t.tier, files: t.files, estMin: t.estMin, ...(t.agentReEst != null ? { agentReEst: t.agentReEst } : {}), done: false }));
 }
 
-/** Week's live game dir: payload.game, else the bootstrap slug, else the @tcg/game-* package apps/server depends on. */
+/** Game dir to work in: the bootstrap slug, else payload.game, else the registry's current game (scripts/registry.mjs). */
 export function resolveGame(pl, cwd = process.cwd()) {
   if (pl.bootstrap) return pl.slug;
   if (pl.game) return pl.game;
-  try {
-    const deps = JSON.parse(fs.readFileSync(path.join(cwd, "apps/server/package.json"), "utf8")).dependencies ?? {};
-    const name = Object.keys(deps).find((d) => d.startsWith("@tcg/game-"));
-    const root = path.join(cwd, "packages/games");
-    for (const d of fs.readdirSync(root)) {
-      try { if (JSON.parse(fs.readFileSync(path.join(root, d, "package.json"), "utf8")).name === name) return d; } catch {}
-    }
-  } catch {}
-  return "template";
+  return currentSlug(listGames(cwd, () => {})) ?? "template";
 }
 
 // ---------- io ----------
@@ -221,8 +218,8 @@ function saveFeature(f, patch = {}) {
   const errs = validateFeature(f);
   if (errs.length) throw new Error(errs.join("; "));
   // keep the documented key order
-  const { id, spec, slug, branch, status, resumeFrom, updatedAt } = f;
-  writeJson(FEATURE, { id, spec, slug, branch, status, ...(resumeFrom ? { resumeFrom } : {}), updatedAt });
+  const { id, spec, slug, game, branch, status, resumeFrom, updatedAt } = f;
+  writeJson(FEATURE, { id, spec, slug, ...(game ? { game } : {}), branch, status, ...(resumeFrom ? { resumeFrom } : {}), updatedAt });
 }
 function loadTasks() { try { return readJson(TASKS); } catch { return []; } }
 function saveTasks(tasks) {
@@ -291,7 +288,7 @@ export const commands = {
       const status = pl.resumeFrom && tasks.length ? "building" : feature.status === "planning" && tasks.length ? "building" : feature.status;
       saveFeature(feature, { status });
     } else {
-      feature = newFeature(pl);
+      feature = newFeature({ ...pl, game });
       saveFeature(feature);
       tasks = [];
       writeJson(TASKS, tasks); // main's placeholder plan never carries into a feature branch
@@ -308,6 +305,9 @@ export const commands = {
     const pkgFile = path.join(dest, "package.json");
     const pkg = readJson(pkgFile);
     pkg.name = `@tcg/game-${s.game}`;
+    // Registry metadata (scripts/registry.mjs): the newest `created` is the current game, so this
+    // game replaces last week's once it ships; the old one stays playable, archived, at /<old slug>.
+    pkg.tcg = { title: s.game, created: new Date().toISOString() };
     writeJson(pkgFile, pkg);
     const r = spawnSync("pnpm", ["install", "--no-frozen-lockfile"], { encoding: "utf8" });
     return { created: dest, package: pkg.name, install: r.status === 0 ? "ok" : (r.stderr ?? "").slice(-300) };

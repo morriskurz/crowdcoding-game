@@ -13,6 +13,7 @@ import net from "node:net";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { writeRegistry } from "./registry.mjs";
 
 export const STEPS = ["guard", "check", "test", "build", "smoke"];
 const WRANGLER = process.env.GATES_WRANGLER ?? "wrangler@4.115.0";
@@ -143,6 +144,9 @@ const STEP_IMPL = {
 };
 
 export async function gates({ skip = [], keepGoing = false } = {}) {
+  // The game registry is generated from packages/games/*: refresh it so a game added on this branch
+  // (bootstrap) is the one that gets checked, built and smoked. Warnings go to stderr.
+  writeRegistry(process.cwd(), (m) => console.error(m));
   const results = [];
   let failed = false;
   for (const name of STEPS) {

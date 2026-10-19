@@ -8,7 +8,8 @@ The game behind a 24/7 Twitch stream where chat votes on features and AI agents 
 |---|---|---|
 | `packages/shared` | Generic entity sim, deterministic physics, protocol, client prediction | frozen (owner) |
 | `packages/kit` | Canvas2D/WebAudio helpers for `assets.ts`: camera, interpolation, particles, trails, glow, tweens, sfx bank ([API](packages/kit/README.md)) | frozen (owner) |
-| `packages/games/<slug>` | This week's game: `rules.ts`, `config.ts`, `assets.ts` | agents, via `f/*` branches |
+| `packages/games/<slug>` | One directory per game: `rules.ts`, `config.ts`, `assets.ts`. The newest (`package.json` `tcg.created`) is this week's game | agents, via `f/*` branches |
+| `packages/registry` (`@tcg/games`), `scripts/registry.mjs` | Game registry: every `packages/games/*` keyed by slug + the current one, generated on install and client build (`games.gen.ts`, `apps/client/games/`, both git-ignored) | frozen (owner) |
 | `apps/client` | Host page (WebSocket + postMessage bridge) and the game page in `<iframe sandbox="allow-scripts">`: predicts you, interpolates others | frozen (owner) |
 | `apps/server` | Cloudflare Worker + Durable Object room, 15 Hz authoritative tick | frozen (owner) |
 | `scripts/present`, `scripts/gates`, `scripts/scenarios` | Before/after presentation + content gates for agent PRs (`docs/presentation.md`) | frozen (owner) |
@@ -18,10 +19,23 @@ The game behind a 24/7 Twitch stream where chat votes on features and AI agents 
 
 Agents only push `f/<id>-slug` branches. A change reaches `main` only after a viewer ship vote, and only `main` deploys.
 
+## Games side by side
+
+A new game every week; older games stay playable as archives.
+
+| URL | Plays |
+|---|---|
+| `/`, `/game` | this week's game (host page, sandboxed game page) |
+| `/<slug>`, `/<slug>/game` | that game; for an older game an "archived game" badge is shown |
+| `/parties/<party>/main` (or any other room name) | this week's game; `/parties/<party>/<this week's slug>` is an alias of `main` |
+| `/parties/<party>/<old slug>` | that game's archive room: playable, `archived: true` in `hello`, every `snap` and `/health?room=<old slug>` |
+
+The weekly bootstrap only adds `packages/games/<slug>/` (stamped with `tcg.created`); once it ships, it is the current game. Nothing else is registered by hand. Slugs that are routes (`game`, `games`, `assets`, `parties`, `health`, `drain`, `main`, ...) are refused.
+
 ## Run locally
 
 ```bash
-pnpm install
+pnpm install   # postinstall generates the game registry (node scripts/registry.mjs)
 ```
 
 ```bash

@@ -5,6 +5,8 @@
 //   - prediction is active and the own player moves with input
 //   - the CSP really bites (inline script and eval are blocked and reported)
 // Run: node scripts/sandbox-check.mjs [http://127.0.0.1:8787]   (CHROME_PATH=... to pick a browser)
+//      node scripts/sandbox-check.mjs http://127.0.0.1:8787/<slug>   an archived game's pages (/<slug>, /<slug>/game);
+//      expects the "archived game" badge unless CHECK_ARCHIVED=0
 import fs from "node:fs";
 import { chromium } from "playwright-core";
 
@@ -46,6 +48,10 @@ try {
 
   await game.waitForFunction(() => globalThis.__tcg?.snaps > 10 && globalThis.__tcg?.frames > 30, null, { timeout: 20000 });
   check(true, "game page receives snapshots via postMessage and renders frames");
+  const archivedPath = new URL(BASE).pathname.replace(/\/$/, "") !== "";
+  const badge = await page.evaluate(() => !document.getElementById("archived")?.hidden);
+  if (archivedPath && process.env.CHECK_ARCHIVED !== "0") check(badge, "archived game badge shown on an older game's page");
+  else if (!archivedPath) check(!badge, "no archived badge on this week's game");
 
   check((await game.evaluate(() => origin)) === "null", "game page has an opaque origin");
   const sandbox = await game.evaluate(() => {
