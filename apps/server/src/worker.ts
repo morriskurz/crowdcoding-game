@@ -57,7 +57,10 @@ export default {
         const stub = await room(env, name);
         const res = await stub.fetch(new Request("https://do/__health"));
         if (!res.ok) throw new Error(`room health ${res.status}`);
-        return Response.json({ ok: true, version: env.BUILD_VERSION ?? "v1", now: Date.now(), room: name, ...(await res.json() as object) });
+        // The Worker version wins: a long-lived room keeps the version it started with (roomVersion),
+        // and deploy.yml waits for `version` to equal the deployed commit.
+        const roomHealth = (await res.json()) as Record<string, unknown>;
+        return Response.json({ ...roomHealth, ok: true, version: env.BUILD_VERSION ?? "v1", roomVersion: roomHealth.version, now: Date.now(), room: name });
       } catch (e) {
         return Response.json({ ok: false, version: env.BUILD_VERSION ?? "v1", now: Date.now(), room: name, error: String(e) }, { status: 503 });
       }
