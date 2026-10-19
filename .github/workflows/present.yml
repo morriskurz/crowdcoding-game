@@ -1,0 +1,94 @@
+name: present
+# Before/after presentation + content gates for agent PRs (head branch f/*). Spec: presentation media
+# is produced here from the real branch, never supplied by agents; the same recordings feed the gates
+# (flash, loud audio, offensive text, frame time) because agent code runs on stream.
+#
+# Untrusted: builds and runs agent code. No secrets, no environment, read-only token.
+# Trust split: the pipeline (scripts/present, scripts/gates, scripts/scenarios) runs from the main
+# checkout ("before"); from the PR head ("after") only the game, the client, feature.json and
+# captions.json are used. A PR cannot edit the gates that judge it.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+concurrency:
+  group: present-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  present:
+    if: startsWith(github.head_ref, 'f/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read # list present-baseline runs and download their frametime-baseline artifact
+    steps:
+      - name: checkout main (before + pipeline)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { ref: "${{ github.event.pull_request.base.sha }}", path: before, persist-credentials: false }
+      - name: checkout PR head (after)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { ref: "${{ github.event.pull_request.head.sha }}", path: after, persist-credentials: false }
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with: { package_json_file: before/package.json }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: |
+            before/pnpm-lock.yaml
+            after/pnpm-lock.yaml
+      - name: install ffmpeg + tesseract
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends ffmpeg tesseract-ocr tesseract-ocr-eng
+      # Lifecycle scripts skipped: both trees contain agent-written code.
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+        working-directory: before
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+        working-directory: after
+      - name: chrome (system if present, else pinned Chromium for the locked playwright-core)
+        working-directory: before
+        run: |
+          if [ -x /usr/bin/google-chrome ]; then
+            echo "CHROME_PATH=/usr/bin/google-chrome" >> "$GITHUB_ENV"
+            /usr/bin/google-chrome --version
+          else
+            node node_modules/playwright-core/cli.js install --with-deps chromium
+          fi
+      - name: pipeline self-test
+        run: node --test before/scripts/present/present.test.mjs
+      - name: fetch frame-time baseline (latest present-baseline run on main)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          run_id=$(gh run list --repo "$REPO" --workflow present-baseline.yml --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$run_id" ]; then echo "no baseline run yet"; exit 0; fi
+          gh run download "$run_id" --repo "$REPO" --name frametime-baseline --dir baseline
+          cat baseline/frametime-baseline.json
+      - name: record before/after + gates
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: >-
+          node before/scripts/present/run.mjs
+          --before before --after after --out presentation
+          --pr "$PR_NUMBER" --head-sha "$HEAD_SHA"
+          --baseline baseline/frametime-baseline.json
+      - name: summary
+        if: always()
+        run: |
+          if [ -f presentation/index.json ]; then
+            { echo '### presentation'; echo '```json'; cat presentation/index.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      # Uploaded whether or not a gate failed; the job still fails on a failed gate.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: presentation
+          path: presentation/
+          if-no-files-found: error
+          retention-days: 14
