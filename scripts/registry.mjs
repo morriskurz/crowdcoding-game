@@ -20,6 +20,25 @@ export const RESERVED = new Set(["game", "games", "assets", "parties", "health",
 
 export const isGameSlug = (s) => typeof s === "string" && SLUG_RE.test(s) && !RESERVED.has(s);
 
+/**
+ * One game directory -> {slug, title, created}, or null (with a warning) when it is not a game.
+ * `pkgText` is its package.json content (null if missing). Shared by listGames (working tree) and
+ * guard.mjs (a git ref), so both pick the same current game.
+ */
+export function gameEntry(name, hasIndex, pkgText, warn = () => {}) {
+  if (!isGameSlug(name)) { warn(`registry: skipping packages/games/${name} (slug must match ${SLUG_RE} and not be reserved)`); return null; }
+  if (!hasIndex) { warn(`registry: skipping packages/games/${name} (no index.ts)`); return null; }
+  let meta = {};
+  try { meta = JSON.parse(pkgText ?? "").tcg ?? {}; }
+  catch { warn(`registry: skipping packages/games/${name} (no readable package.json)`); return null; }
+  const title = typeof meta.title === "string" && meta.title.trim() ? meta.title.trim().slice(0, 60) : name;
+  const created = typeof meta.created === "string" && !Number.isNaN(Date.parse(meta.created)) ? new Date(meta.created).toISOString() : "";
+  return { slug: name, title, created };
+}
+
+/** Oldest first (the last one is current): by `created`, ties broken by slug. */
+export const sortGames = (games) => games.sort((a, b) => a.created.localeCompare(b.created) || a.slug.localeCompare(b.slug));
+
 /** All games, oldest first (the last one is current). Invalid directories are skipped with a warning. */
 export function listGames(root = process.cwd(), warn = (m) => console.warn(m)) {
   const dir = path.join(root, "packages/games");
@@ -28,16 +47,12 @@ export function listGames(root = process.cwd(), warn = (m) => console.warn(m)) {
   for (const d of fs.readdirSync(dir, { withFileTypes: true })) {
     if (!d.isDirectory() || d.name === "node_modules") continue;
     const base = path.join(dir, d.name);
-    if (!isGameSlug(d.name)) { warn(`registry: skipping packages/games/${d.name} (slug must match ${SLUG_RE} and not be reserved)`); continue; }
-    if (!fs.existsSync(path.join(base, "index.ts"))) { warn(`registry: skipping packages/games/${d.name} (no index.ts)`); continue; }
-    let meta = {};
-    try { meta = JSON.parse(fs.readFileSync(path.join(base, "package.json"), "utf8")).tcg ?? {}; }
-    catch { warn(`registry: skipping packages/games/${d.name} (no readable package.json)`); continue; }
-    const title = typeof meta.title === "string" && meta.title.trim() ? meta.title.trim().slice(0, 60) : d.name;
-    const created = typeof meta.created === "string" && !Number.isNaN(Date.parse(meta.created)) ? new Date(meta.created).toISOString() : "";
-    games.push({ slug: d.name, title, created });
+    let pkg = null;
+    try { pkg = fs.readFileSync(path.join(base, "package.json"), "utf8"); } catch { /* reported by gameEntry */ }
+    const g = gameEntry(d.name, fs.existsSync(path.join(base, "index.ts")), pkg, warn);
+    if (g) games.push(g);
   }
-  return games.sort((a, b) => a.created.localeCompare(b.created) || a.slug.localeCompare(b.slug));
+  return sortGames(games);
 }
 
 export const currentSlug = (games) => games.at(-1)?.slug ?? null;

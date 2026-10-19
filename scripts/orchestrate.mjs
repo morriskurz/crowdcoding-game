@@ -191,11 +191,24 @@ export function applyResume(tasks, from) {
   return tasks.map((t, k) => (k < i ? t : { id: t.id, title: t.title, tier: t.tier, files: t.files, estMin: t.estMin, ...(t.agentReEst != null ? { agentReEst: t.agentReEst } : {}), done: false }));
 }
 
-/** Game dir to work in: the bootstrap slug, else payload.game, else the registry's current game (scripts/registry.mjs). */
-export function resolveGame(pl, cwd = process.cwd()) {
-  if (pl.bootstrap) return pl.slug;
-  if (pl.game) return pl.game;
-  return currentSlug(listGames(cwd, () => {})) ?? "template";
+/**
+ * Game dir to work in: the bootstrap slug, else payload.game, else the registry's current game
+ * (scripts/registry.mjs). Archived games are frozen: a payload naming any game but the current one is
+ * refused unless it is a bootstrap (which creates a new directory). scripts/guard.mjs enforces the same
+ * on the branch diff. `resuming`: already on the feature branch, where a bootstrap's directory exists.
+ */
+export function resolveGame(pl, cwd = process.cwd(), { resuming = false } = {}) {
+  const current = currentSlug(listGames(cwd, () => {}));
+  if (pl.bootstrap) {
+    if (!resuming && fs.existsSync(path.join(cwd, "packages/games", pl.slug))) {
+      throw new Error(`bootstrap: packages/games/${pl.slug} already exists; a bootstrap creates a new game, pick a new slug`);
+    }
+    return pl.slug;
+  }
+  if (pl.game && current && pl.game !== current) {
+    throw new Error(`payload.game "${pl.game}" is not the current game "${current}": archived games get no new features (they stay playable as they are); send features for "${current}", or bootstrap: true for a new game`);
+  }
+  return pl.game ?? current ?? "template";
 }
 
 // ---------- io ----------
@@ -269,7 +282,7 @@ function runGates(extra = []) {
 export const commands = {
   start(args) {
     const pl = parsePayload(readInput(args.payload ?? "-"));
-    const game = resolveGame(pl);
+    const game = resolveGame(pl, process.cwd(), { resuming: git("rev-parse", "--abbrev-ref", "HEAD") === pl.branch });
     if (!args["no-fetch"]) spawnSync("git", ["fetch", "-q", "origin", "main", pl.branch], { stdio: "ignore" });
     let resumed = false;
     if (git("rev-parse", "--abbrev-ref", "HEAD") === pl.branch) resumed = fs.existsSync(FEATURE);

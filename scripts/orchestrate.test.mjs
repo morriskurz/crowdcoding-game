@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { execFileSync, spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import {
   parsePayload, newFeature, validateFeature, validateTasks, nextTier, nextTask, recordAttempt,
   resplit, allDone, applyResume, slugify, resolveGame, parseArgs,
@@ -118,9 +120,13 @@ test("resolveGame: bootstrap slug, payload.game, else the registry's current (ne
     fs.writeFileSync(path.join(dir, "packages/games", slug, "package.json"), JSON.stringify({ name: `@tcg/game-${slug}`, tcg: { created } }));
   }
   assert.equal(resolveGame({ slug: "x" }, dir), "week7");
-  assert.equal(resolveGame({ slug: "x", game: "template" }, dir), "template");
+  assert.equal(resolveGame({ slug: "x", game: "week7" }, dir), "week7");
   assert.equal(resolveGame({ slug: "new", bootstrap: true }, dir), "new");
   assert.equal(resolveGame({ slug: "x" }, os.tmpdir()), "template");
+  // archived games get no new features; a bootstrap must create a new directory
+  assert.throws(() => resolveGame({ slug: "x", game: "template" }, dir), /"template" is not the current game "week7".*bootstrap: true/);
+  assert.throws(() => resolveGame({ slug: "template", bootstrap: true }, dir), /already exists/);
+  assert.equal(resolveGame({ slug: "week7", bootstrap: true }, dir, { resuming: true }), "week7");
   fs.rmSync(dir, { recursive: true });
 });
 
@@ -138,4 +144,28 @@ test("multi-game: reserved bootstrap slugs, feature.json game, no package.json t
 
 test("parseArgs", () => {
   assert.deepEqual(parseArgs(["t1", "--tier", "muse", "--append", "--reest", "4"]), { _: ["t1"], tier: "muse", append: true, reest: "4" });
+});
+
+test("start refuses a feature for an archived game before touching git", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "orch-start-"));
+  const g = (...a) => execFileSync("git", a, { cwd: dir, stdio: "pipe", encoding: "utf8" }).trim();
+  try {
+    g("init", "-q", "-b", "main"); g("config", "user.email", "t@t"); g("config", "user.name", "t");
+    for (const [slug, created] of [["oldgame", "2026-10-11"], ["newgame", "2026-10-18"]]) {
+      fs.mkdirSync(path.join(dir, "packages/games", slug), { recursive: true });
+      fs.writeFileSync(path.join(dir, "packages/games", slug, "index.ts"), "export {};\n");
+      fs.writeFileSync(path.join(dir, "packages/games", slug, "package.json"), JSON.stringify({ tcg: { created } }));
+    }
+    g("add", "-A"); g("commit", "-qm", "games");
+    const payload = path.join(dir, "payload.json");
+    fs.writeFileSync(payload, JSON.stringify({ featureId: "9", slug: "old-glow", spec: "glow", game: "oldgame" }));
+    const r = spawnSync(process.execPath, [fileURLToPath(new URL("./orchestrate.mjs", import.meta.url)), "start", "--payload", payload, "--no-fetch"],
+      { cwd: dir, encoding: "utf8", env: { ...process.env, ORCH_NO_PUSH: "1", ORCH_STATE: path.join(dir, ".orchestrator/state.json") } });
+    assert.equal(r.status, 2, r.stdout + r.stderr);
+    const out = JSON.parse(r.stdout.trim());
+    assert.equal(out.ok, false);
+    assert.match(out.error, /"oldgame" is not the current game "newgame"/);
+    assert.equal(g("rev-parse", "--abbrev-ref", "HEAD"), "main"); // no f/ branch was created
+    assert.ok(!fs.existsSync(path.join(dir, "feature.json")));
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

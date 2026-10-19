@@ -2,12 +2,16 @@ import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { currentSlug, gameEntry, sortGames } from "./registry.mjs";
 
 // Deterministic guard (spec §4, §8). A fast-fail lint, not the security boundary.
 // 1. Content: banned APIs + import allowlist in game, client and server sources.
 // 2. Agent branches (f/*) only: diff vs GUARD_BASE (default origin/main) changes no frozen file,
 //    and every changed file under packages/games/ is listed in the committed task plan
-//    (tasks.json at HEAD). Branch = GITHUB_HEAD_REF, else GITHUB_REF_NAME, else git HEAD.
+//    (tasks.json at HEAD), and no changed file is in an archived game: every game directory that
+//    exists at the base except the current one (newest tcg.created at the base, same rule as
+//    scripts/registry.mjs) is frozen. A bootstrap adds a new directory, so it is still allowed.
+//    Branch = GITHUB_HEAD_REF, else GITHUB_REF_NAME, else git HEAD.
 
 export const ROOTS = ["packages/games", "packages/registry", "apps/client/src", "apps/server/src"];
 
@@ -88,6 +92,31 @@ export function checkDiff(changed, plan) {
   return errors;
 }
 
+/**
+ * Archived games are frozen for agents: no new features for an old week's game. `baseDirs` are the
+ * game directories at the base ref, `current` the base's current game (null: check skipped).
+ */
+export function checkArchived(changed, baseDirs, current) {
+  if (!current) return [];
+  const archived = new Set(baseDirs.filter((d) => d !== current));
+  const hits = changed.filter((f) => archived.has(f.match(/^packages\/games\/([^/]+)\//)?.[1]));
+  return hits.length ? [`GUARD changed archived game (only the current game "${current}" or a new bootstrap game may change): ${hits.join(",")}`] : [];
+}
+
+/** Game directories and the current game at a git ref, computed like scripts/registry.mjs. */
+export function gamesAt(ref, gitFn = git) {
+  const dirs = gitFn(`ls-tree -d --name-only ${ref} packages/games/`).split("\n").filter(Boolean).map((p) => p.slice("packages/games/".length)).filter((d) => d !== "node_modules");
+  const games = [];
+  for (const d of dirs) {
+    const files = gitFn(`ls-tree --name-only ${ref} packages/games/${d}/`).split("\n").map((p) => p.split("/").pop());
+    let pkg = null;
+    if (files.includes("package.json")) pkg = gitFn(`show ${ref}:packages/games/${d}/package.json`);
+    const g = gameEntry(d, files.includes("index.ts"), pkg);
+    if (g) games.push(g);
+  }
+  return { dirs, current: currentSlug(sortGames(games)) };
+}
+
 function walk(d) {
   return fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => {
     const p = path.join(d, e.name);
@@ -128,6 +157,8 @@ function main() {
     try { plan = planFiles(git("show HEAD:tasks.json")); }
     catch (e) { if (!/does not exist|exists on disk, but not in/.test(String(e.stderr ?? e))) throw e; }
     errors.push(...checkDiff(changed, plan));
+    const at = gamesAt(base);
+    errors.push(...checkArchived(changed, at.dirs, at.current));
   }
 
   for (const e of errors) console.error(e);
