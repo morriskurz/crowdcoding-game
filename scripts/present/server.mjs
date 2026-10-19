@@ -91,12 +91,18 @@ export async function startServer({ root, port, seed = 1337, scenario, version =
     }
     const rel = path.normalize(decodeURIComponent(url.pathname)).replace(/^([/\\]|\.\.)+/, "");
     let file = path.join(dist, rel || "index.html");
+    // Same routing as Workers Static Assets: /game -> game.html (the sandboxed game page).
+    if (!fs.existsSync(file) && fs.existsSync(file + ".html")) file += ".html";
     if (!file.startsWith(dist) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(dist, "index.html");
     res.setHeader("content-type", MIME[path.extname(file)] ?? "application/octet-stream");
     // Cross-origin isolation: performance.now() at 5us instead of 100us resolution, so sub-ms
     // frame costs are measurable.
     res.setHeader("cross-origin-opener-policy", "same-origin");
     res.setHeader("cross-origin-embedder-policy", "require-corp");
+    // The game page runs in <iframe sandbox="allow-scripts"> (opaque origin): its module scripts
+    // are CORS requests and every resource must be embeddable under COEP, as in apps/server.
+    res.setHeader("cross-origin-resource-policy", "cross-origin");
+    res.setHeader("access-control-allow-origin", "*");
     fs.createReadStream(file).pipe(res);
   });
 

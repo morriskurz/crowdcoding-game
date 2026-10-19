@@ -87,3 +87,7 @@ node scripts/present/run.mjs --before <main checkout> --after <PR checkout> \
 Single steps: `record.mjs --root <checkout> --out <dir> --scenario chase`, and
 `node scripts/gates/<gate>.mjs <file>…`. Each prints JSON and exits 1 on fail.
 `CHROME_PATH` overrides Chrome discovery.
+
+## Render gate
+
+- `render`: fails when the after-run shows no motion (mean ffmpeg signalstats YDIF < 0.05) or all screenshots are identical. Guards against blank or frozen recordings, which would otherwise pass every content gate.

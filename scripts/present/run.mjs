@@ -18,11 +18,13 @@ import { recordSide, findChrome } from "./record.mjs";
 import { resolveScenario } from "../scenarios/index.mjs";
 import { filterCaptions } from "../gates/wordlist.mjs";
 import { flashGate } from "../gates/flash.mjs";
+import { renderGate } from "../gates/render.mjs";
 import { audioGate } from "../gates/audio.mjs";
 import { ocrGate } from "../gates/ocr.mjs";
 import { compare, frameTimeGate, summarize } from "../gates/frametime.mjs";
 
-export const PORTS = { before: 8787, after: 8788 };
+// Overridable for machines where 8787/8788 are taken (CI uses the defaults).
+export const PORTS = { before: Number(process.env.PRESENT_PORT_BEFORE ?? 8787), after: Number(process.env.PRESENT_PORT_AFTER ?? 8788) };
 
 function readJson(file) {
   try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return null; }
@@ -86,6 +88,7 @@ export async function runPresentation({ before, after, out, pr = null, headSha =
     return details[name].result;
   };
   const gates = {
+    render: gate("render", () => renderGate(a.video, a.screenshots)),
     flash: gate("flash", () => flashGate(a.video)),
     audio: gate("audio", () => audioGate(a.audio)),
     ocr: gate("ocr", () => ocrGate(a.screenshots)),

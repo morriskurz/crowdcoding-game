@@ -148,3 +148,11 @@ test("video: concat list covers exactly the clip", () => {
   const total = list.filter((l) => l.startsWith("duration")).reduce((s, l) => s + Number(l.split(" ")[1]), 0);
   assert.ok(Math.abs(total - 1.5) < 1e-3, String(total));
 });
+
+test("render gate fails a frozen or blank recording", async () => {
+  const { judgeRender } = await import("../gates/render.mjs");
+  assert.equal(judgeRender({ meanYdif: 0.35, shotHashes: ["a", "b", "c"] }).result, "pass");
+  assert.equal(judgeRender({ meanYdif: 0.0, shotHashes: ["a", "b", "c"] }).result, "fail");
+  assert.equal(judgeRender({ meanYdif: 0.35, shotHashes: ["a", "a", "a"] }).result, "fail");
+  assert.equal(judgeRender({ meanYdif: NaN, shotHashes: ["a", "b"] }).result, "fail");
+});
