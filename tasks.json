@@ -1,5 +1,22 @@
 [
-  { "id": "t1", "title": "feature slice: rules.ts only", "estMin": 20, "done": false },
-  { "id": "t2", "title": "assets.ts sfx + sprite", "estMin": 15, "done": false },
-  { "id": "t3", "title": "smoke 30 bots green", "estMin": 10, "done": false }
+  {
+    "id": "t1",
+    "title": "config: pelletGlowRadius, pelletGlowAlpha",
+    "tier": "muse",
+    "files": [
+      "packages/games/template/config.ts"
+    ],
+    "estMin": 5,
+    "done": false
+  },
+  {
+    "id": "t2",
+    "title": "assets: bigger, brighter pulsing pellet glow with halo",
+    "tier": "muse",
+    "files": [
+      "packages/games/template/assets.ts"
+    ],
+    "estMin": 10,
+    "done": false
+  }
 ]
