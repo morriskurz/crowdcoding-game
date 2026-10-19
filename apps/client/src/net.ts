@@ -25,8 +25,13 @@ export function connect(
   return ws;
 }
 
-// throttle to 15Hz, inputs-only
-export function sendInput(ws: PartySocket, dx: number, dy: number): void {
-  if (ws.readyState !== 1) return;
-  ws.send(JSON.stringify({ v: 2, dx: Math.max(-1, Math.min(1, dx)), dy: Math.max(-1, Math.min(1, dy)), action: false }));
+// Inputs only. Callers keep under the server's 10 msg/s limit (bridge.ts SendBudget).
+// `seq` (protocol v4) is echoed back in snap.acks for prediction/reconciliation.
+export function sendInput(ws: PartySocket, dx: number, dy: number, action = false, seq?: number): boolean {
+  if (ws.readyState !== 1) return false;
+  const clamp = (v: number) => (Number.isFinite(v) ? Math.max(-1, Math.min(1, v)) : 0);
+  const msg: Record<string, unknown> = { v: 2, dx: clamp(dx), dy: clamp(dy), action: action === true };
+  if (seq !== undefined && Number.isInteger(seq) && seq >= 0) msg.seq = seq;
+  ws.send(JSON.stringify(msg));
+  return true;
 }

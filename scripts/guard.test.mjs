@@ -33,6 +33,12 @@ test("import allowlist covers side-effect and re-export imports", () => {
   assert.ok(!blocked(`import "./style.js";\nexport * from "./rules.js";`));
 });
 
+test("games may import the frozen kit, nothing under it", () => {
+  assert.ok(!blocked(`import { Particles, drawGlow, type Fx } from "@tcg/kit";`));
+  assert.ok(blocked(`import { x } from "@tcg/kit-evil";`));
+  assert.ok(blocked(`import { x } from "@tcg/kitchen";`));
+});
+
 test("keeps the existing denials", () => {
   assert.ok(blocked(`fetch("https://x")`));
   assert.ok(!blocked(`await stub.fetch(req)`));

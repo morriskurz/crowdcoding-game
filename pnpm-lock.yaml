@@ -32,6 +32,9 @@ importers:
       '@tcg/game-template':
         specifier: workspace:^
         version: link:../../packages/games/template
+      '@tcg/kit':
+        specifier: workspace:^
+        version: link:../../packages/kit
       '@tcg/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -45,6 +48,9 @@ importers:
       vite:
         specifier: ^6.0.0
         version: 6.4.4(@types/node@26.6.5)(tsx@4.23.15)
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@26.6.5)
 
   apps/server:
     dependencies:
@@ -73,9 +79,21 @@ importers:
 
   packages/games/template:
     dependencies:
+      '@tcg/kit':
+        specifier: workspace:^
+        version: link:../../kit
       '@tcg/shared':
         specifier: workspace:^
         version: link:../../shared
+    devDependencies:
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@26.6.5)
+
+  packages/kit:
     devDependencies:
       typescript:
         specifier: ^5.6.0

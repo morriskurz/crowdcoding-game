@@ -1,5 +1,6 @@
 import { Room } from "./room.js";
 import { getServerByName } from "partyserver";
+import { isHtml, pageHeaders } from "./csp.js";
 export { Room };
 
 // One Worker `tcg-live`, no preview environment (spec §3).
@@ -39,9 +40,11 @@ function room(env: Env, name: string) {
   return getServerByName(env.ROOM, name, { locationHint: LOCATION_HINT });
 }
 
-export function withCors(res: Response): Response {
+export function withCors(res: Response, url?: URL): Response {
   const out = new Response(res.body, res);
   for (const [k, v] of Object.entries(CORS_HEADERS)) out.headers.set(k, v);
+  // Strict CSP on the host page and the sandboxed game page (csp.ts).
+  if (url && isHtml(res)) for (const [k, v] of Object.entries(pageHeaders(url))) out.headers.set(k, v);
   return out;
 }
 
@@ -75,7 +78,7 @@ export default {
     }
     if (env.ASSETS) {
       if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
-      return withCors(await env.ASSETS.fetch(req));
+      return withCors(await env.ASSETS.fetch(req), url);
     }
     return new Response("not found", { status: 404 });
   },
