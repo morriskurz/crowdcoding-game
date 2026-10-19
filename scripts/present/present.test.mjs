@@ -120,11 +120,23 @@ test("scenarios: fixed list, untrusted names fall back to the default", () => {
 
 test("feature.json: id and scenario parsed defensively", () => {
   const dir = fs.mkdtempSync(path.join(tmp, "feat-"));
-  assert.deepEqual(readFeature(dir), { featureId: null, scenario: DEFAULT_SCENARIO, requestedScenario: null });
-  fs.writeFileSync(path.join(dir, "feature.json"), JSON.stringify({ id: 7, slug: "x", scenario: "chase" }));
-  assert.deepEqual(readFeature(dir), { featureId: "7", scenario: "chase", requestedScenario: "chase" });
+  assert.deepEqual(readFeature(dir), { featureId: null, game: null, scenario: DEFAULT_SCENARIO, requestedScenario: null });
+  fs.writeFileSync(path.join(dir, "feature.json"), JSON.stringify({ id: 7, slug: "x", game: "snake", scenario: "chase" }));
+  assert.deepEqual(readFeature(dir), { featureId: "7", game: "snake", scenario: "chase", requestedScenario: "chase" });
+  for (const game of ["../x", "main", "A", 5]) {
+    fs.writeFileSync(path.join(dir, "feature.json"), JSON.stringify({ id: 7, game }));
+    assert.equal(readFeature(dir).game, null, String(game));
+  }
   fs.writeFileSync(path.join(dir, "feature.json"), "[1,2]");
   assert.equal(readFeature(dir).featureId, null);
+});
+
+test("loadGame: registry game by slug, unknown slug falls back to the current game", async () => {
+  const root = path.resolve(new URL("../..", import.meta.url).pathname);
+  const cur = await loadGame(root);
+  assert.ok(cur.game && typeof cur.rules.step === "function", JSON.stringify(cur.gamePkg));
+  assert.equal((await loadGame(root, "template")).game, "template");
+  assert.equal((await loadGame(root, "no-such-game")).game, cur.game);
 });
 
 test("sim: same seed + scenario => identical world; different seed differs", async () => {

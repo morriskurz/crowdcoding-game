@@ -8,7 +8,10 @@
 // connects, so tick N is identical across runs for the same seed, scenario and game code. The viewer
 // is a spectator: it gets snapshots, has no entity, and its inputs are ignored.
 //
-// Run: node scripts/present/server.mjs --root <checkout> --port 8787 [--seed 1337] [--scenario idle-crowd]
+// Game: --game <slug> (feature.json `game`) if that checkout has it, else the checkout's current game
+// (@tcg/games). / and /game serve that game, as the Worker does for the current one.
+//
+// Run: node scripts/present/server.mjs --root <checkout> --port 8787 [--seed 1337] [--scenario idle-crowd] [--game <slug>]
 // Prints one JSON line {"ready":true,...} on stdout when listening.
 import fs from "node:fs";
 import http from "node:http";
@@ -19,21 +22,32 @@ import { pathToFileURL } from "node:url";
 import { tsImport } from "tsx/esm/api";
 import { WebSocketServer } from "ws";
 import { resolveScenario } from "../scenarios/index.mjs";
+import { writeRegistry } from "../registry.mjs";
 
 export const TICK_HZ = 15;
 const TICK_MS = 1000 / TICK_HZ;
 
-/** Load @tcg/shared and the game package exactly as the checkout's server resolves them. */
-export async function loadGame(root) {
+/**
+ * Load @tcg/shared and a game exactly as the checkout's server resolves them: through the game
+ * registry (@tcg/games), or, in a checkout from before the registry, the package room.ts imports.
+ */
+export async function loadGame(root, game = null) {
   const req = createRequire(path.join(path.resolve(root), "apps/server/package.json"));
   const load = (spec) => tsImport(pathToFileURL(req.resolve(spec)).href, import.meta.url);
   const shared = await load("@tcg/shared");
+  if (fs.existsSync(path.join(root, "packages/registry"))) {
+    // games.gen.ts is git-ignored and CI installs with --ignore-scripts: generate it for this checkout.
+    writeRegistry(path.resolve(root), (m) => console.error(m));
+    const { GAMES, CURRENT_SLUG } = await load("@tcg/games");
+    const slug = typeof game === "string" && Object.hasOwn(GAMES, game) ? game : CURRENT_SLUG;
+    return { shared, rules: GAMES[slug].rules, gamePkg: `@tcg/games:${slug}`, game: slug };
+  }
   // room.ts imports `rules` from the game package; keep that coupling in one place.
   const roomSrc = fs.readFileSync(path.join(root, "apps/server/src/room.ts"), "utf8");
   const gamePkg = roomSrc.match(/import\s*\{[^}]*\brules\b[^}]*\}\s*from\s*["'](@tcg\/game-[\w-]+)["']/)?.[1] ?? "@tcg/game-template";
-  const game = await load(gamePkg);
-  if (!game.rules) throw new Error(`${gamePkg} exports no rules`);
-  return { shared, rules: game.rules, gamePkg };
+  const mod = await load(gamePkg);
+  if (!mod.rules) throw new Error(`${gamePkg} exports no rules`);
+  return { shared, rules: mod.rules, gamePkg, game: null };
 }
 
 /** Deterministic sim with scripted bots. Pure apart from rules; no IO. */
@@ -66,8 +80,8 @@ export function createSim(shared, rules, { seed, scenario }) {
 
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".wasm": "application/wasm" };
 
-export async function startServer({ root, port, seed = 1337, scenario, version = "present" }) {
-  const { shared, rules, gamePkg } = await loadGame(root);
+export async function startServer({ root, port, seed = 1337, scenario, version = "present", game = null }) {
+  const { shared, rules, gamePkg, game: slug } = await loadGame(root, game);
   const sim = createSim(shared, rules, { seed, scenario });
   const dist = path.resolve(root, "apps/client/dist");
   const costs = [];
@@ -86,11 +100,14 @@ export async function startServer({ root, port, seed = 1337, scenario, version =
     }
     if (url.pathname === "/__state") {
       res.setHeader("content-type", "application/json");
-      res.end(JSON.stringify({ tick: sim.world.tick, started: !!timer, holdAt, exceptions: sim.exceptions, scenario: sim.scenario.name, seed, gamePkg, simCostsMs: costs }));
+      res.end(JSON.stringify({ tick: sim.world.tick, started: !!timer, holdAt, exceptions: sim.exceptions, scenario: sim.scenario.name, seed, gamePkg, game: slug, simCostsMs: costs }));
       return;
     }
     const rel = path.normalize(decodeURIComponent(url.pathname)).replace(/^([/\\]|\.\.)+/, "");
     let file = path.join(dist, rel || "index.html");
+    // Game pages are built per game (dist/games/<slug>.html): /game and /<slug>/game serve the presented one.
+    const page = slug && path.join(dist, "games", `${slug}.html`);
+    if (page && fs.existsSync(page) && (/^\/game(\.html)?\/?$/.test(url.pathname) || url.pathname === `/${slug}/game`)) file = page;
     // Same routing as Workers Static Assets: /game -> game.html (the sandboxed game page).
     if (!fs.existsSync(file) && fs.existsSync(file + ".html")) file += ".html";
     if (!file.startsWith(dist) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(dist, "index.html");
@@ -132,16 +149,17 @@ export async function startServer({ root, port, seed = 1337, scenario, version =
   return {
     sim,
     gamePkg,
+    game: slug,
     port: server.address().port,
     close: () => new Promise((r) => { clearInterval(timer); wss.close(); server.closeAllConnections?.(); server.close(() => r()); }),
   };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-  const { values } = parseArgs({ options: { root: { type: "string" }, port: { type: "string", default: "8787" }, seed: { type: "string", default: "1337" }, scenario: { type: "string" }, version: { type: "string", default: "present" } } });
+  const { values } = parseArgs({ options: { root: { type: "string" }, port: { type: "string", default: "8787" }, seed: { type: "string", default: "1337" }, scenario: { type: "string" }, version: { type: "string", default: "present" }, game: { type: "string" } } });
   if (!values.root) { console.error("--root <checkout> required"); process.exit(2); }
-  const s = await startServer({ root: values.root, port: Number(values.port), seed: Number(values.seed), scenario: values.scenario, version: values.version });
-  console.log(JSON.stringify({ ready: true, port: s.port, scenario: s.sim.scenario.name, gamePkg: s.gamePkg }));
+  const s = await startServer({ root: values.root, port: Number(values.port), seed: Number(values.seed), scenario: values.scenario, version: values.version, game: values.game ?? null });
+  console.log(JSON.stringify({ ready: true, port: s.port, scenario: s.sim.scenario.name, gamePkg: s.gamePkg, game: s.game }));
   const stop = () => s.close().then(() => process.exit(0));
   process.on("SIGTERM", stop);
   process.on("SIGINT", stop);
