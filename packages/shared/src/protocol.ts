@@ -38,12 +38,15 @@ export interface SnapMessage {
   nextId?: number;
   acks?: Record<string, Ack>;
   inputs?: Record<string, PackedInput>;
+  // v5 (multi-game): set only in rooms of an archived (non-current) game, which stay playable.
+  archived?: boolean;
+  game?: string;
   // v2 (agar-only), derived from entities. Deprecated: drop when no v2 client is left (§12, 1 week).
   players: Record<string, LegacyPlayer>;
   pellets: { x: number; y: number }[];
 }
 
-export interface SnapExtra { acks?: Record<string, Ack>; inputs?: Record<string, PackedInput> }
+export interface SnapExtra { acks?: Record<string, Ack>; inputs?: Record<string, PackedInput>; archived?: boolean; game?: string }
 
 export function snapMessage(w: World, version: string, draining: boolean, extra: SnapExtra = {}): SnapMessage {
   const players: Record<string, LegacyPlayer> = {};

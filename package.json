@@ -4,11 +4,12 @@
   "version": "0.1.0",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
+    "postinstall": "node scripts/registry.mjs",
     "build": "turbo run build",
     "check": "turbo run check",
     "test": "turbo run test",
     "guard": "node scripts/guard.mjs",
-    "test:agent": "node --test scripts/muse.test.mjs scripts/feed-hook.test.mjs scripts/orchestrate.test.mjs scripts/gates.test.mjs",
+    "test:agent": "node --test scripts/muse.test.mjs scripts/feed-hook.test.mjs scripts/orchestrate.test.mjs scripts/gates.test.mjs scripts/registry.test.mjs",
     "gates": "node scripts/gates.mjs"
   },
   "devDependencies": {

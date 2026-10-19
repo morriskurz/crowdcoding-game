@@ -1,12 +1,15 @@
 import { Room } from "./room.js";
 import { getServerByName } from "partyserver";
 import { isHtml, pageHeaders } from "./csp.js";
+import { assetPath, resolveRoom, roomFromPath } from "./routes.js";
 export { Room };
 
 // One Worker `tcg-live`, no preview environment (spec §3).
 // Rooms: /parties/<party>/<room>. The party segment is kept for partysocket URL compatibility
 // but does not select an environment: every party name maps to the same live room.
 // /health and /drain take ?room= (default "main").
+// Several games live side by side (routes.ts): room "main" and /, /game play the current game;
+// room <slug> and /<slug>, /<slug>/game play an archived game.
 
 interface Env {
   ROOM: DurableObjectNamespace<Room>;
@@ -27,15 +30,6 @@ export const CORS_HEADERS: Record<string, string> = {
   "Cross-Origin-Resource-Policy": "cross-origin",
 };
 
-function cleanRoom(raw: string | null | undefined): string {
-  return (raw ?? "main").replace(/[^a-z0-9-_]/gi, "").slice(0, 32) || "main";
-}
-
-export function roomFromPath(pathname: string): string | null {
-  const m = pathname.match(/^\/parties\/[^/]+\/([^/]+)/);
-  return m ? cleanRoom(m[1]) : null;
-}
-
 function room(env: Env, name: string) {
   return getServerByName(env.ROOM, name, { locationHint: LOCATION_HINT });
 }
@@ -52,7 +46,7 @@ export default {
   async fetch(req: Request, env: Env) {
     const url = new URL(req.url);
     if (url.pathname === "/health") {
-      const name = cleanRoom(url.searchParams.get("room"));
+      const name = resolveRoom(url.searchParams.get("room")).room;
       try {
         const stub = await room(env, name);
         const res = await stub.fetch(new Request("https://do/__health"));
@@ -66,13 +60,13 @@ export default {
       }
     }
     if (url.pathname === "/drain") {
-      const name = cleanRoom(url.searchParams.get("room"));
+      const name = resolveRoom(url.searchParams.get("room")).room;
       const stub = await room(env, name);
       const res = await stub.fetch(new Request("https://do/__drain", { method: "POST" }));
       const drained = res.ok;
       return Response.json({ ok: drained, draining: drained, room: name });
     }
-    const name = roomFromPath(url.pathname);
+    const name = roomFromPath(url.pathname)?.room;
     if (name) {
       const stub = await room(env, name);
       const fwd = new Request(req);
@@ -81,7 +75,10 @@ export default {
     }
     if (env.ASSETS) {
       if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
-      return withCors(await env.ASSETS.fetch(req), url);
+      const rewrite = assetPath(url.pathname);
+      const asset = rewrite ? new Request(new URL(rewrite, url), req) : req;
+      // Headers (CSP) follow the URL the browser asked for: /<slug>/game gets the sandboxed game policy.
+      return withCors(await env.ASSETS.fetch(asset), url);
     }
     return new Response("not found", { status: 404 });
   },

@@ -4,6 +4,10 @@
   "type": "module",
   "main": "./index.ts",
   "types": "./index.ts",
+  "tcg": {
+    "title": "agar",
+    "created": "2026-10-18T00:00:00.000Z"
+  },
   "dependencies": {
     "@tcg/shared": "workspace:^",
     "@tcg/kit": "workspace:^"

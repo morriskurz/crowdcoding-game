@@ -1,3 +1,9 @@
 html, body { margin: 0; height: 100%; background: #0b0e14; overflow: hidden; }
 #game { display: block; width: 100vw; height: 100vh; border: 0; }
 #banner { display: none; }
+#archived {
+  position: fixed; top: 8px; right: 8px; z-index: 1; padding: 4px 10px; border-radius: 6px;
+  background: rgba(17, 21, 31, 0.85); color: #fcd34d; font: 12px system-ui, sans-serif;
+}
+#archived[hidden] { display: none; }
+#archived a { color: #7dd3fc; }

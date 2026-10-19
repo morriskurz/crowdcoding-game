@@ -5,7 +5,9 @@
 </head>
 <body>
 <div id="banner">connecting…</div>
-<iframe id="game" src="/game" sandbox="allow-scripts" allow="autoplay" title="game"></iframe>
+<div id="archived" hidden>archived game<span id="archived-title"></span> · <a href="/">play this week's game</a></div>
+<!-- src is set by host.ts: /game (this week's game) or /<slug>/game (an archived one) -->
+<iframe id="game" sandbox="allow-scripts" allow="autoplay" title="game"></iframe>
 <script type="module" src="/src/host.ts"></script>
 </body>
 </html>

@@ -76,6 +76,24 @@ test("checkDiff: frozen files, including kit and streamer", () => {
   assert.deepEqual(checkDiff(["packages/shared/package.json", "apps/server/src/roomy.ts"], []), []);
 });
 
+test("checkDiff: game registry is frozen; a game's package.json only via the bootstrap dir entry", () => {
+  for (const f of ["packages/registry/index.ts", "packages/registry/package.json", "scripts/registry.mjs"]) {
+    assert.match(checkDiff([f], [f])[0] ?? "", /changed frozen/, f);
+  }
+  // bootstrap: a new game directory (with its package.json) needs no registry edit
+  assert.deepEqual(checkDiff(["packages/games/snake/package.json", "packages/games/snake/rules.ts", "pnpm-lock.yaml"], ["packages/games/snake/"]), []);
+  // a normal task may not re-date or rename a game (that would change the current game)
+  const [err] = checkDiff(["packages/games/agar/package.json"], ["packages/games/agar/package.json"]);
+  assert.match(err, /package\.json changes only via the bootstrap task/);
+  assert.equal(checkDiff(["packages/games/agar/package.json"], []).length, 1); // unplanned: one error, not two
+});
+
+test("imports: apps use the registry, nothing imports a game package directly", () => {
+  assert.ok(!blocked(`import { GAMES, gameForRoom } from "@tcg/games";`));
+  assert.ok(blocked(`import { rules } from "@tcg/game-template";`));
+  assert.ok(blocked(`import { rules } from "@tcg/games/evil";`));
+});
+
 test("branch resolution and agent-branch detection", () => {
   assert.equal(currentBranch({ GITHUB_HEAD_REF: "f/1-x", GITHUB_REF_NAME: "12/merge" }), "f/1-x");
   assert.equal(currentBranch({ GITHUB_HEAD_REF: "", GITHUB_REF_NAME: "f/2-y" }), "f/2-y");

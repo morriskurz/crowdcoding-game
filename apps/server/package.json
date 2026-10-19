@@ -8,7 +8,7 @@
     "test": "vitest run && node --test ../../scripts/guard.test.mjs"
   },
   "dependencies": {
-    "@tcg/game-template": "workspace:^",
+    "@tcg/games": "workspace:^",
     "@tcg/shared": "workspace:*",
     "partyserver": "^0.2.0",
     "zod": "^3.23.0"
