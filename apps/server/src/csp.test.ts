@@ -41,4 +41,13 @@ describe("csp", () => {
     }
     for (const p of ["/agar", "/agar/", "/agar/gamex", "/a/b/game"]) expect(isGamePage(p), p).toBe(false);
   });
+
+  it("adds allowed overlay origins to frame-ancestors on both pages and drops malformed ones", () => {
+    const url = new URL("https://tcg-live.example.workers.dev/");
+    const extra = "http://127.0.0.1:5200 javascript:alert(1) 'unsafe-inline' https://overlay.example";
+    for (const csp of [hostCsp(url, extra), gameCsp(url, extra)]) {
+      expect(directives(csp)["frame-ancestors"]).toEqual(["'self'", "http://127.0.0.1:5200", "https://overlay.example"]);
+    }
+    expect(directives(hostCsp(url))["frame-ancestors"]).toEqual(["'self'"]);
+  });
 });

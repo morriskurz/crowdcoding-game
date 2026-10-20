@@ -25,18 +25,25 @@ function base(url: URL): string[] {
   ];
 }
 
-export function hostCsp(url: URL): string {
-  return [...base(url), "frame-src 'self'"].join("; ");
+/** Who may embed the pages: this origin plus the stream overlay (FRAME_ANCESTORS, space-separated
+ * origins). frame-ancestors checks every ancestor, so the nested game page needs the overlay too. */
+export function ancestors(extra = ""): string {
+  const ok = extra.split(/\s+/).filter((o) => /^https?:\/\/[a-z0-9.-]+(:\d+)?$/i.test(o));
+  return ["frame-ancestors 'self'", ...ok].join(" ");
 }
 
-export function gameCsp(url: URL): string {
-  return [...base(url), "frame-ancestors 'self'", "sandbox allow-scripts"].join("; ");
+export function hostCsp(url: URL, frameAncestors = ""): string {
+  return [...base(url), "frame-src 'self'", ancestors(frameAncestors)].join("; ");
+}
+
+export function gameCsp(url: URL, frameAncestors = ""): string {
+  return [...base(url), ancestors(frameAncestors), "sandbox allow-scripts"].join("; ");
 }
 
 // Headers added to every HTML response.
-export function pageHeaders(url: URL): Record<string, string> {
+export function pageHeaders(url: URL, frameAncestors = ""): Record<string, string> {
   return {
-    "Content-Security-Policy": isGamePage(url.pathname) ? gameCsp(url) : hostCsp(url),
+    "Content-Security-Policy": isGamePage(url.pathname) ? gameCsp(url, frameAncestors) : hostCsp(url, frameAncestors),
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",

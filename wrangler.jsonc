@@ -4,7 +4,8 @@
   "name": "tcg-live",
   "main": "apps/server/src/worker.ts",
   "compatibility_date": "2026-08-01",
-  "vars": { "BUILD_VERSION": "v1" },
+  // Stream overlay (ops repo apps/overlay, served locally) may embed the host and game pages.
+  "vars": { "BUILD_VERSION": "v1", "FRAME_ANCESTORS": "http://127.0.0.1:5200 http://localhost:5200" },
   // Worker runs first so it can add CORS headers for the opaque-origin game iframe (spec §3/§4).
   "assets": { "directory": "./apps/client/dist", "binding": "ASSETS", "run_worker_first": true },
   "durable_objects": { "bindings": [{ "name": "ROOM", "class_name": "Room" }] },

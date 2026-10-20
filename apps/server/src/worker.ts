@@ -15,6 +15,7 @@ interface Env {
   ROOM: DurableObjectNamespace<Room>;
   ASSETS?: Fetcher;
   BUILD_VERSION?: string;
+  FRAME_ANCESTORS?: string; // stream overlay origin(s) allowed to embed the pages
 }
 
 // Rooms live in western Europe, close to the stream box (spec §3).
@@ -34,11 +35,11 @@ function room(env: Env, name: string) {
   return getServerByName(env.ROOM, name, { locationHint: LOCATION_HINT });
 }
 
-export function withCors(res: Response, url?: URL): Response {
+export function withCors(res: Response, url?: URL, frameAncestors = ""): Response {
   const out = new Response(res.body, res);
   for (const [k, v] of Object.entries(CORS_HEADERS)) out.headers.set(k, v);
   // Strict CSP on the host page and the sandboxed game page (csp.ts).
-  if (url && isHtml(res)) for (const [k, v] of Object.entries(pageHeaders(url))) out.headers.set(k, v);
+  if (url && isHtml(res)) for (const [k, v] of Object.entries(pageHeaders(url, frameAncestors))) out.headers.set(k, v);
   return out;
 }
 
@@ -78,7 +79,7 @@ export default {
       const rewrite = assetPath(url.pathname);
       const asset = rewrite ? new Request(new URL(rewrite, url), req) : req;
       // Headers (CSP) follow the URL the browser asked for: /<slug>/game gets the sandboxed game policy.
-      return withCors(await env.ASSETS.fetch(asset), url);
+      return withCors(await env.ASSETS.fetch(asset), url, env.FRAME_ANCESTORS);
     }
     return new Response("not found", { status: 404 });
   },
