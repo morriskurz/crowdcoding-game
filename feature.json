@@ -1,9 +1,9 @@
 {
-  "id": "1",
-  "spec": "Pellets glow for all players",
+  "id": "4",
+  "spec": "Player names float above each avatar in a soft color matching their trail for all players",
   "slug": "template",
   "game": "template",
-  "branch": "f/1-template",
-  "status": "ready",
-  "updatedAt": "2026-10-19T19:00:43.039Z"
+  "branch": "f/4-template",
+  "status": "building",
+  "updatedAt": "2026-10-23T21:43:35.309Z"
 }
