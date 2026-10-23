@@ -8,4 +8,7 @@ export const config = {
   startSize: 8,
   pelletGlowRadius: 16,
   pelletGlowAlpha: 0.8,
+  scoreBubbleLife: 0.9,
+  scoreBubbleRise: 28,
+  pelletPoints: 10,
 } as const;
