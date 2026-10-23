@@ -51,7 +51,9 @@ export function drawPlayer(ctx: CanvasRenderingContext2D, e: Entity, color: stri
 }
 
 export function drawPellet(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
-  drawGlow(ctx, e.x, e.y, 9 + 2 * pulse(fx.time + e.x * 0.01, 1.5), PELLET, 0.5);
+  const radius = config.pelletGlowRadius + 3 * pulse(fx.time + e.x * 0.01, 1.5);
+  drawGlow(ctx, e.x, e.y, radius * 1.8, PELLET, 0.25);
+  drawGlow(ctx, e.x, e.y, radius, PELLET, config.pelletGlowAlpha);
   ctx.fillStyle = PELLET;
   ctx.fillRect(e.x - 2, e.y - 2, 4, 4);
 }

@@ -6,4 +6,6 @@ export const config = {
   drainSeconds: 60, // per-game drain window, Q19
   pellets: 40,
   startSize: 8,
+  pelletGlowRadius: 16,
+  pelletGlowAlpha: 0.8,
 } as const;
