@@ -1,7 +1,7 @@
 // Idle bots for archived rooms (owner decision): an old week's game feels alive when someone drops
 // in, at ~zero cost. Bots are server-side players, never fake WebSocket clients: they join through
 // the game's own rules.join, get one input per tick like every player, and rules.step moves them.
-// They exist only while at least one real player is connected (the room does not tick otherwise).
+// They exist only while at least one real player or spectator is connected (the room does not tick otherwise).
 // The AI is deterministic: a pure function of the world and the bot's number, no clocks, no RNG.
 import { joinPlayer, leavePlayer, type GameRules, type Input, type World } from "@tcg/shared";
 
@@ -11,9 +11,9 @@ export const BOT_FILL = 6;
 export const BOT_PREFIX = "bot:";
 export const isBotId = (id: string): boolean => id.startsWith(BOT_PREFIX);
 
-/** Bots a room should run: archived and at least one real player -> fill up to BOT_FILL; else none. */
-export function botTarget(archived: boolean, humans: number): number {
-  return archived && humans > 0 ? Math.max(0, BOT_FILL - humans) : 0;
+/** Bots a room should run: archived and anyone connected (player or spectator) -> fill the players up to BOT_FILL; else none. */
+export function botTarget(archived: boolean, humans: number, spectators = 0): number {
+  return archived && humans + spectators > 0 ? Math.max(0, BOT_FILL - humans) : 0;
 }
 
 const clamp1 = (v: number) => Math.max(-1, Math.min(1, v));

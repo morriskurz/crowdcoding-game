@@ -2,7 +2,7 @@
 // registry gets one extra (archived) game so archive rooms can be tested with today's single game.
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type * as Registry from "@tcg/games";
-import { Room } from "./room.js";
+import { Room, isSpectate } from "./room.js";
 import { BOT_FILL } from "./bots.js";
 
 vi.mock("partyserver", () => ({
@@ -144,5 +144,48 @@ describe("archived room bots", () => {
     r.onClose(evil);
     expect(r.bots.ids).toContain("bot:1");
     expect(r.world.entities["bot:1"]).toBeDefined();
+  });
+});
+
+const watch = (name = "") => ({ request: new Request(`http://x/?spectate=1${name ? `&name=${name}` : ""}`) });
+
+describe("spectators", () => {
+  it("parses ?spectate", () => {
+    expect(isSpectate(new URL("http://x/?spectate=1"))).toBe(true);
+    expect(isSpectate(new URL("http://x/?spectate"))).toBe(true);
+    expect(isSpectate(new URL("http://x/?spectate=0"))).toBe(false);
+    expect(isSpectate(new URL("http://x/?name=a"))).toBe(false);
+  });
+
+  it("get snapshots but no player, keep the room ticking, and their inputs are ignored", async () => {
+    const r = await room("main");
+    const s = conn("s");
+    r.onConnect(s, watch("stream"));
+    expect(Object.keys(r.world.names)).toEqual([]);
+    expect(JSON.parse(s.send.mock.calls[0][0])).toMatchObject({ t: "hello", spectator: true, game: r.game.slug });
+    expect(vi.getTimerCount()).toBe(1);
+    sec(1);
+    expect(r.world.tick).toBeGreaterThanOrEqual(14);
+    await r.onMessage(s, JSON.stringify({ dx: 1, dy: 0 }));
+    expect(r.inputs).toEqual({});
+    expect(await health(r)).toMatchObject({ players: 0, spectators: 1, ticking: true });
+
+    const a = conn("a");
+    r.onConnect(a, req("alice"));
+    expect(Object.keys(r.world.names)).toEqual(["a"]);
+    r.onClose(a);
+    expect(vi.getTimerCount()).toBe(1); // the spectator is still watching
+    r.onClose(s);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(await health(r)).toMatchObject({ players: 0, spectators: 0, ticking: false });
+  });
+
+  it("an archived room watched by a spectator alone is filled with bots", async () => {
+    const r = await room("oldgame");
+    const s = conn("s");
+    r.onConnect(s, watch());
+    expect(r.bots.ids.length).toBe(BOT_FILL);
+    r.onClose(s);
+    expect(r.bots.ids).toEqual([]);
   });
 });

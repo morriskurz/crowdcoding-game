@@ -6,21 +6,24 @@ import type { SnapMessage } from "@tcg/shared";
 // host -> game
 export type HostMessage =
   | { t: "snap"; snap: SnapMessage }
-  | { t: "status"; text: string; me: string | null; draining: boolean }
+  | { t: "status"; text: string; me: string | null; draining: boolean; spectator?: boolean }
   | { t: "key"; key: string; down: boolean };
 
 // game -> host
 export type GameMessage =
   | { t: "ready" }
-  | { t: "input"; dx: number; dy: number; action: boolean; seq: number };
+  | { t: "input"; dx: number; dy: number; action: boolean; seq: number }
+  // The player pressed V: switch between playing and spectating (the host reconnects).
+  | { t: "mode"; spectate: boolean };
 
 const unit = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? Math.max(-1, Math.min(1, v)) : null);
 
-// Host side: accept only the two message shapes the game may send, with sane values.
+// Host side: accept only the message shapes the game may send, with sane values.
 export function parseGameMessage(d: unknown): GameMessage | null {
   if (!d || typeof d !== "object") return null;
   const m = d as Record<string, unknown>;
   if (m.t === "ready") return { t: "ready" };
+  if (m.t === "mode") return { t: "mode", spectate: m.spectate === true };
   if (m.t !== "input") return null;
   const dx = unit(m.dx), dy = unit(m.dy);
   const seq = m.seq;
@@ -33,7 +36,7 @@ export function parseHostMessage(d: unknown): HostMessage | null {
   if (!d || typeof d !== "object") return null;
   const m = d as Record<string, unknown>;
   if (m.t === "snap" && m.snap && typeof m.snap === "object") return m as unknown as HostMessage;
-  if (m.t === "status" && typeof m.text === "string") return { t: "status", text: m.text, me: typeof m.me === "string" ? m.me : null, draining: m.draining === true };
+  if (m.t === "status" && typeof m.text === "string") return { t: "status", text: m.text, me: typeof m.me === "string" ? m.me : null, draining: m.draining === true, spectator: m.spectator === true };
   if (m.t === "key" && typeof m.key === "string") return { t: "key", key: m.key, down: m.down === true };
   return null;
 }

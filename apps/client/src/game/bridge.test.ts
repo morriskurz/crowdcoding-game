@@ -16,7 +16,7 @@ describe("bridge validation", () => {
   });
 
   it("game accepts host messages", () => {
-    expect(parseHostMessage({ t: "status", text: "live", me: "abc" })).toEqual({ t: "status", text: "live", me: "abc", draining: false });
+    expect(parseHostMessage({ t: "status", text: "live", me: "abc" })).toEqual({ t: "status", text: "live", me: "abc", draining: false, spectator: false });
     expect(parseHostMessage({ t: "key", key: "w", down: true })).toEqual({ t: "key", key: "w", down: true });
     expect(parseHostMessage({ t: "x" })).toBeNull();
   });
@@ -45,5 +45,13 @@ describe("InputSender", () => {
 
   it("maps WASD/arrows/space", () => {
     expect(readKeys(new Set(["w", "arrowright", " "]))).toEqual({ dx: 1, dy: -1, action: true });
+  });
+});
+
+describe("spectate bridge", () => {
+  it("passes the mode switch and the spectator flag", () => {
+    expect(parseGameMessage({ t: "mode", spectate: true })).toEqual({ t: "mode", spectate: true });
+    expect(parseGameMessage({ t: "mode", spectate: "yes" })).toEqual({ t: "mode", spectate: false });
+    expect(parseHostMessage({ t: "status", text: "x", me: null, spectator: true })).toEqual({ t: "status", text: "x", me: null, draining: false, spectator: true });
   });
 });

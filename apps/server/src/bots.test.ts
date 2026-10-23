@@ -17,6 +17,8 @@ describe("bots", () => {
     expect(botTarget(true, 1)).toBe(BOT_FILL - 1);
     expect(botTarget(true, BOT_FILL + 3)).toBe(0);
     expect(botTarget(false, 1)).toBe(0); // the current game's rooms never get bots
+    expect(botTarget(true, 0, 1)).toBe(BOT_FILL); // a spectator alone watches a full archive room
+    expect(botTarget(false, 0, 1)).toBe(0);
   });
 
   it("join and leave through the game's own rules, ids bot:1..bot:k", () => {

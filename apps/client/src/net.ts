@@ -1,6 +1,6 @@
 import PartySocket from "partysocket";
 
-export interface ConnectOpts { env?: string; name?: string; }
+export interface ConnectOpts { env?: string; name?: string; spectate?: boolean; }
 
 export function connect(
   roomName: string,
@@ -14,7 +14,8 @@ export function connect(
     host: import.meta.env.VITE_PARTY_HOST ?? (import.meta.env.PROD ? location.host : "127.0.0.1:1999"),
     party,
     room: roomName,
-    query: { name: (opts.name ?? "anon").slice(0, 16) },
+    // Spectators get snapshots but no player (apps/server/src/room.ts).
+    query: opts.spectate ? { spectate: "1" } : { name: (opts.name ?? "anon").slice(0, 16) },
   });
   ws.onmessage = (e) => {
     let m: any;
