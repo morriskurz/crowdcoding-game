@@ -1,9 +1,9 @@
 {
-  "id": "1",
-  "spec": "Pellets glow for all players",
+  "id": "2",
+  "spec": "Computer-controlled enemies added for all players to compete against",
   "slug": "template",
   "game": "template",
-  "branch": "f/1-template",
+  "branch": "f/2-template",
   "status": "ready",
-  "updatedAt": "2026-10-19T19:00:43.039Z"
+  "updatedAt": "2026-10-23T20:16:50.404Z"
 }

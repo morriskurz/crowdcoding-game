@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createWorld, joinPlayer, runTick, bodies, get, spawn } from "@tcg/shared";
-import { eatCheck, magnetCheck, rules, GROWTH_PER_PELLET } from "./rules.js";
+import { botEatCheck, botFightCheck, botStep, eatCheck, magnetCheck, rules, GROWTH_PER_PELLET } from "./rules.js";
 import { config } from "./config.js";
 
 function world(seed = 7) {
@@ -51,6 +51,64 @@ describe("template agar", () => {
     p.x = target.x; p.y = target.y;
     runTick(w, rules, { a: { dx: 0, dy: 0, action: false } });
     expect(bodies(w, "pellet")).toHaveLength(config.pellets);
+  });
+
+  it("bots exist after init", () => {
+    const w = world();
+    expect(bodies(w, "bot")).toHaveLength(config.botCount);
+  });
+
+  it("a bot moves toward its nearest pellet", () => {
+    const w = createWorld();
+    const bot = spawn(w, { kind: "bot", x: 400, y: 400, r: config.startSize });
+    spawn(w, { kind: "pellet", x: 500, y: 400, r: 2 });
+    botStep(w);
+    expect(bot.x).toBeCloseTo(400 + config.botSpeed, 5);
+    expect(bot.y).toBeCloseTo(400, 5);
+  });
+
+  it("a bot eats a pellet and grows", () => {
+    const w = createWorld();
+    const bot = spawn(w, { kind: "bot", x: 400, y: 400, r: config.startSize });
+    spawn(w, { kind: "pellet", x: 400, y: 400, r: 2 });
+    botEatCheck(w);
+    expect(bodies(w, "pellet")).toHaveLength(0);
+    expect(bot.r).toBeCloseTo(config.startSize + GROWTH_PER_PELLET, 5);
+  });
+
+  it("a big player eats a small bot", () => {
+    const w = createWorld();
+    joinPlayer(w, rules, "a", "alice");
+    const p = get(w, "a")!;
+    p.r = 20;
+    const bot = spawn(w, { kind: "bot", x: p.x, y: p.y, r: 10 });
+    botFightCheck(w);
+    expect(p.r).toBeCloseTo(25, 5);
+    expect(bot.r).toBe(config.startSize);
+    expect(bot.x !== p.x || bot.y !== p.y).toBe(true);
+  });
+
+  it("a big bot resets an overlapped small player", () => {
+    const w = createWorld();
+    joinPlayer(w, rules, "a", "alice");
+    const p = get(w, "a")!;
+    p.x = 300; p.y = 300;
+    const bot = spawn(w, { kind: "bot", x: 300, y: 300, r: 30 });
+    botFightCheck(w);
+    expect(p.x).toBe(100);
+    expect(p.r).toBe(config.startSize);
+    expect(bot.r).toBeCloseTo(30 + config.startSize * 0.5, 5);
+    expect(get(w, "a")).toBeDefined();
+  });
+
+  it("is deterministic with bots", () => {
+    const run = () => {
+      const w = world(9);
+      for (let t = 0; t < 200; t++) runTick(w, rules, { a: { dx: 1, dy: t % 20 < 10 ? 1 : -1, action: false } });
+      expect(bodies(w, "bot")).toHaveLength(config.botCount);
+      return JSON.stringify(w);
+    };
+    expect(run()).toBe(run());
   });
 
   it("is deterministic for the same seed and inputs", () => {
