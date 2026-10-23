@@ -36,6 +36,7 @@ export function drawBackground(ctx: CanvasRenderingContext2D, fx: Fx): void {
 export function drawEntity(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
   if (e.kind === "player") drawPlayer(ctx, e, e.id === fx.me ? ME : playerColor(e.id));
   else if (e.kind === "pellet") drawPellet(ctx, e, fx);
+  else if (e.kind === "bot") drawBot(ctx, e, fx);
 }
 
 export function drawPlayer(ctx: CanvasRenderingContext2D, e: Entity, color: string): void {
@@ -58,11 +59,22 @@ export function drawPellet(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): vo
   ctx.fillRect(e.x - 2, e.y - 2, 4, 4);
 }
 
+export function drawBot(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
+  drawGlow(ctx, e.x, e.y, e.r * 2.6, "#ff4d4d", 0.35 + 0.15 * pulse(fx.time, 2));
+  ctx.fillStyle = "#ff4d4d";
+  ctx.beginPath();
+  ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#7a1010";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
 // Pellets that vanished were eaten by the nearest player: sparkle, and a sound if it was you.
 export function onSnapshot(prev: Readonly<Record<string, Entity>> | null, next: Readonly<Record<string, Entity>>, fx: Fx): void {
   for (const id of trails.keys()) if (!next[id]) trails.delete(id);
   if (!prev) return;
-  const players = Object.values(next).filter((e) => e.kind === "player");
+  const players = Object.values(next).filter((e) => e.kind === "player" || e.kind === "bot");
   for (const id in prev) {
     const pel = prev[id];
     if (pel.kind !== "pellet" || next[id]) continue;
