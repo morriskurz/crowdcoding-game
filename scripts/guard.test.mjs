@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { scanSource, planFiles, checkDiff, isAgentBranch, currentBranch } from "./guard.mjs";
+import { scanSource, planFiles, checkDiff, checkArchived, isAgentBranch, currentBranch } from "./guard.mjs";
 
 const GUARD = fileURLToPath(new URL("./guard.mjs", import.meta.url));
 const blocked = (src) => scanSource("x.ts", src).length > 0;
@@ -179,4 +179,65 @@ test("checkDiff: presentation pipeline is frozen for agent branches", () => {
   for (const f of ["scripts/gates/ocr.mjs", "scripts/present/run.mjs", "scripts/scenarios/chase.mjs", "scripts/gates/slur-hashes.json"]) {
     assert.match(checkDiff([f], [])[0], /changed frozen/, f);
   }
+});
+
+test("checkArchived: only the base's current game and new directories may change", () => {
+  const dirs = ["old", "cur"];
+  assert.deepEqual(checkArchived(["packages/games/cur/rules.ts", "tasks.json"], dirs, "cur"), []);
+  assert.deepEqual(checkArchived(["packages/games/next/rules.ts", "packages/games/next/package.json"], dirs, "cur"), []); // bootstrap
+  const [err] = checkArchived(["packages/games/old/rules.ts", "packages/games/cur/rules.ts"], dirs, "cur");
+  assert.match(err, /changed archived game .*"cur".*: packages\/games\/old\/rules\.ts$/);
+  assert.deepEqual(checkArchived(["packages/games/old/rules.ts"], dirs, null), []); // no game at base: nothing to protect
+});
+
+function gameFixture() {
+  const f = fixture();
+  const game = (slug, created) => {
+    f.write(`packages/games/${slug}/index.ts`, "export const x = 1;\n");
+    f.write(`packages/games/${slug}/rules.ts`, "export const a = 1;\n");
+    f.write(`packages/games/${slug}/package.json`, JSON.stringify({ name: `@tcg/game-${slug}`, tcg: { title: slug, created } }));
+  };
+  game("old", "2026-10-01T00:00:00.000Z");
+  game("cur", "2026-10-08T00:00:00.000Z");
+  f.g("add", "-A"); f.g("commit", "-qm", "two games"); f.g("branch", "-f", "base");
+  return { ...f, game };
+}
+
+test("f/ branch: a feature for an archived game fails, the current game passes", () => {
+  const f = gameFixture();
+  try {
+    f.g("checkout", "-qb", "f/3-old-feature");
+    f.write("packages/games/old/rules.ts", "export const a = 2;\n");
+    f.write("tasks.json", JSON.stringify([{ id: "t1", files: ["packages/games/old/rules.ts"] }]));
+    f.g("add", "-A"); f.g("commit", "-qm", "old");
+    let r = f.run();
+    assert.equal(r.status, 1, r.stdout + r.stderr);
+    assert.match(r.stderr, /changed archived game .*packages\/games\/old\/rules\.ts/);
+
+    f.g("checkout", "-qb", "f/4-cur-feature", "base");
+    f.write("packages/games/cur/rules.ts", "export const a = 2;\n");
+    f.write("tasks.json", JSON.stringify([{ id: "t1", files: ["packages/games/cur/rules.ts"] }]));
+    f.g("add", "-A"); f.g("commit", "-qm", "cur");
+    r = f.run();
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+  } finally { f.done(); }
+});
+
+test("f/ branch: a bootstrap adding a newer game is allowed (current game read from the base)", () => {
+  const f = gameFixture();
+  try {
+    f.g("checkout", "-qb", "f/5-next");
+    f.game("next", "2026-10-15T00:00:00.000Z"); // on this branch "next" is current, "cur" is not
+    f.write("tasks.json", JSON.stringify([{ id: "bootstrap", files: ["packages/games/next/"] }]));
+    f.g("add", "-A"); f.g("commit", "-qm", "bootstrap");
+    let r = f.run();
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    // ...but it may not sneak a change into an archived game
+    f.write("packages/games/old/rules.ts", "export const a = 3;\n");
+    f.write("tasks.json", JSON.stringify([{ id: "bootstrap", files: ["packages/games/next/"] }, { id: "t1", files: ["packages/games/old/rules.ts"] }]));
+    f.g("add", "-A"); f.g("commit", "-qm", "sneak");
+    r = f.run();
+    assert.equal(r.status, 1, r.stdout + r.stderr);
+    assert.match(r.stderr, /changed archived game/);
+  } finally { f.done(); }
 });

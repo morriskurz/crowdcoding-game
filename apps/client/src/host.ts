@@ -17,7 +17,8 @@ const budget = new SendBudget(8, 8, performance.now());
 // /            this week's game, room ?room= (default main)
 // /<slug>      an older game: its own page /<slug>/game and its archive room <slug> (the Worker
 //              only serves this page for known slugs; the server decides what is archived)
-// ?room=main&env=preview|live&name=you&drain=60
+// ?room=main&env=preview|live&name=you&drain=60&spectate=1 (watch without a player: the stream
+// overlay, or a player who pressed V; the game page's camera then follows the action)
 const q = new URLSearchParams(location.search);
 const slug = /^\/([a-z0-9][a-z0-9-]{0,39})\/?$/.exec(location.pathname)?.[1] ?? null;
 const roomName = slug ?? ((q.get("room") ?? "main").replace(/[^a-z0-9-_]/gi, "").slice(0, 32) || "main");
@@ -25,6 +26,7 @@ frame.src = slug ? `/${slug}/game` : "/game";
 let archived = false;
 const env = q.get("env") === "live" ? "live" : "preview";
 const name = (q.get("name") ?? "anon").slice(0, 16);
+const spectate = q.has("spectate") && q.get("spectate") !== "0" && q.get("spectate") !== "false";
 
 // The sandboxed frame has an opaque origin, so "*" is the only possible target. Nothing we send
 // is secret: snapshots are what every player receives anyway.
@@ -34,7 +36,7 @@ function post(m: HostMessage): void {
 
 function setStatus(text: string): void {
   banner.textContent = text;
-  status = { t: "status", text, me: ws.id ?? null, draining };
+  status = { t: "status", text, me: spectate ? null : ws.id ?? null, draining, spectator: spectate };
   post(status);
 }
 
@@ -61,10 +63,10 @@ const ws = connect(roomName, (snap) => {
   } else {
     draining = false;
     if (hello.archived === true) showArchived(String(hello.title ?? hello.game ?? ""));
-    setStatus(`${archived ? "archived" : "live"} ${hello.version ?? "?"} [${env}:${roomName}] — WASD play`);
+    setStatus(`${archived ? "archived" : "live"} ${hello.version ?? "?"} [${env}:${roomName}] — ${spectate ? "spectating · V play" : "WASD play · V watch"}`);
     seenVersion = hello.version ?? seenVersion;
   }
-}, { env, name });
+}, { env, name, spectate });
 
 addEventListener("message", (e) => {
   if (e.source !== frame.contentWindow) return; // only our game frame, never other windows
@@ -72,9 +74,17 @@ addEventListener("message", (e) => {
   if (!m) return;
   if (m.t === "ready") {
     ready = true;
-    if (status) post({ ...status, me: ws.id ?? null } as HostMessage);
+    if (status) post({ ...status, me: spectate ? null : ws.id ?? null } as HostMessage);
     return;
   }
+  if (m.t === "mode") {
+    if (m.spectate === spectate) return;
+    if (m.spectate) q.set("spectate", "1"); else q.delete("spectate");
+    const qs = q.toString();
+    location.replace(`${location.pathname}${qs ? `?${qs}` : ""}`);
+    return;
+  }
+  if (spectate) return; // no player: nothing to steer
   if (budget.take(performance.now())) sendInput(ws, m.dx, m.dy, m.action, m.seq);
 });
 

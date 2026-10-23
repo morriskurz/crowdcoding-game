@@ -23,11 +23,12 @@ The payload arrives wrapped, for example:
 
 1. Work only on branch `f/<featureId>-<slug>` (the `start` command creates or checks it out). Push only that branch. Never push `main`, never merge, never open, approve or merge a PR, never force-push.
 2. Edit only files under `packages/games/<game>/` that a task in `tasks.json` lists. `scripts/guard.mjs` rejects any other game-file change on `f/*` branches.
-3. Never edit: `packages/shared`, `packages/kit`, `packages/registry`, `apps/`, `.github/`, `scripts/`, `.claude/`, `CLAUDE.md`, `docs/`, `wrangler.jsonc`, `package.json` files (bootstrap's generated one excepted). No new dependencies.
-4. Game code follows the guard: pure TypeScript, imports only from `@tcg/shared`, relative files and `vitest`; no `fetch`, `eval`, `new Function`, dynamic `import()`, `innerHTML`, `node:` modules.
-5. Change `feature.json` and `tasks.json` only through `node scripts/orchestrate.mjs`. Their formats are fixed (`docs/ORCHESTRATOR.md` § Files).
-6. Never set status `ready` yourself. `orchestrate.mjs finish` sets it, only when every task is done and the full gates are green.
-7. Builders never commit or push. You do, through `orchestrate.mjs verify` / `plan` / `finish`, which stage only the planned files plus `feature.json`, `tasks.json`, `usage-opencode.json`.
+3. Features go to the **current game** only. Archived games (every `packages/games/<slug>/` except the current one) are frozen: they stay playable as they are and get no new features. `start` refuses a payload whose `game` is not the current game unless it has `bootstrap: true` (then report the error and stop), and the guard rejects any `f/*` diff that touches an archived game's directory.
+4. Never edit: `packages/shared`, `packages/kit`, `packages/registry`, `apps/`, `.github/`, `scripts/`, `.claude/`, `CLAUDE.md`, `docs/`, `wrangler.jsonc`, `package.json` files (bootstrap's generated one excepted). No new dependencies.
+5. Game code follows the guard: pure TypeScript, imports only from `@tcg/shared`, relative files and `vitest`; no `fetch`, `eval`, `new Function`, dynamic `import()`, `innerHTML`, `node:` modules.
+6. Change `feature.json` and `tasks.json` only through `node scripts/orchestrate.mjs`. Their formats are fixed (`docs/ORCHESTRATOR.md` § Files).
+7. Never set status `ready` yourself. `orchestrate.mjs finish` sets it, only when every task is done and the full gates are green.
+8. Builders never commit or push. You do, through `orchestrate.mjs verify` / `plan` / `finish`, which stage only the planned files plus `feature.json`, `tasks.json`, `usage-opencode.json`.
 
 ## Procedure
 
@@ -112,9 +113,9 @@ End the session with one line: `f/<id>-<slug>: <status>, <n> tasks, <commits> co
 Payload has `"bootstrap": true`; `slug` is the new game's directory name.
 
 1. `start` as usual (game dir = `packages/games/<slug>/`).
-2. `node scripts/orchestrate.mjs bootstrap` copies `packages/games/template` to `packages/games/<slug>/`, renames the package to `@tcg/game-<slug>` and updates `pnpm-lock.yaml`.
-3. Plan with a first task `{ "id": "bootstrap", "tier": "opus", "files": ["packages/games/<slug>/"], ... }` — the only task allowed to list a whole directory and touch many files. The opus builder turns the template into the new game the spec describes (rules, config, assets, tests). Later tasks are normal single-file tasks.
-4. Nothing to wire up: the game registry is generated from `packages/games/*`, and `bootstrap` stamped the new game as the newest, so it is the current game on this branch (the gates smoke it). Do not edit the game's `package.json`.
+2. `node scripts/orchestrate.mjs bootstrap` copies the base game `packages/games/template` to `packages/games/<slug>/`, renames the package to `@tcg/game-<slug>` and updates `pnpm-lock.yaml`.
+3. Plan with a first task `{ "id": "bootstrap", "tier": "opus", "files": ["packages/games/<slug>/"], ... }` — the only task allowed to list a whole directory and touch many files. The opus builder turns the copy of the base game into the new game the spec describes (rules, config, assets, tests). Later tasks are normal single-file tasks.
+4. Nothing to wire up: the game registry is generated from `packages/games/*`, and `bootstrap` stamped the new game as the newest, so it is the current game on this branch (the gates smoke it). Do not edit the game's `package.json`. Do not touch last week's game (or the base game, when it is archived): once the bootstrap ships, they are archives and frozen.
 
 ## Builders and cost
 
