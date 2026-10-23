@@ -10,6 +10,7 @@ export const scene: Scene = { width: config.bounds, height: config.bounds, backg
 const ME = "#7dd3fc";
 const PELLET = "#ffd54a";
 const trails = new Map<string, Trail>();
+const bubbles = new Map<string, { text: string; born: number }[]>();
 
 // Stable per-player hue so everyone keeps their color between snapshots.
 function playerColor(id: string): string {
@@ -34,11 +35,11 @@ export function drawBackground(ctx: CanvasRenderingContext2D, fx: Fx): void {
 
 // Client calls this for every entity, every frame (world coordinates).
 export function drawEntity(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
-  if (e.kind === "player") drawPlayer(ctx, e, e.id === fx.me ? ME : playerColor(e.id));
+  if (e.kind === "player") drawPlayer(ctx, e, e.id === fx.me ? ME : playerColor(e.id), fx);
   else if (e.kind === "pellet") drawPellet(ctx, e, fx);
 }
 
-export function drawPlayer(ctx: CanvasRenderingContext2D, e: Entity, color: string): void {
+export function drawPlayer(ctx: CanvasRenderingContext2D, e: Entity, color: string, fx: Fx): void {
   let t = trails.get(e.id);
   if (!t) trails.set(e.id, (t = new Trail(12, 3)));
   t.push(e.x, e.y);
@@ -48,6 +49,28 @@ export function drawPlayer(ctx: CanvasRenderingContext2D, e: Entity, color: stri
   ctx.beginPath();
   ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
   ctx.fill();
+  const list = bubbles.get(e.id);
+  if (list) {
+    const alive = list.filter((b) => fx.time - b.born <= config.scoreBubbleLife);
+    if (alive.length !== list.length) bubbles.set(e.id, alive);
+    for (const b of alive) {
+      const age = fx.time - b.born;
+      const bt = age / config.scoreBubbleLife;
+      const y = e.y - e.r - 8 - config.scoreBubbleRise * bt;
+      const alpha = 1 - bt;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.font = "bold 14px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "#1a1205";
+      ctx.fillStyle = "#fff3b0";
+      ctx.strokeText(b.text, e.x, y);
+      ctx.fillText(b.text, e.x, y);
+      ctx.restore();
+    }
+  }
 }
 
 export function drawPellet(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
@@ -61,6 +84,7 @@ export function drawPellet(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): vo
 // Pellets that vanished were eaten by the nearest player: sparkle, and a sound if it was you.
 export function onSnapshot(prev: Readonly<Record<string, Entity>> | null, next: Readonly<Record<string, Entity>>, fx: Fx): void {
   for (const id of trails.keys()) if (!next[id]) trails.delete(id);
+  for (const id of bubbles.keys()) if (!next[id]) bubbles.delete(id);
   if (!prev) return;
   const players = Object.values(next).filter((e) => e.kind === "player");
   for (const id in prev) {
@@ -73,6 +97,10 @@ export function onSnapshot(prev: Readonly<Record<string, Entity>> | null, next: 
       if (d < best) { best = d; eater = p; }
     }
     if (!eater || best > (eater.r + 30) ** 2) continue; // respawned/despawned, not eaten
+    const list = bubbles.get(eater.id) ?? [];
+    list.push({ text: "+" + config.pelletPoints, born: fx.time });
+    while (list.length > 5) list.shift();
+    bubbles.set(eater.id, list);
     const mine = eater.id === fx.me;
     fx.particles.emit({ x: pel.x, y: pel.y, count: mine ? 14 : 6, color: PELLET, speed: 90, life: 0.45, size: 2.5, drag: 2 });
     if (mine) {
