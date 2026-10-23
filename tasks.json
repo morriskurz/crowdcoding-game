@@ -1,43 +1,22 @@
 [
   {
     "id": "t1",
-    "title": "config: pelletGlowRadius, pelletGlowAlpha",
+    "title": "config: score bubble settings (life seconds, rise distance, pellet points)",
     "tier": "muse",
     "files": [
       "packages/games/template/config.ts"
     ],
     "estMin": 5,
-    "actualMin": 1.3,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": false,
-        "minutes": 0.4
-      },
-      {
-        "tier": "sonnet",
-        "ok": true,
-        "minutes": 0.9
-      }
-    ]
+    "done": false
   },
   {
     "id": "t2",
-    "title": "assets: bigger, brighter pulsing pellet glow with halo",
+    "title": "assets: floating score bubbles above players that eat a pellet",
     "tier": "muse",
     "files": [
       "packages/games/template/assets.ts"
     ],
-    "estMin": 10,
-    "actualMin": 1.1,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "sonnet",
-        "ok": true,
-        "minutes": 1.1
-      }
-    ]
+    "estMin": 15,
+    "done": false
   }
 ]

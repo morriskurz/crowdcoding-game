@@ -1,9 +1,9 @@
 {
-  "id": "1",
-  "spec": "Pellets glow for all players",
+  "id": "3",
+  "spec": "Floating score bubbles pop above players when they eat a pellet or computer-controlled enemy for all players",
   "slug": "template",
   "game": "template",
-  "branch": "f/1-template",
-  "status": "ready",
-  "updatedAt": "2026-10-19T19:00:43.039Z"
+  "branch": "f/3-template",
+  "status": "building",
+  "updatedAt": "2026-10-23T20:59:28.144Z"
 }
