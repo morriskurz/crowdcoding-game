@@ -6,5 +6,13 @@
     "tokensOut": 0,
     "costUsd": 0,
     "ok": false
+  },
+  {
+    "at": "2026-10-23T20:13:04.746Z",
+    "model": "opencode-go/muse-spark-1.3-contributor",
+    "tokensIn": 33632,
+    "tokensOut": 242,
+    "costUsd": 0.001257,
+    "ok": true
   }
 ]
