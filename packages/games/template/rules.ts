@@ -41,9 +41,61 @@ export function eatCheck(w: World): void {
   }
 }
 
+export function spawnBot(w: World): void {
+  spawn(w, { kind: "bot", x: randomRange(w, 0, config.bounds), y: randomRange(w, 0, config.bounds), r: config.startSize });
+}
+
+export function botStep(w: World): void {
+  const pellets = bodies(w, "pellet");
+  for (const bot of bodies(w, "bot")) {
+    let best: { d2: number; x: number; y: number } | null = null;
+    for (const pel of pellets) {
+      const d2 = (pel.x - bot.x) ** 2 + (pel.y - bot.y) ** 2;
+      if (!best || d2 < best.d2) best = { d2, x: pel.x, y: pel.y };
+    }
+    if (best) {
+      const d = Math.sqrt(best.d2) || 1;
+      const s = Math.min(config.botSpeed, d);
+      bot.vx = ((best.x - bot.x) / d) * s;
+      bot.vy = ((best.y - bot.y) / d) * s;
+    } else {
+      bot.vx = 0;
+      bot.vy = 0;
+    }
+    moveBody(bot, { bounds: arena });
+  }
+}
+
+export function botEatCheck(w: World): void {
+  for (const bot of bodies(w, "bot")) {
+    for (const pel of bodies(w, "pellet")) {
+      const d2 = (bot.x - pel.x) ** 2 + (bot.y - pel.y) ** 2;
+      if (d2 < (bot.r + EAT_REACH) ** 2) { bot.r += GROWTH_PER_PELLET; despawn(w, pel.id); }
+    }
+  }
+}
+
+export function botFightCheck(w: World): void {
+  for (const p of bodies(w, "player")) {
+    for (const bot of bodies(w, "bot")) {
+      const d2 = (p.x - bot.x) ** 2 + (p.y - bot.y) ** 2;
+      if (p.r > bot.r * 1.2 && d2 < p.r ** 2) {
+        p.r += bot.r * 0.5;
+        bot.x = randomRange(w, 0, config.bounds);
+        bot.y = randomRange(w, 0, config.bounds);
+        bot.r = config.startSize;
+      } else if (bot.r > p.r * 1.2 && d2 < bot.r ** 2) {
+        bot.r += p.r * 0.5;
+        p.x = 100; p.y = 100; p.r = config.startSize;
+      }
+    }
+  }
+}
+
 export const rules: GameRules = {
   init(w) {
     for (let i = 0; i < config.pellets; i++) spawnPellet(w);
+    for (let i = 0; i < config.botCount; i++) spawnBot(w);
   },
   join(w, playerId) {
     spawn(w, { id: playerId, kind: "player", x: 100, y: 100, r: config.startSize });
@@ -55,8 +107,11 @@ export const rules: GameRules = {
       p.vy = (inp?.dy ?? 0) * config.speed;
       moveBody(p, { bounds: arena });
     }
+    botStep(w);
     magnetCheck(w);
     eatCheck(w);
+    botEatCheck(w);
+    botFightCheck(w);
     while (bodies(w, "pellet").length < config.pellets) spawnPellet(w);
   },
 };
