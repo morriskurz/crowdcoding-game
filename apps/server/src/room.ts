@@ -8,12 +8,15 @@ import { Bots, botTarget, isBotId } from "./bots.js";
 // One Durable Object = one room. Authoritative 15Hz on setInterval, never alarms (spec §3, §13 cost).
 // The interval runs only while at least one player is connected: Durable Object duration is billed
 // while the object is kept busy, so an empty room stops ticking and the next connect restarts it
-// (the main room always has the stream viewer connected, so it never stops).
+// (the main room always has the stream overlay connected as a spectator, so it never stops).
+// Spectators (`?spectate=1`) get snapshots but no player: they never join the world, send no
+// input and do not count toward MAX_PLAYERS. They keep the room ticking like players do.
 // The room's name picks its game (@tcg/games gameForRoom): "main" and test rooms run the current
 // game; a room named after an older game's slug runs that game as an archive (still playable,
 // flagged `archived` in hello, snapshots and /health). An archived room with players is filled up
 // with server-side bots (bots.ts), removed again when the last player leaves.
 const MAX_PLAYERS = 100;
+const MAX_SPECTATORS = 200;
 const TICK_MS = 1000 / 15;
 const TICK_BUDGET_MS = 50; // spec §9: tick p95 > 50ms is a rollback trigger
 
@@ -31,6 +34,7 @@ export class Room extends Server {
   game: Game = GAMES[CURRENT_SLUG];
   archived = false;
   bots = new Bots();
+  spectators = new Set<string>();
 
   async onStart() {
     this.buildVersion = (this.env as any)?.BUILD_VERSION ?? "v1";
@@ -49,10 +53,11 @@ export class Room extends Server {
   /** After every join/leave: bots for archived rooms, and tick only while somebody is connected. */
   syncRoom() {
     const humans = this.humans();
-    this.bots.sync(this.world, this.game.rules, botTarget(this.archived, humans));
-    if (humans > 0 && !this.tickTimer) {
+    const connected = humans + this.spectators.size;
+    this.bots.sync(this.world, this.game.rules, botTarget(this.archived, humans, this.spectators.size));
+    if (connected > 0 && !this.tickTimer) {
       this.tickTimer = setInterval(() => this.tickGuard.run(() => this.onTick()), TICK_MS);
-    } else if (humans === 0 && this.tickTimer) {
+    } else if (connected === 0 && this.tickTimer) {
       clearInterval(this.tickTimer);
       this.tickTimer = null;
       this.tickGuard.pause();
@@ -64,22 +69,38 @@ export class Room extends Server {
       conn.close();
       return;
     }
+    const url = new URL(ctx.request?.url ?? "http://x/?name=anon");
+    if (isSpectate(url)) {
+      if (this.spectators.size >= MAX_SPECTATORS) {
+        conn.send(JSON.stringify({ t: "full" }));
+        conn.close();
+        return;
+      }
+      this.spectators.add(conn.id);
+      this.syncRoom();
+      conn.send(JSON.stringify({ ...this.hello(), spectator: true }));
+      return;
+    }
     if (this.humans() >= MAX_PLAYERS) {
       conn.send(JSON.stringify({ t: "full" }));
       conn.close();
       return;
     }
-    const url = new URL(ctx.request?.url ?? "http://x/?name=anon");
     const raw = (url.searchParams.get("name") ?? conn.id).slice(0, 16);
     joinPlayer(this.world, this.game.rules, conn.id, raw);
     this.inputs[conn.id] = { dx: 0, dy: 0, action: false };
     this.acks.join(conn.id);
     this.syncRoom();
-    conn.send(JSON.stringify({ t: "hello", version: this.buildVersion, tick: this.world.tick, draining: this.draining, game: this.game.slug, title: this.game.title, archived: this.archived }));
+    conn.send(JSON.stringify(this.hello()));
+  }
+
+  hello() {
+    return { t: "hello", version: this.buildVersion, tick: this.world.tick, draining: this.draining, game: this.game.slug, title: this.game.title, archived: this.archived };
   }
 
   onClose(conn: Connection) {
     this.buckets.delete(conn.id);
+    if (this.spectators.delete(conn.id)) { this.syncRoom(); return; }
     if (!(conn.id in this.inputs)) return; // rejected (full, or a bot id): never joined
     leavePlayer(this.world, this.game.rules, conn.id);
     delete this.inputs[conn.id];
@@ -138,10 +159,17 @@ export class Room extends Server {
         game: this.game.slug,
         archived: this.archived,
         bots: this.bots.ids.length,
+        spectators: this.spectators.size,
         ticking: this.tickTimer !== null,
         ticks: await this.tickGuard.stats(),
       });
     }
     return new Response("not found", { status: 404 });
   }
+}
+
+/** `?spectate=1` (or `true`, or a bare `?spectate`): watch without a player. */
+export function isSpectate(url: URL): boolean {
+  const v = url.searchParams.get("spectate");
+  return v !== null && v !== "0" && v !== "false";
 }
