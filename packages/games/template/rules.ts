@@ -40,7 +40,54 @@ function playerGrowth(p: { data: object }, type: PelletType): number {
   const mine = eaten[type];
   const isTop = TYPES.every((t) => t === type || (eaten[t] ?? 0) < mine);
   const growth = pelletGrowth(type);
-  return isTop && mine >= config.specialistMin ? growth * (1 + config.specialistBonus) : growth;
+  const base = isTop && mine >= config.specialistMin ? growth * (1 + config.specialistBonus) : growth;
+  const shape = getShape(p);
+  return shape === "square" ? base * config.squareGrowthMult : shape === "triangle" ? base * config.triangleGrowthMult : base;
+}
+
+export type Shape = "circle" | "square" | "triangle";
+
+export function getShape(p: { data: object }): Shape {
+  const s = (p.data as { shape?: unknown }).shape;
+  return s === "square" || s === "triangle" ? s : "circle";
+}
+
+function speedFor(p: { data: object }): number {
+  const shape = getShape(p);
+  return config.speed * (shape === "square" ? config.squareSpeedMult : shape === "triangle" ? config.triangleSpeedMult : 1);
+}
+
+// Players that hit max size restart small as a square or triangle.
+export function shapeCheck(w: World): void {
+  for (const p of bodies(w, "player")) {
+    if (p.r < config.maxSize) continue;
+    p.x = 100; p.y = 100; p.r = config.startSize;
+    (p.data as { shape?: Shape }).shape = randomRange(w, 0, 1) < 0.5 ? "square" : "triangle";
+  }
+}
+
+// Shaped players and circle players hunt each other when one is clearly bigger and they overlap.
+export function shapeHuntCheck(w: World): void {
+  const players = bodies(w, "player");
+  for (let i = 0; i < players.length; i++) {
+    for (let j = i + 1; j < players.length; j++) {
+      const a = players[i];
+      const b = players[j];
+      const aShaped = getShape(a) !== "circle";
+      if (aShaped === (getShape(b) !== "circle")) continue;
+      const shaped = aShaped ? a : b;
+      const circle = aShaped ? b : a;
+      const d2 = (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
+      if (shaped.r > circle.r * config.shapeHuntMargin && d2 < shaped.r ** 2) {
+        shaped.r += circle.r * 0.5;
+        circle.x = 100; circle.y = 100; circle.r = config.startSize;
+      } else if (circle.r > shaped.r * config.shapeHuntMargin && d2 < circle.r ** 2) {
+        circle.r += shaped.r * config.shapeBounty;
+        shaped.x = 100; shaped.y = 100; shaped.r = config.startSize;
+        delete (shaped.data as { shape?: Shape }).shape;
+      }
+    }
+  }
 }
 
 export function magnetCheck(w: World): void {
@@ -160,13 +207,16 @@ export const rules: GameRules = {
   step(w, inputs) {
     for (const p of bodies(w, "player")) {
       const inp = inputs[p.id];
-      p.vx = (inp?.dx ?? 0) * config.speed;
-      p.vy = (inp?.dy ?? 0) * config.speed;
+      const sp = speedFor(p);
+      p.vx = (inp?.dx ?? 0) * sp;
+      p.vy = (inp?.dy ?? 0) * sp;
       moveBody(p, { bounds: arena });
     }
     botStep(w);
     magnetCheck(w);
     eatCheck(w);
+    shapeCheck(w);
+    shapeHuntCheck(w);
     botEatCheck(w);
     botFightCheck(w);
     blowbackCheck(w);
