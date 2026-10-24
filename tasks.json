@@ -108,5 +108,36 @@
         "minutes": 1.7
       }
     ]
+  },
+  {
+    "id": "t7",
+    "title": "config: maxSize 16",
+    "tier": "muse",
+    "files": [
+      "packages/games/template/config.ts"
+    ],
+    "estMin": 3,
+    "done": false
+  },
+  {
+    "id": "t8",
+    "title": "rules: shaped bots hunt players + test",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/template/rules.ts",
+      "packages/games/template/rules.test.ts"
+    ],
+    "estMin": 15,
+    "done": false
+  },
+  {
+    "id": "t9",
+    "title": "assets: bigger shapes",
+    "tier": "muse",
+    "files": [
+      "packages/games/template/assets.ts"
+    ],
+    "estMin": 8,
+    "done": false
   }
 ]
