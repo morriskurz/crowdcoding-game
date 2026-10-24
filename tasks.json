@@ -1,167 +1,22 @@
 [
   {
     "id": "t1",
-    "title": "config: maxSize, shape speed/growth multipliers, bounty",
+    "title": "config: minimap size, margin, dot radius range",
     "tier": "muse",
     "files": [
       "packages/games/template/config.ts"
     ],
     "estMin": 5,
-    "actualMin": 1.7,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.7
-      }
-    ]
+    "done": false
   },
   {
     "id": "t2",
-    "title": "rules: max-size shape respawn, shape speed/growth, hunter contact + tests",
-    "tier": "sonnet",
-    "files": [
-      "packages/games/template/rules.ts",
-      "packages/games/template/rules.test.ts"
-    ],
-    "estMin": 20,
-    "actualMin": 1.4,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "sonnet",
-        "ok": true,
-        "minutes": 1.4
-      }
-    ]
-  },
-  {
-    "id": "t3",
-    "title": "assets: draw square and triangle players from data.shape",
+    "title": "assets: cache players in onSnapshot, draw minimap corner in drawOverlay",
     "tier": "muse",
     "files": [
       "packages/games/template/assets.ts"
-    ],
-    "estMin": 10,
-    "actualMin": 1.5,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.5
-      }
-    ]
-  },
-  {
-    "id": "t4",
-    "title": "config: lower maxSize to 22 so shapes appear",
-    "tier": "muse",
-    "files": [
-      "packages/games/template/config.ts"
-    ],
-    "estMin": 3,
-    "actualMin": 1.6,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.6
-      }
-    ]
-  },
-  {
-    "id": "t5",
-    "title": "rules: bots at maxSize also respawn as shapes + test",
-    "tier": "sonnet",
-    "files": [
-      "packages/games/template/rules.ts",
-      "packages/games/template/rules.test.ts"
     ],
     "estMin": 15,
-    "actualMin": 0.9,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "sonnet",
-        "ok": true,
-        "minutes": 0.9
-      }
-    ]
-  },
-  {
-    "id": "t6",
-    "title": "assets: draw shaped bots and stronger shape outline",
-    "tier": "muse",
-    "files": [
-      "packages/games/template/assets.ts"
-    ],
-    "estMin": 10,
-    "actualMin": 1.7,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.7
-      }
-    ]
-  },
-  {
-    "id": "t7",
-    "title": "config: maxSize 16",
-    "tier": "muse",
-    "files": [
-      "packages/games/template/config.ts"
-    ],
-    "estMin": 3,
-    "actualMin": 1.4,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.4
-      }
-    ]
-  },
-  {
-    "id": "t8",
-    "title": "rules: shaped bots hunt players + test",
-    "tier": "sonnet",
-    "files": [
-      "packages/games/template/rules.ts",
-      "packages/games/template/rules.test.ts"
-    ],
-    "estMin": 15,
-    "actualMin": 1.1,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "sonnet",
-        "ok": true,
-        "minutes": 1.1
-      }
-    ]
-  },
-  {
-    "id": "t9",
-    "title": "assets: bigger shapes",
-    "tier": "muse",
-    "files": [
-      "packages/games/template/assets.ts"
-    ],
-    "estMin": 8,
-    "actualMin": 1.6,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.6
-      }
-    ]
+    "done": false
   }
 ]

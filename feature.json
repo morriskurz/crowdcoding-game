@@ -1,9 +1,9 @@
 {
-  "id": "12",
-  "spec": "Players who reach max size respawn as a different shape (square or triangle) with special challenges for all players",
+  "id": "13",
+  "spec": "Live minimap corner showing all players as colored dots sized by score for all players",
   "slug": "template",
   "game": "template",
-  "branch": "f/12-template",
-  "status": "ready",
-  "updatedAt": "2026-10-24T08:23:38.866Z"
+  "branch": "f/13-template",
+  "status": "building",
+  "updatedAt": "2026-10-24T10:34:27.647Z"
 }
