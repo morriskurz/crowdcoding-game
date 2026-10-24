@@ -1,20 +1,13 @@
 [
   {
     "id": "t1",
-    "title": "assets: bigger particle burst in the scorer's color when any player scores a pellet",
-    "tier": "muse",
+    "title": "rules: players grow exponentially per pellet, speed scales by startSize/r + tests",
+    "tier": "sonnet",
     "files": [
-      "packages/games/template/assets.ts"
+      "packages/games/template/rules.ts",
+      "packages/games/template/rules.test.ts"
     ],
-    "estMin": 10,
-    "actualMin": 1.4,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.4
-      }
-    ]
+    "estMin": 15,
+    "done": false
   }
 ]
