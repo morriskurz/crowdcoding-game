@@ -42,6 +42,37 @@
       ],
       "packagesTree": "3f0986cbe8568828e25b7be527f00769665452bd+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
       "at": "2026-10-24T10:39:28.443Z"
+    },
+    {
+      "verdict": "pass",
+      "score": 3,
+      "playerImpact": true,
+      "visible": true,
+      "criteria": [
+        {
+          "text": "A minimap panel is visible in a corner of the screen throughout play",
+          "met": true,
+          "evidence": "after/shot-1,2,3: 220px bordered panel bottom-right, with a white viewport rectangle; camera now zoomed 1.8x so the arena no longer fits (before shot-2 showed the whole arena)"
+        },
+        {
+          "text": "Every player appears as a dot at the matching arena position, in the same color as their circle, and your own dot is highlighted",
+          "met": true,
+          "evidence": "after/shot-2: lime dots match lime player circles, red dots for hazards, own dot has a white outline; drawOverlay uses playerColor(e.id) and e.x/bounds scaling"
+        },
+        {
+          "text": "Dot size grows with the player's size, so a larger player has a visibly larger dot",
+          "met": true,
+          "evidence": "after/shot-1: larger bot0 has a visibly larger dot than the small ones; radius scaled min 4 to max 12 by r in drawOverlay; leader gets a gold ring"
+        },
+        {
+          "text": "The after clip shows dots moving on the minimap as players move",
+          "met": true,
+          "evidence": "after/shot-1 to shot-3: dot clusters change positions between shots (ring formation, then spread, then pairs near top)"
+        }
+      ],
+      "findings": [],
+      "packagesTree": "f1c9ca67996bad1e374f74c4c4cda969fdbc51c7+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
+      "at": "2026-10-24T10:43:51.851Z"
     }
   ]
 }
