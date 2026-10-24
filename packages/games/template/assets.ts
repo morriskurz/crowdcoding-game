@@ -48,16 +48,16 @@ export function drawPlayer(ctx: CanvasRenderingContext2D, e: Entity, color: stri
   const shape = (e.data as { shape?: string } | undefined)?.shape;
   if (shape === "square") {
     ctx.fillStyle = color;
-    ctx.fillRect(e.x - e.r * 1.1, e.y - e.r * 1.1, e.r * 2.2, e.r * 2.2);
+    ctx.fillRect(e.x - e.r * 1.5, e.y - e.r * 1.5, e.r * 3, e.r * 3);
     ctx.beginPath();
-    ctx.rect(e.x - e.r * 1.1, e.y - e.r * 1.1, e.r * 2.2, e.r * 2.2);
+    ctx.rect(e.x - e.r * 1.5, e.y - e.r * 1.5, e.r * 3, e.r * 3);
     ctx.strokeStyle = "rgba(255,255,255,0.8)";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 4;
     ctx.stroke();
     return;
   }
   if (shape === "triangle") {
-    const r = e.r * 1.3;
+    const r = e.r * 1.8;
     const angles = [-Math.PI / 2, Math.PI / 6, (Math.PI * 5) / 6];
     ctx.fillStyle = color;
     ctx.beginPath();
@@ -67,7 +67,7 @@ export function drawPlayer(ctx: CanvasRenderingContext2D, e: Entity, color: stri
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = "rgba(255,255,255,0.8)";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 4;
     ctx.stroke();
     return;
   }
@@ -121,16 +121,16 @@ export function drawBot(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void 
   const shape = (e.data as { shape?: string } | undefined)?.shape;
   if (shape === "square") {
     ctx.fillStyle = "#ff4d4d";
-    ctx.fillRect(e.x - e.r * 1.1, e.y - e.r * 1.1, e.r * 2.2, e.r * 2.2);
+    ctx.fillRect(e.x - e.r * 1.5, e.y - e.r * 1.5, e.r * 3, e.r * 3);
     ctx.beginPath();
-    ctx.rect(e.x - e.r * 1.1, e.y - e.r * 1.1, e.r * 2.2, e.r * 2.2);
+    ctx.rect(e.x - e.r * 1.5, e.y - e.r * 1.5, e.r * 3, e.r * 3);
     ctx.strokeStyle = "#7a1010";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 4;
     ctx.stroke();
     return;
   }
   if (shape === "triangle") {
-    const r = e.r * 1.3;
+    const r = e.r * 1.8;
     const angles = [-Math.PI / 2, Math.PI / 6, (Math.PI * 5) / 6];
     ctx.fillStyle = "#ff4d4d";
     ctx.beginPath();
@@ -140,7 +140,7 @@ export function drawBot(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void 
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = "#7a1010";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 4;
     ctx.stroke();
     return;
   }
