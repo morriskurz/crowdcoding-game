@@ -1,0 +1,10 @@
+{
+  "intent": "A player who grows to max size is reborn small as a square (slow, tanky, pellets feed it more) or a triangle (fast, pellets feed it less). Shaped players become hunters that reset smaller circle players they touch, so everyone must dodge them or grow past them and take them down for a bounty.",
+  "accept": [
+    "A player reaching max radius respawns at start size with a square or triangle shape",
+    "Square and triangle players move at different speeds from circles, and the shape is visibly drawn as such",
+    "A shaped player touching a smaller circle player resets that player; a circle player 20% bigger touching a shaped player destroys it and grows",
+    "In the preview clip at least one shaped player is visible"
+  ],
+  "rounds": []
+}
