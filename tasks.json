@@ -1,20 +1,33 @@
 [
   {
     "id": "t1",
-    "title": "assets: bigger particle burst in the scorer's color when any player scores a pellet",
+    "title": "config: drifter and mote numbers",
+    "tier": "muse",
+    "files": [
+      "packages/games/template/config.ts"
+    ],
+    "estMin": 5,
+    "done": false
+  },
+  {
+    "id": "t2",
+    "title": "rules: large moving drifters absorb small static motes and grow + tests",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/template/rules.ts",
+      "packages/games/template/rules.test.ts"
+    ],
+    "estMin": 20,
+    "done": false
+  },
+  {
+    "id": "t3",
+    "title": "assets: draw drifters and motes",
     "tier": "muse",
     "files": [
       "packages/games/template/assets.ts"
     ],
     "estMin": 10,
-    "actualMin": 1.4,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.4
-      }
-    ]
+    "done": false
   }
 ]
