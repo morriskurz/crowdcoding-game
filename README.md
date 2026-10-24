@@ -14,7 +14,7 @@ The game behind a 24/7 Twitch stream where chat votes on features and AI agents 
 | `apps/server` | Cloudflare Worker + Durable Object room, 15 Hz authoritative tick | frozen (owner) |
 | `scripts/present`, `scripts/gates`, `scripts/scenarios` | Before/after presentation + content gates for agent PRs (`docs/presentation.md`) | frozen (owner) |
 | `scripts/guard.mjs` | Lint gate: import allowlist, banned patterns, frozen files, plan-diff (agent branches) | frozen (owner) |
-| `CLAUDE.md`, `.claude/`, `scripts/{orchestrate,gates,muse,feed-hook}.mjs` | Agent side: orchestrator instructions, builder subagents, gates, Muse wrapper, feed hooks. Protocol: `docs/ORCHESTRATOR.md` | owner |
+| `CLAUDE.md`, `.claude/`, `scripts/{orchestrate,gates,muse,feed-hook,preview}.mjs` | Agent side: orchestrator instructions, builder + reviewer subagents, gates, Muse wrapper, feed hooks, before/after preview the reviewer looks at. Protocol: `docs/ORCHESTRATOR.md` | owner |
 | `.github/workflows` | `ci.yml` (no secrets, every branch), `present.yml` (no secrets, `f/*` PRs), `present-baseline.yml` (no secrets, `main`), `deploy.yml` (`main` only, Environment `live`) | owner only |
 
 Agents only push `f/<id>-slug` branches. A change reaches `main` only after a viewer ship vote, and only `main` deploys.

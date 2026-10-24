@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import {
   parsePayload, newFeature, validateFeature, validateTasks, nextTier, nextTask, recordAttempt,
   resplit, allDone, applyResume, slugify, resolveGame, parseArgs,
+  validateAccept, checkVerdict, reviewGate, MAX_FIX_ROUNDS,
 } from "./orchestrate.mjs";
 
 const G = "packages/games/g/";
@@ -180,4 +181,42 @@ test("start refuses a feature for an archived game before touching git", () => {
     assert.equal(g("rev-parse", "--abbrev-ref", "HEAD"), "main"); // no f/ branch was created
     assert.ok(!fs.existsSync(path.join(dir, "feature.json")));
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+const ACCEPT = { intent: "Bigger players swallow smaller players they touch and grow.", accept: ["A player 20% bigger absorbs a smaller player on contact", "The absorbed player respawns small"] };
+const verdict = (o = {}) => ({ verdict: "pass", score: 4, playerImpact: true, visible: true, criteria: ACCEPT.accept.map((text) => ({ text, met: true, evidence: "shot-3" })), findings: [], ...o });
+
+test("validateAccept: intent + 2-5 observable criteria", () => {
+  assert.deepEqual(validateAccept(ACCEPT), []);
+  assert.ok(validateAccept({ ...ACCEPT, accept: ["only one criterion here"] }).length);
+  assert.ok(validateAccept({ ...ACCEPT, intent: "short" }).length);
+  assert.ok(validateAccept({ ...ACCEPT, extra: 1 }).length);
+  assert.ok(validateAccept([]).length);
+});
+
+test("checkVerdict: a pass needs every criterion met, player impact and something visible (feature #8)", () => {
+  assert.equal(checkVerdict(verdict(), ACCEPT.accept).verdict.verdict, "pass");
+  // #8: drifters ate motes, no player ever met them. The reviewer may say pass; the facts say fix.
+  const r = checkVerdict(verdict({ playerImpact: false }), ACCEPT.accept);
+  assert.equal(r.verdict.verdict, "fix");
+  assert.match(r.verdict.findings.at(-1), /no player impact/);
+  assert.equal(checkVerdict(verdict({ visible: false }), ACCEPT.accept).verdict.verdict, "fix");
+  assert.equal(checkVerdict(verdict({ score: 2 }), ACCEPT.accept).verdict.verdict, "fix");
+  const half = verdict({ criteria: [{ text: "a", met: true }, { text: "b", met: false }] });
+  assert.equal(checkVerdict(half, ACCEPT.accept).verdict.verdict, "fix");
+  assert.ok(checkVerdict(verdict({ criteria: [{ text: "a", met: true }] }), ACCEPT.accept).errs.length, "one entry per criterion");
+  assert.ok(checkVerdict(verdict({ verdict: "maybe" }), ACCEPT.accept).errs.length);
+});
+
+test("reviewGate: fresh pass finishes, stale or fix does not, fix rounds are capped (fail forward)", () => {
+  const round = (verdict, tree = "T") => ({ verdict, packagesTree: tree });
+  assert.equal(reviewGate(null, "T").ok, false);
+  assert.equal(reviewGate({ rounds: [round("pass")] }, "T").ok, true);
+  assert.match(reviewGate({ rounds: [round("pass", "OLD")] }, "T").reason, /changed since/);
+  assert.equal(reviewGate({ rounds: [round("fix")] }, "T").ok, false);
+  const many = Array.from({ length: MAX_FIX_ROUNDS + 1 }, () => round("fix"));
+  const g = reviewGate({ rounds: many }, "T");
+  assert.equal(g.ok, true);
+  assert.equal(g.verdict, "fix");
+  assert.match(g.warning, /no unattended ship/);
 });
