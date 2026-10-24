@@ -1,9 +1,9 @@
 {
-  "id": "11",
-  "spec": "a short screen shake on every collision, for all players",
+  "id": "12",
+  "spec": "Players who reach max size respawn as a different shape (square or triangle) with special challenges for all players",
   "slug": "template",
   "game": "template",
-  "branch": "f/11-template",
+  "branch": "f/12-template",
   "status": "ready",
-  "updatedAt": "2026-10-24T06:58:33.069Z"
+  "updatedAt": "2026-10-24T08:23:38.866Z"
 }

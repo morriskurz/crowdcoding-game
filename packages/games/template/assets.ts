@@ -45,6 +45,32 @@ export function drawPlayer(ctx: CanvasRenderingContext2D, e: Entity, color: stri
   t.push(e.x, e.y);
   t.draw(ctx, { color, width: e.r * 1.2, alpha: 0.25, additive: true });
   drawGlow(ctx, e.x, e.y, e.r * 2.6, color, 0.35);
+  const shape = (e.data as { shape?: string } | undefined)?.shape;
+  if (shape === "square") {
+    ctx.fillStyle = color;
+    ctx.fillRect(e.x - e.r * 1.5, e.y - e.r * 1.5, e.r * 3, e.r * 3);
+    ctx.beginPath();
+    ctx.rect(e.x - e.r * 1.5, e.y - e.r * 1.5, e.r * 3, e.r * 3);
+    ctx.strokeStyle = "rgba(255,255,255,0.8)";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    return;
+  }
+  if (shape === "triangle") {
+    const r = e.r * 1.8;
+    const angles = [-Math.PI / 2, Math.PI / 6, (Math.PI * 5) / 6];
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(e.x + Math.cos(angles[0]) * r, e.y + Math.sin(angles[0]) * r);
+    ctx.lineTo(e.x + Math.cos(angles[1]) * r, e.y + Math.sin(angles[1]) * r);
+    ctx.lineTo(e.x + Math.cos(angles[2]) * r, e.y + Math.sin(angles[2]) * r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.8)";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    return;
+  }
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
@@ -92,6 +118,32 @@ export function drawPellet(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): vo
 
 export function drawBot(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
   drawGlow(ctx, e.x, e.y, e.r * 2.6, "#ff4d4d", 0.35 + 0.15 * pulse(fx.time, 2));
+  const shape = (e.data as { shape?: string } | undefined)?.shape;
+  if (shape === "square") {
+    ctx.fillStyle = "#ff4d4d";
+    ctx.fillRect(e.x - e.r * 1.5, e.y - e.r * 1.5, e.r * 3, e.r * 3);
+    ctx.beginPath();
+    ctx.rect(e.x - e.r * 1.5, e.y - e.r * 1.5, e.r * 3, e.r * 3);
+    ctx.strokeStyle = "#7a1010";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    return;
+  }
+  if (shape === "triangle") {
+    const r = e.r * 1.8;
+    const angles = [-Math.PI / 2, Math.PI / 6, (Math.PI * 5) / 6];
+    ctx.fillStyle = "#ff4d4d";
+    ctx.beginPath();
+    ctx.moveTo(e.x + Math.cos(angles[0]) * r, e.y + Math.sin(angles[0]) * r);
+    ctx.lineTo(e.x + Math.cos(angles[1]) * r, e.y + Math.sin(angles[1]) * r);
+    ctx.lineTo(e.x + Math.cos(angles[2]) * r, e.y + Math.sin(angles[2]) * r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#7a1010";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    return;
+  }
   ctx.fillStyle = "#ff4d4d";
   ctx.beginPath();
   ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);

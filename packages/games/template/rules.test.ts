@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createWorld, joinPlayer, runTick, bodies, get, spawn } from "@tcg/shared";
-import { blowbackCheck, botEatCheck, botFightCheck, botStep, eatCheck, magnetCheck, rules, spawnPellet, GROWTH_PER_PELLET } from "./rules.js";
+import { blowbackCheck, botEatCheck, botFightCheck, botStep, eatCheck, getShape, magnetCheck, rules, shapeCheck, shapeHuntCheck, spawnPellet, GROWTH_PER_PELLET } from "./rules.js";
 import { config } from "./config.js";
 
 function world(seed = 7) {
@@ -181,6 +181,129 @@ describe("template agar", () => {
     blowbackCheck(w2);
     expect(e.x).toBeGreaterThanOrEqual(5);
     expect(e.x).toBeLessThanOrEqual(config.bounds - 5);
+  });
+
+  it("shapes: max size respawns small as square or triangle, again when reshaped", () => {
+    const w = createWorld(5);
+    joinPlayer(w, rules, "a", "alice");
+    const p = get(w, "a")!;
+    expect(getShape(p)).toBe("circle");
+    p.x = 400; p.y = 400; p.r = config.maxSize;
+    shapeCheck(w);
+    expect(p.x).toBe(100);
+    expect(p.r).toBe(config.startSize);
+    expect(["square", "triangle"]).toContain(getShape(p));
+    p.r = config.maxSize + 1;
+    shapeCheck(w);
+    expect(p.r).toBe(config.startSize);
+    expect(["square", "triangle"]).toContain(getShape(p));
+  });
+
+  it("shapes: bots at max size become shapes, move by shape speed, lose shape when eaten", () => {
+    const w = createWorld(5);
+    const bot = spawn(w, { kind: "bot", x: 400, y: 400, r: config.maxSize });
+    shapeCheck(w);
+    expect(bot.r).toBe(config.startSize);
+    const shape = getShape(bot);
+    expect(["square", "triangle"]).toContain(shape);
+    spawn(w, { kind: "pellet", x: bot.x + 50, y: bot.y, r: 2 });
+    botStep(w);
+    const mult = shape === "square" ? config.squareSpeedMult : config.triangleSpeedMult;
+    expect(Math.hypot(bot.vx, bot.vy)).toBeCloseTo(Math.min(config.botSpeed * mult, 50), 5);
+    joinPlayer(w, rules, "a", "alice");
+    const p = get(w, "a")!;
+    p.x = bot.x; p.y = bot.y; p.r = bot.r * 2;
+    botFightCheck(w);
+    expect(getShape(bot)).toBe("circle");
+  });
+
+  it("shapes: speed and pellet growth depend on shape", () => {
+    const move = (shape?: string) => {
+      const w = createWorld();
+      joinPlayer(w, rules, "a", "alice");
+      const p = get(w, "a")!;
+      if (shape) (p.data as any).shape = shape;
+      runTick(w, rules, { a: { dx: 1, dy: 0, action: false } });
+      return p.x - 100;
+    };
+    expect(move()).toBeCloseTo(config.speed, 5);
+    expect(move("square")).toBeCloseTo(config.speed * config.squareSpeedMult, 5);
+    expect(move("triangle")).toBeCloseTo(config.speed * config.triangleSpeedMult, 5);
+    const grow = (shape: string) => {
+      const w = createWorld();
+      joinPlayer(w, rules, "a", "alice");
+      const p = get(w, "a")!;
+      (p.data as any).shape = shape;
+      p.x = 10; p.y = 10;
+      spawn(w, { kind: "pellet", x: 10, y: 10, r: 2 });
+      eatCheck(w);
+      return p.r - config.startSize;
+    };
+    expect(grow("square")).toBeCloseTo(GROWTH_PER_PELLET * config.squareGrowthMult, 5);
+    expect(grow("triangle")).toBeCloseTo(GROWTH_PER_PELLET * config.triangleGrowthMult, 5);
+  });
+
+  it("shape hunt: bigger shaped player eats a small circle player", () => {
+    const w = createWorld();
+    joinPlayer(w, rules, "a", "alice");
+    joinPlayer(w, rules, "b", "bob");
+    const s = get(w, "a")!;
+    const c = get(w, "b")!;
+    (s.data as any).shape = "square";
+    s.x = 300; s.y = 300; s.r = 20;
+    c.x = 300; c.y = 300; c.r = 10;
+    shapeHuntCheck(w);
+    expect(s.r).toBeCloseTo(25, 5);
+    expect(c.x).toBe(100);
+    expect(c.r).toBe(config.startSize);
+    expect(getShape(s)).toBe("square");
+  });
+
+  it("shape hunt: bigger circle player destroys a small shaped player and gets a bounty", () => {
+    const w = createWorld();
+    joinPlayer(w, rules, "a", "alice");
+    joinPlayer(w, rules, "b", "bob");
+    const s = get(w, "a")!;
+    const c = get(w, "b")!;
+    (s.data as any).shape = "triangle";
+    s.x = 300; s.y = 300; s.r = 10;
+    c.x = 300; c.y = 300; c.r = 20;
+    shapeHuntCheck(w);
+    expect(c.r).toBeCloseTo(20 + 10 * config.shapeBounty, 5);
+    expect(s.x).toBe(100);
+    expect(s.r).toBe(config.startSize);
+    expect(getShape(s)).toBe("circle");
+  });
+
+  it("shape hunt: shaped bot eats a smaller circle player once (no double trigger with botFightCheck)", () => {
+    const w = createWorld();
+    joinPlayer(w, rules, "a", "alice");
+    const p = get(w, "a")!;
+    const bot = spawn(w, { kind: "bot", x: 100, y: 100, r: 20 });
+    (bot.data as any).shape = "square";
+    p.x = 100; p.y = 100; p.r = 10;
+    shapeHuntCheck(w);
+    expect(bot.r).toBeCloseTo(25, 5);
+    expect(p.r).toBe(config.startSize);
+    botFightCheck(w);
+    expect(bot.r).toBeCloseTo(25, 5);
+    expect(getShape(bot)).toBe("square");
+  });
+
+  it("shape hunt: bigger circle player destroys a shaped bot and gets a bounty", () => {
+    const w = createWorld();
+    joinPlayer(w, rules, "a", "alice");
+    const p = get(w, "a")!;
+    const bot = spawn(w, { kind: "bot", x: 300, y: 300, r: 10 });
+    (bot.data as any).shape = "triangle";
+    p.x = 300; p.y = 300; p.r = 20;
+    shapeHuntCheck(w);
+    expect(p.r).toBeCloseTo(20 + 10 * config.shapeBounty, 5);
+    expect(bot.r).toBe(config.startSize);
+    expect(getShape(bot)).toBe("circle");
+    const r = p.r;
+    botFightCheck(w);
+    expect(p.r).toBe(r);
   });
 
   it("is deterministic with bots", () => {

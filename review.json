@@ -1,0 +1,115 @@
+{
+  "intent": "A player who grows to max size is reborn small as a square (slow, tanky, pellets feed it more) or a triangle (fast, pellets feed it less). Shaped players become hunters that reset smaller circle players they touch, so everyone must dodge them or grow past them and take them down for a bounty.",
+  "accept": [
+    "A player reaching max radius respawns at start size with a square or triangle shape",
+    "Square and triangle players move at different speeds from circles, and the shape is visibly drawn as such",
+    "A shaped player touching a smaller circle player resets that player; a circle player 20% bigger touching a shaped player destroys it and grows",
+    "In the preview clip at least one shaped player is visible"
+  ],
+  "rounds": [
+    {
+      "verdict": "fix",
+      "score": 3,
+      "playerImpact": true,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "A player reaching max radius respawns at start size with a square or triangle shape",
+          "met": true,
+          "evidence": "diff: shapeCheck in rules.ts + test 'shapes: max size respawns small as square or triangle'. Not seen in any after shot."
+        },
+        {
+          "text": "Square and triangle players move at different speeds from circles, and the shape is visibly drawn as such",
+          "met": true,
+          "evidence": "speedFor in rules.ts with a speed test; drawPlayer in assets.ts draws square/triangle with white outline. No shape visible in after shots 1-3 though."
+        },
+        {
+          "text": "A shaped player touching a smaller circle player resets that player; a circle player 20% bigger touching a shaped player destroys it and grows",
+          "met": true,
+          "evidence": "shapeHuntCheck in rules.ts with two tests (hunt and bounty)."
+        },
+        {
+          "text": "In the preview clip at least one shaped player is visible",
+          "met": false,
+          "evidence": "after/shot-1,2,3 show only round bots (largest ~25px) and pellets, identical in look to before; no square or triangle anywhere."
+        }
+      ],
+      "findings": [
+        "Shapes never show in the preview clip: only bots are present and none reach config.maxSize=40. In config.ts lower maxSize (e.g. to about 18-22, just above what the biggest bot reaches by 90% of the scenario) so a shape appears in the clip.",
+        "Check that bots are covered by shapeCheck/shapeHuntCheck in rules.ts (bots appear to be a separate kind, so they never become shapes); let bots that reach maxSize also turn into shapes, or the feature is invisible without a human player.",
+        "Make shaped players easier to spot on a phone: in assets.ts drawPlayer, draw the shape larger or with a stronger outline/colour tint so square and triangle read clearly at small radius."
+      ],
+      "packagesTree": "09c05a82acd9a62c63587bbf226027ceb341b87a+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
+      "at": "2026-10-24T08:11:51.140Z"
+    },
+    {
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": true,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "A player reaching max radius respawns at start size with a square or triangle shape",
+          "met": true,
+          "evidence": "rules.ts shapeCheck + rules.test.ts 'max size respawns small as square or triangle'; after/shot-3 shows bot2 reshaped as a small triangle."
+        },
+        {
+          "text": "Square and triangle players move at different speeds from circles, and the shape is visibly drawn as such",
+          "met": false,
+          "evidence": "Speeds proven by test. Drawing exists in assets.ts, but in after/shot-3 the only shape is a ~20px triangle at top-left, barely readable on a phone; shot-1 and shot-2 show no shapes (shot-2 is identical to before)."
+        },
+        {
+          "text": "A shaped player touching a smaller circle player resets that player; a circle player 20% bigger touching a shaped player destroys it and grows",
+          "met": false,
+          "evidence": "Covered by unit tests, but shapeHuntCheck only iterates bodies(w,'player'); in the clip only bots appear, so shaped bots never hunt or get hunted and this is never seen. Bot-vs-player shaped interaction is not implemented."
+        },
+        {
+          "text": "In the preview clip at least one shaped player is visible",
+          "met": false,
+          "evidence": "Only after/shot-3 has one tiny triangle bot (labelled bot2), at the top-left edge; none in shots 1 and 2. Not noticeable."
+        }
+      ],
+      "findings": [
+        "Shaped bots do nothing to players: in rules.ts make shapeHuntCheck also handle bot-vs-player (shaped bot with r > player.r*shapeHuntMargin overlapping resets the circle player; circle player/bot bigger than a shaped bot destroys it and gets the bounty), so the shape matters in the clip and to real players.",
+        "Shapes are too small and appear too late: in config.ts lower maxSize (or raise growth) so shapes appear by the 20% shot, and in assets.ts draw shaped entities larger (about 1.6x radius), with a thicker white outline and a visible label or distinct color, so a viewer on a phone can tell a triangle or square at a glance.",
+        "Preview scenario: ensure several bots reach maxSize early (e.g. start bots nearer maxSize in rules.ts init or lower maxSize) so after/shot-1..3 each show multiple shapes; shot-2 currently looks identical to before."
+      ],
+      "packagesTree": "f00c02e64e33a3ac41f72a41a0d87ef2b7933680+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
+      "at": "2026-10-24T08:17:41.265Z"
+    },
+    {
+      "verdict": "pass",
+      "score": 3,
+      "playerImpact": true,
+      "visible": true,
+      "criteria": [
+        {
+          "text": "A player reaching max radius respawns at start size with a square or triangle shape",
+          "met": true,
+          "evidence": "diff: shapeCheck in rules.ts resets r to startSize and sets shape; tests in rules.test.ts; after/shot-3 shows a red triangle player."
+        },
+        {
+          "text": "Square and triangle players move at different speeds from circles, and the shape is visibly drawn as such",
+          "met": true,
+          "evidence": "speedFor/botStep apply squareSpeedMult 0.7 and triangleSpeedMult 1.5; after/shot-3 shows triangles with outlines (red player, white bots)."
+        },
+        {
+          "text": "A shaped player touching a smaller circle player resets that player; a circle player 20% bigger touching a shaped player destroys it and grows",
+          "met": true,
+          "evidence": "shapeHuntCheck in rules.ts handles both directions with shapeHuntMargin/shapeBounty, covered by new tests."
+        },
+        {
+          "text": "In the preview clip at least one shaped player is visible",
+          "met": true,
+          "evidence": "after/shot-3 shows three triangles; shot-1 and shot-2 look the same as before."
+        }
+      ],
+      "findings": [
+        "Shapes only appear by the 90% shot; shots 1 and 2 are identical to before. Consider lowering maxSize in config.ts or letting early-game growth reach it so a shape shows in the first 30 seconds.",
+        "Shaped sprites are small (about 25px) and the white bot triangles overlap their labels; enlarge them in assets.ts."
+      ],
+      "packagesTree": "c4dfb784d90c5f81e39555971f54b2286c882d41+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
+      "at": "2026-10-24T08:23:09.676Z"
+    }
+  ]
+}
