@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createWorld, joinPlayer, runTick, bodies, get, spawn } from "@tcg/shared";
-import { botEatCheck, botFightCheck, botStep, eatCheck, magnetCheck, rules, GROWTH_PER_PELLET } from "./rules.js";
+import { absorbCheck, botEatCheck, botFightCheck, botStep, eatCheck, magnetCheck, rules, GROWTH_PER_PELLET } from "./rules.js";
 import { config } from "./config.js";
 
 function world(seed = 7) {
@@ -99,6 +99,44 @@ describe("template agar", () => {
     expect(p.r).toBe(config.startSize);
     expect(bot.r).toBeCloseTo(30 + config.startSize * 0.5, 5);
     expect(get(w, "a")).toBeDefined();
+  });
+
+  it("drifter absorbs a touching mote and grows", () => {
+    const w = createWorld();
+    const d = spawn(w, { kind: "drifter", x: 400, y: 400, r: config.drifterStart });
+    spawn(w, { kind: "mote", x: 400 + config.drifterStart, y: 400, r: config.moteSize });
+    absorbCheck(w);
+    expect(bodies(w, "mote")).toHaveLength(0);
+    expect(d.r).toBeCloseTo(config.drifterStart + config.drifterGrowth, 5);
+  });
+
+  it("drifter ignores a far mote", () => {
+    const w = createWorld();
+    const d = spawn(w, { kind: "drifter", x: 400, y: 400, r: config.drifterStart });
+    spawn(w, { kind: "mote", x: 400 + config.drifterStart + config.moteSize + 5, y: 400, r: config.moteSize });
+    absorbCheck(w);
+    expect(bodies(w, "mote")).toHaveLength(1);
+    expect(d.r).toBe(config.drifterStart);
+  });
+
+  it("drifter growth is capped", () => {
+    const w = createWorld();
+    const d = spawn(w, { kind: "drifter", x: 400, y: 400, r: config.drifterMaxRadius - 1 });
+    spawn(w, { kind: "mote", x: 400, y: 400, r: config.moteSize });
+    absorbCheck(w);
+    expect(d.r).toBe(config.drifterMaxRadius);
+  });
+
+  it("drifters spawn at init, move, and motes are restocked", () => {
+    const w = world();
+    expect(bodies(w, "drifter")).toHaveLength(config.drifterCount);
+    expect(bodies(w, "mote")).toHaveLength(config.moteCount);
+    const before = bodies(w, "drifter").map((d) => [d.x, d.y]);
+    runTick(w, rules, {});
+    const after = bodies(w, "drifter").map((d) => [d.x, d.y]);
+    expect(after).not.toEqual(before);
+    for (const d of bodies(w, "drifter")) expect(d.r).toBeGreaterThanOrEqual(config.drifterStart);
+    expect(bodies(w, "mote")).toHaveLength(config.moteCount);
   });
 
   it("is deterministic with bots", () => {

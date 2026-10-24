@@ -92,11 +92,51 @@ export function botFightCheck(w: World): void {
   }
 }
 
+const DRIFTER_TURN_TICKS = 60;
+
+function setHeading(w: World, d: { vx: number; vy: number }): void {
+  const a = randomRange(w, 0, Math.PI * 2);
+  d.vx = Math.cos(a) * config.drifterSpeed;
+  d.vy = Math.sin(a) * config.drifterSpeed;
+}
+
+export function spawnMote(w: World): void {
+  spawn(w, { kind: "mote", x: randomRange(w, 0, config.bounds), y: randomRange(w, 0, config.bounds), r: config.moteSize });
+}
+
+export function spawnDrifter(w: World): void {
+  const d = spawn(w, { kind: "drifter", x: randomRange(w, 0, config.bounds), y: randomRange(w, 0, config.bounds), r: config.drifterStart });
+  setHeading(w, d);
+}
+
+export function driftStep(w: World): void {
+  const list = bodies(w, "drifter");
+  for (let i = 0; i < list.length; i++) {
+    const d = list[i];
+    if ((w.tick + i * 17) % DRIFTER_TURN_TICKS === 0 || (d.vx === 0 && d.vy === 0)) setHeading(w, d);
+    moveBody(d, { bounds: arena, bounce: 1 });
+  }
+}
+
+export function absorbCheck(w: World): void {
+  for (const d of bodies(w, "drifter")) {
+    for (const m of bodies(w, "mote")) {
+      const d2 = (d.x - m.x) ** 2 + (d.y - m.y) ** 2;
+      if (d2 < (d.r + m.r) ** 2) {
+        d.r = Math.min(config.drifterMaxRadius, d.r + config.drifterGrowth);
+        despawn(w, m.id);
+      }
+    }
+  }
+}
+
 export const rules: GameRules = {
   arena: { w: config.bounds, h: config.bounds },
   init(w) {
     for (let i = 0; i < config.pellets; i++) spawnPellet(w);
     for (let i = 0; i < config.botCount; i++) spawnBot(w);
+    for (let i = 0; i < config.moteCount; i++) spawnMote(w);
+    for (let i = 0; i < config.drifterCount; i++) spawnDrifter(w);
   },
   join(w, playerId) {
     spawn(w, { id: playerId, kind: "player", x: 100, y: 100, r: config.startSize });
@@ -113,6 +153,9 @@ export const rules: GameRules = {
     eatCheck(w);
     botEatCheck(w);
     botFightCheck(w);
+    driftStep(w);
+    absorbCheck(w);
     while (bodies(w, "pellet").length < config.pellets) spawnPellet(w);
+    while (bodies(w, "mote").length < config.moteCount) spawnMote(w);
   },
 };
