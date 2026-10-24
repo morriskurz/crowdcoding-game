@@ -34,5 +34,25 @@
         "minutes": 1.9
       }
     ]
+  },
+  {
+    "id": "t3",
+    "title": "config: larger minimap, bigger dots, cameraZoom",
+    "tier": "muse",
+    "files": [
+      "packages/games/template/config.ts"
+    ],
+    "estMin": 5,
+    "done": false
+  },
+  {
+    "id": "t4",
+    "title": "assets: zoom camera via scene.zoom, brighter minimap, ring the leader dot",
+    "tier": "muse",
+    "files": [
+      "packages/games/template/assets.ts"
+    ],
+    "estMin": 10,
+    "done": false
   }
 ]
