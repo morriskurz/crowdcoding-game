@@ -71,5 +71,15 @@
         "minutes": 1.1
       }
     ]
+  },
+  {
+    "id": "t5",
+    "title": "assets: ticker also reports special pellet eats; draw feed below the top edge",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/template/assets.ts"
+    ],
+    "estMin": 12,
+    "done": false
   }
 ]
