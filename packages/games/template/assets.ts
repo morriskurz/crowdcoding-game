@@ -86,7 +86,8 @@ export function onSnapshot(prev: Readonly<Record<string, Entity>> | null, next: 
     }
     if (!eater || best > (eater.r + 30) ** 2) continue; // respawned/despawned, not eaten
     const mine = eater.id === fx.me;
-    fx.particles.emit({ x: pel.x, y: pel.y, count: mine ? 14 : 6, color: PELLET, speed: 90, life: 0.45, size: 2.5, drag: 2 });
+    fx.particles.emit({ x: pel.x, y: pel.y, count: 18, color: mine ? ME : eater.kind === "bot" ? "#ff4d4d" : playerColor(eater.id), speed: 140, life: 0.6, size: 3, drag: 2 });
+    fx.particles.emit({ x: pel.x, y: pel.y, count: 8, color: PELLET, speed: 90, life: 0.45, size: 2.5, drag: 2 });
     if (mine) {
       fx.sfx.play("pickup", { pitch: 0.9 + (eater.r % 10) * 0.03 });
       if (eater.r >= config.startSize + 10 && eater.r % 10 < 1) { fx.sfx.play("powerup"); fx.camera.shake(6, 0.25); }
