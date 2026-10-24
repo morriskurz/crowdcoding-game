@@ -15,7 +15,7 @@ import { execFileSync } from "node:child_process";
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
 import { recordSide, findChrome } from "./record.mjs";
-import { resolveScenario } from "../scenarios/index.mjs";
+import { inferScenario, resolveScenario } from "../scenarios/index.mjs";
 import { isGameSlug } from "../registry.mjs";
 import { filterCaptions } from "../gates/wordlist.mjs";
 import { flashGate } from "../gates/flash.mjs";
@@ -35,13 +35,17 @@ function readJson(file) {
  * feature.json at the PR head: {id, spec, slug, game?, branch, status, scenario?, ...}. Untrusted.
  * `game` (written by orchestrate.mjs start) picks the game both sides present; a side whose checkout
  * lacks it (before-side of a bootstrap) presents its own current game.
+ * A known `scenario` wins; without one the scenario is inferred from `spec` (inferScenario).
  */
 export function readFeature(root) {
   const f = readJson(path.join(root, "feature.json"));
   const ok = f && typeof f === "object" && !Array.isArray(f);
   const id = ok && (typeof f.id === "string" || typeof f.id === "number") ? String(f.id).slice(0, 64) : null;
   const game = ok && isGameSlug(f.game) ? f.game : null;
-  return { featureId: id, game, scenario: resolveScenario(ok ? f.scenario : undefined).name, requestedScenario: ok && typeof f.scenario === "string" ? f.scenario.slice(0, 64) : null };
+  const requested = ok && typeof f.scenario === "string" ? f.scenario.slice(0, 64) : null;
+  const known = requested !== null && resolveScenario(requested).name === requested;
+  const scenario = known ? requested : inferScenario(ok ? f.spec : undefined);
+  return { featureId: id, game, scenario, requestedScenario: requested };
 }
 
 export function buildClient(root, port, log = console.log) {

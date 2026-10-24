@@ -11,7 +11,7 @@ import { audioGate } from "../gates/audio.mjs";
 import { checkText, ocrGate } from "../gates/ocr.mjs";
 import { compare, summarize } from "../gates/frametime.mjs";
 import { filterCaptions, findSlurs, loadHashes } from "../gates/wordlist.mjs";
-import { SCENARIOS, resolveScenario, DEFAULT_SCENARIO } from "../scenarios/index.mjs";
+import { SCENARIOS, inferScenario, resolveScenario, DEFAULT_SCENARIO } from "../scenarios/index.mjs";
 import { createSim, loadGame } from "./server.mjs";
 import { concatList } from "./record.mjs";
 import { readFeature } from "./run.mjs";
@@ -129,6 +129,22 @@ test("feature.json: id and scenario parsed defensively", () => {
   }
   fs.writeFileSync(path.join(dir, "feature.json"), "[1,2]");
   assert.equal(readFeature(dir).featureId, null);
+  // No (or an unknown) scenario: inferred from the spec; a known one always wins.
+  fs.writeFileSync(path.join(dir, "feature.json"), JSON.stringify({ id: 5, spec: "a burst of particles when a player scores, for all players" }));
+  assert.equal(readFeature(dir).scenario, "collect");
+  fs.writeFileSync(path.join(dir, "feature.json"), JSON.stringify({ id: 5, spec: "a burst of particles when a player scores", scenario: "nope" }));
+  assert.deepEqual(readFeature(dir), { featureId: "5", game: null, scenario: "collect", requestedScenario: "nope" });
+  fs.writeFileSync(path.join(dir, "feature.json"), JSON.stringify({ id: 5, spec: "a burst of particles when a player scores", scenario: "idle-crowd" }));
+  assert.equal(readFeature(dir).scenario, "idle-crowd");
+});
+
+test("scenarios: inferred from the spec by keyword", () => {
+  assert.equal(inferScenario("a burst of particles when a player scores, for all players"), "collect");
+  assert.equal(inferScenario("pellets glow for all players"), "collect");
+  assert.equal(inferScenario("Computer-controlled enemies added for all players to compete against"), "chase");
+  assert.equal(inferScenario("players leave a trail of sparks"), "chase");
+  assert.equal(inferScenario("the arena background turns purple at night"), DEFAULT_SCENARIO);
+  for (const bad of [undefined, null, 5, {}]) assert.equal(inferScenario(bad), DEFAULT_SCENARIO);
 });
 
 test("loadGame: registry game by slug, unknown slug falls back to the current game", async () => {
