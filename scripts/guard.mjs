@@ -13,7 +13,7 @@ import { currentSlug, gameEntry, sortGames } from "./registry.mjs";
 //    scripts/registry.mjs) is frozen. A bootstrap adds a new directory, so it is still allowed.
 //    Branch = GITHUB_HEAD_REF, else GITHUB_REF_NAME, else git HEAD.
 
-export const ROOTS = ["packages/games", "packages/registry", "apps/client/src", "apps/server/src"];
+export const ROOTS = ["packages/games", "packages/registry", "packages/kit/src", "packages/shared/src", "apps/client/src", "apps/server/src"];
 
 // bare fetch( banned (agents have no legit use). stub.fetch / env.ASSETS.fetch allowed (dot before).
 export const DENY = [
@@ -29,12 +29,12 @@ export const DENY = [
   /\bfrom\s+["']fs["']/,            // bare 'fs'
   /\bfrom\s+["'](ws|net|http|https|dgram|cluster)["']/,
 ];
-export const ALLOW_IMPORT = [/^@tcg\/shared/, /^@tcg\/kit$/, /^@tcg\/games$/, /^partyserver/, /^partysocket/, /^\.\//, /^\.\.\//, /^tmi\.js$/, /^ws$/, /^vitest$/];
+export const ALLOW_IMPORT = [/^@tcg\/shared/, /^@tcg\/kit$/, /^@tcg\/games$/, /^partyserver/, /^partysocket/, /^\.\//, /^\.\.\//, /^tmi\.js$/, /^ws$/, /^vitest$/, /^zod$/];
 
 // Frozen paths (spec §8). Entries ending in "/" are directory prefixes.
+// The engine (packages/shared, packages/kit, the client renderer) is not frozen since 2026-10-24 (owner
+// decision): an agent may change it through an engine task that lists the file (ENGINE below).
 export const FROZEN = [
-  "packages/shared/src/",
-  "packages/kit/",
   "apps/server/src/room.ts",
   "apps/client/src/net.ts",
   // Game registry: generated from packages/games/* (scripts/registry.mjs), so a new game needs no edit here.
@@ -50,6 +50,8 @@ export const FROZEN = [
 ];
 
 const GAME_PKG = /^packages\/games\/[^/]+\/package\.json$/;
+// Engine paths an agent branch may change only when the committed plan lists the file.
+export const ENGINE = ["packages/shared/", "packages/kit/", "apps/client/src/game/"];
 const matches = (entry, file) => (entry.endsWith("/") ? file.startsWith(entry) : file === entry);
 const norm = (p) => p.replace(/^\.\//, "");
 
@@ -80,7 +82,7 @@ export function checkDiff(changed, plan) {
   const errors = [];
   const frozen = changed.filter((f) => FROZEN.some((e) => matches(e, f)));
   if (frozen.length) errors.push(`GUARD changed frozen: ${frozen.join(",")}`);
-  const games = changed.filter((f) => f.startsWith("packages/games/"));
+  const games = changed.filter((f) => f.startsWith("packages/games/") || ENGINE.some((e) => f.startsWith(e)));
   const unplanned = games.filter((f) => !(plan ?? []).some((e) => matches(e, f)));
   if (unplanned.length) {
     errors.push(`GUARD changed files not in committed tasks.json plan: ${unplanned.join(",")}${plan ? "" : " (no tasks.json at HEAD)"}`);

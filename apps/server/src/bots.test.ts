@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createWorld, runTick } from "@tcg/shared";
 import { GAMES, CURRENT_SLUG } from "@tcg/games";
-import { BOT_FILL, Bots, botInput, botTarget, isBotId } from "./bots.js";
+import { BOT_FILL, Bots, CURRENT_FILL, botInput, botTarget, isBotId } from "./bots.js";
 
 const rules = GAMES[CURRENT_SLUG].rules;
 
@@ -12,13 +12,15 @@ function world(seed = 7) {
 }
 
 describe("bots", () => {
-  it("fill an archived room only while it has real players", () => {
+  it("fill a room only while someone is connected", () => {
     expect(botTarget(true, 0)).toBe(0);
     expect(botTarget(true, 1)).toBe(BOT_FILL - 1);
     expect(botTarget(true, BOT_FILL + 3)).toBe(0);
-    expect(botTarget(false, 1)).toBe(0); // the current game's rooms never get bots
+    expect(botTarget(false, 1)).toBe(CURRENT_FILL - 1); // the current game gets a few, so the stream is never empty
     expect(botTarget(true, 0, 1)).toBe(BOT_FILL); // a spectator alone watches a full archive room
-    expect(botTarget(false, 0, 1)).toBe(0);
+    expect(botTarget(false, 0, 1)).toBe(CURRENT_FILL);
+    expect(botTarget(false, CURRENT_FILL + 1)).toBe(0);
+    expect(botTarget(false, 0, 0)).toBe(0);
   });
 
   it("join and leave through the game's own rules, ids bot:1..bot:k", () => {

@@ -4,6 +4,7 @@ import { CURRENT_SLUG, GAMES, gameForRoom, type Game } from "@tcg/games";
 import { RateLimit } from "./ratelimit.js";
 import { TickGuard } from "./tick.js";
 import { Bots, botTarget, isBotId } from "./bots.js";
+import { gameplay } from "./gameplay.js";
 
 // One Durable Object = one room. Authoritative 15Hz on setInterval, never alarms (spec §3, §13 cost).
 // The interval runs only while at least one player is connected: Durable Object duration is billed
@@ -13,12 +14,17 @@ import { Bots, botTarget, isBotId } from "./bots.js";
 // input and do not count toward MAX_PLAYERS. They keep the room ticking like players do.
 // The room's name picks its game (@tcg/games gameForRoom): "main" and test rooms run the current
 // game; a room named after an older game's slug runs that game as an archive (still playable,
-// flagged `archived` in hello, snapshots and /health). An archived room with players is filled up
-// with server-side bots (bots.ts), removed again when the last player leaves.
+// flagged `archived` in hello, snapshots and /health). A room with anyone connected is filled up with
+// server-side bots (bots.ts: many for an archive, a few for the current game), removed again when the
+// last connection leaves.
+// The world is saved to DO storage every SAVE_EVERY_TICKS and restored on start when the build is the
+// same, so an evicted or restarted object does not wipe the game (a deploy still starts fresh).
 const MAX_PLAYERS = 100;
 const MAX_SPECTATORS = 200;
 const TICK_MS = 1000 / 15;
 const TICK_BUDGET_MS = 50; // spec §9: tick p95 > 50ms is a rollback trigger
+export const SAVE_EVERY_TICKS = 15 * 30;
+const SAVE_KEY = "world";
 
 export class Room extends Server {
   world: World = createWorld(crypto.getRandomValues(new Uint32Array(1))[0]);
@@ -41,8 +47,21 @@ export class Room extends Server {
     const g = gameForRoom(this.name);
     this.game = GAMES[g.slug];
     this.archived = g.archived;
-    this.game.rules.init?.(this.world);
+    if (!(await this.restore())) this.game.rules.init?.(this.world);
     // No tick yet: the first connect starts it (a /health probe must not keep an empty room busy).
+  }
+
+  /** The saved world of this build and game, without the players and bots of the old connections. */
+  async restore(): Promise<boolean> {
+    const saved = (await this.ctx.storage.get(SAVE_KEY).catch(() => undefined)) as { version: string; slug: string; world: World } | undefined;
+    if (!saved || saved.version !== this.buildVersion || saved.slug !== this.game.slug || !saved.world?.entities) return false;
+    this.world = saved.world;
+    for (const id of Object.keys(this.world.names)) leavePlayer(this.world, this.game.rules, id);
+    return true;
+  }
+
+  save() {
+    this.ctx.storage.put(SAVE_KEY, { version: this.buildVersion, slug: this.game.slug, world: this.world }).catch(() => {});
   }
 
   /** Real (WebSocket) players that joined; bots are not counted. */
@@ -123,10 +142,11 @@ export class Room extends Server {
   }
 
   onTick() {
-    // Bots (archived rooms only) get their input from the world before the step, like a client would.
+    // Bots get their input from the world before the step, like a client would.
     const all = this.bots.ids.length ? { ...this.inputs, ...this.bots.inputs(this.world, this.draining) } : this.inputs;
     runTick(this.world, this.game.rules, all);
     this.acks.ticked(Object.keys(this.inputs));
+    if (this.world.tick % SAVE_EVERY_TICKS === 0) this.save();
     const inputs: Record<string, PackedInput> = {};
     for (const id in all) inputs[id] = packInput(all[id]);
     this.broadcast(JSON.stringify(snapMessage(this.world, this.buildVersion, this.draining, { acks: this.acks.acks, inputs, ...this.archiveFlag() })));
@@ -154,6 +174,7 @@ export class Room extends Server {
       return Response.json({
         version: this.buildVersion,
         players: Object.keys(this.world.names).length,
+        humans: this.humans(),
         tick: this.world.tick,
         draining: this.draining,
         game: this.game.slug,
@@ -162,6 +183,7 @@ export class Room extends Server {
         spectators: this.spectators.size,
         ticking: this.tickTimer !== null,
         ticks: await this.tickGuard.stats(),
+        gameplay: gameplay(this.world, this.game.rules),
       });
     }
     return new Response("not found", { status: 404 });

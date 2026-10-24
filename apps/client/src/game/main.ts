@@ -84,11 +84,21 @@ export function startGame(rules: GameRules, assets: GameAssets<Entity>): void {
     return e ? { ...e } : null;
   }
 
+  /** The game's name style, clamped: a game cannot hide names (offset, size and alpha are bounded). */
+  function nameStyleFor(e: Entity, name: string): { color: string; alpha: number; dy: number; size: number } {
+    let st: ReturnType<NonNullable<typeof assets.nameStyle>> = null;
+    try { st = assets.nameStyle?.(e as any, name, fx); } catch { st = null; }
+    const num = (v: unknown, lo: number, hi: number, d: number) => (typeof v === "number" && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d);
+    const color = typeof st?.color === "string" && st.color.length <= 40 ? st.color : "rgba(255,255,255,0.85)";
+    return { color, alpha: num(st?.alpha, 0.3, 1, 1), dy: num(st?.dy, -60, 20, 0), size: num(st?.size, 8, 32, 12) };
+  }
+
   function onSnap(snap: SnapMessage): void {
     if (!snap.entities || typeof snap.tick !== "number") return;
     stats.snaps++;
     draining = draining || snap.draining === true;
     names = snap.names ?? {};
+    fx.names = names;
     buf.push(snap.tick, snap.entities, performance.now());
     assets.onSnapshot?.(lastSnap?.entities ?? null, snap.entities, fx);
     if (spectator) director.observe(snap.entities, names, lastSnap ? Math.min(1, Math.max(0, snap.tick - lastSnap.tick) * TICK_MS / 1000) : 0);
@@ -171,11 +181,18 @@ export function startGame(rules: GameRules, assets: GameAssets<Entity>): void {
     for (const e of list) if (fx.camera.visible(e.x, e.y, e.r * 4)) assets.drawEntity(ctx, e, fx);
     fx.particles.update(fx.dt);
     fx.particles.draw(ctx);
-    // Names are drawn by this frozen renderer, never by game code (spec §10).
-    ctx.font = "12px system-ui, sans-serif";
+    // Names are drawn by this renderer, never by game code (spec §10); a game only styles them (nameStyle).
     ctx.textAlign = "center";
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    for (const e of list) if (names[e.id] && fx.camera.visible(e.x, e.y, 40)) ctx.fillText(names[e.id], e.x, e.y - e.r - 6);
+    for (const e of list) {
+      const name = names[e.id];
+      if (!name || !fx.camera.visible(e.x, e.y, 40)) continue;
+      const st = nameStyleFor(e, name);
+      ctx.font = `${st.size}px system-ui, sans-serif`;
+      ctx.globalAlpha = st.alpha;
+      ctx.fillStyle = st.color;
+      ctx.fillText(name, e.x, e.y - e.r - 6 + st.dy);
+    }
+    ctx.globalAlpha = 1;
     fx.camera.reset(ctx);
 
     assets.drawOverlay?.(ctx, fx);

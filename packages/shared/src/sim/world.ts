@@ -48,6 +48,9 @@ export interface GameRules {
   leave?(w: World, playerId: string): void;
   // One 15Hz tick. inputs has an entry for every connected player.
   step(w: World, inputs: Readonly<Record<string, Input>>): void;
+  // Playable area in world units. The server reports entities outside it or too big for it on /health,
+  // so a feature that breaks the game shows up and the next feature can fix it.
+  arena?: { w: number; h: number };
 }
 
 export function createWorld(seed = 1): World {

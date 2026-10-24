@@ -2,8 +2,8 @@
 // registry gets one extra (archived) game so archive rooms can be tested with today's single game.
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type * as Registry from "@tcg/games";
-import { Room, isSpectate } from "./room.js";
-import { BOT_FILL } from "./bots.js";
+import { Room, SAVE_EVERY_TICKS, isSpectate } from "./room.js";
+import { BOT_FILL, CURRENT_FILL } from "./bots.js";
 
 vi.mock("partyserver", () => ({
   Server: class {
@@ -27,14 +27,15 @@ vi.mock("@tcg/games", async (importOriginal) => {
 function storage() {
   const m = new Map<string, unknown>();
   return {
-    async put(k: string, v: unknown) { m.set(k, v); },
+    async get(k: string) { return m.get(k); },
+    async put(k: string, v: unknown) { m.set(k, structuredClone(v)); },
     async delete(k: string) { return m.delete(k); },
     async list({ prefix }: { prefix: string }) { return new Map([...m].filter(([k]) => k.startsWith(prefix))); },
   };
 }
 
-async function room(name: string) {
-  const r = new Room({ storage: storage() } as any, {} as any);
+async function room(name: string, store = storage()) {
+  const r = new Room({ storage: store } as any, {} as any);
   (r as any).name = name;
   await r.onStart();
   return r;
@@ -68,7 +69,7 @@ describe("Room tick lifecycle", () => {
     const stopped = r.world.tick;
     sec(5);
     expect(r.world.tick).toBe(stopped);
-    expect(await health(r)).toMatchObject({ ticking: false, players: 0, bots: 0 });
+    expect(await health(r)).toMatchObject({ ticking: false, players: 0, humans: 0, bots: 0 });
 
     r.onConnect(conn("b"), req("bob"));
     expect(vi.getTimerCount()).toBe(1);
@@ -77,7 +78,7 @@ describe("Room tick lifecycle", () => {
     // the 5 s pause is not counted as one slow tick
     const h = await health(r);
     expect(h.ticks.current.overruns).toBe(0);
-    expect(h).toMatchObject({ ticking: true, players: 1, bots: 0, archived: false });
+    expect(h).toMatchObject({ ticking: true, players: 1 + CURRENT_FILL - 1, humans: 1, bots: CURRENT_FILL - 1, archived: false });
   });
 
   it("keeps ticking while any player is still connected", async () => {
@@ -126,13 +127,20 @@ describe("archived room bots", () => {
     expect(await health(r)).toMatchObject({ bots: 0, players: 0, ticking: false });
   });
 
-  it("the current game's room never gets bots", async () => {
+  it("the current game's room gets a few bots, so the stream never shows an empty arena", async () => {
     const r = await room("main");
-    r.onConnect(conn("a"), req("a"));
+    const s = conn("s");
+    r.onConnect(s, { request: new Request("http://x/?spectate=1") });
+    expect(r.bots.ids.length).toBe(CURRENT_FILL);
+    const a = conn("a");
+    r.onConnect(a, req("a"));
     sec(1);
-    expect(r.bots.ids).toEqual([]);
-    expect(Object.keys(r.world.names)).toEqual(["a"]);
+    expect(r.bots.ids.length).toBe(CURRENT_FILL - 1);
+    expect(Object.keys(r.world.names)).toContain("a");
     expect(JSON.parse((r as any).sent.at(-1)).archived).toBeUndefined();
+    r.onClose(a);
+    r.onClose(s);
+    expect(r.bots.ids).toEqual([]);
   });
 
   it("a client cannot take a bot's id", async () => {
@@ -161,18 +169,18 @@ describe("spectators", () => {
     const r = await room("main");
     const s = conn("s");
     r.onConnect(s, watch("stream"));
-    expect(Object.keys(r.world.names)).toEqual([]);
+    expect(Object.keys(r.world.names)).toEqual(r.bots.ids); // the spectator is no player; only the fill bots are
     expect(JSON.parse(s.send.mock.calls[0][0])).toMatchObject({ t: "hello", spectator: true, game: r.game.slug });
     expect(vi.getTimerCount()).toBe(1);
     sec(1);
     expect(r.world.tick).toBeGreaterThanOrEqual(14);
     await r.onMessage(s, JSON.stringify({ dx: 1, dy: 0 }));
     expect(r.inputs).toEqual({});
-    expect(await health(r)).toMatchObject({ players: 0, spectators: 1, ticking: true });
+    expect(await health(r)).toMatchObject({ humans: 0, spectators: 1, ticking: true });
 
     const a = conn("a");
     r.onConnect(a, req("alice"));
-    expect(Object.keys(r.world.names)).toEqual(["a"]);
+    expect(Object.keys(r.world.names)).toContain("a");
     r.onClose(a);
     expect(vi.getTimerCount()).toBe(1); // the spectator is still watching
     r.onClose(s);
@@ -187,5 +195,46 @@ describe("spectators", () => {
     expect(r.bots.ids.length).toBe(BOT_FILL);
     r.onClose(s);
     expect(r.bots.ids).toEqual([]);
+  });
+});
+
+describe("world persistence", () => {
+  it("a restarted room of the same build continues the saved world, without the old connections", async () => {
+    const store = storage();
+    const r = await room("main", store);
+    r.onConnect(conn("a"), req("alice"));
+    sec(SAVE_EVERY_TICKS / 15 + 1);
+    await Promise.resolve();
+    const r2 = await room("main", store);
+    expect(r2.world.tick).toBeGreaterThanOrEqual(SAVE_EVERY_TICKS);
+    expect(Object.keys(r2.world.names)).toEqual([]);
+    expect(r2.world.entities.a).toBeUndefined();
+    expect(r2.world.tick % SAVE_EVERY_TICKS).toBe(0);
+    expect(Object.values(r2.world.entities).some((e) => e.kind === "pellet")).toBe(true);
+  });
+
+  it("a new build starts a fresh world", async () => {
+    const store = storage();
+    const r = await room("main", store);
+    r.onConnect(conn("a"), req("alice"));
+    sec(SAVE_EVERY_TICKS / 15 + 1);
+    await Promise.resolve();
+    const r2 = new Room({ storage: store } as any, { BUILD_VERSION: "other" } as any);
+    (r2 as any).name = "main";
+    await r2.onStart();
+    expect(r2.world.tick).toBe(0);
+  });
+});
+
+describe("gameplay health", () => {
+  it("reports entity kinds and oversized entities against the game's arena", async () => {
+    const r = await room("main");
+    const h = await health(r);
+    expect(h.gameplay.arena).toBeTruthy();
+    expect(h.gameplay.kinds.pellet.n).toBeGreaterThan(0);
+    expect(h.gameplay.issues).toEqual([]);
+    const any = Object.values(r.world.entities)[0];
+    any.r = h.gameplay.arena.w;
+    expect((await health(r)).gameplay.issues.join(" ")).toMatch(/oversized/);
   });
 });

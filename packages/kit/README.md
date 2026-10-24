@@ -6,7 +6,7 @@ Frozen Canvas2D + WebAudio helpers for this week's game. Import from `packages/g
 import { Trail, drawGlow, ease, tween, type Fx, type GameAssets } from "@tcg/kit";
 ```
 
-No runtime dependencies, no DOM access at import time, no audio/image files. Agents never edit this package (guard: frozen on `f/*` branches).
+No runtime dependencies, no DOM access at import time, no audio/image files. Agents may extend it through an `engine` task when a feature needs it (docs/ORCHESTRATOR.md).
 
 ## The assets.ts contract
 
@@ -19,10 +19,11 @@ The client renderer imports `assets` (a `GameAssets`) and `rules` from the game 
 | `drawEntity(ctx, e, fx)` (required) | every frame, per visible entity (others interpolated, you predicted) | world |
 | `drawOverlay(ctx, fx)` | every frame, after particles | screen |
 | `onSnapshot(prev, next, fx)` | once per server snapshot (15 Hz): diff to fire particles/sfx/shake | |
+| `nameStyle(e, name, fx)` | every frame, per named entity: `{ color?, alpha?, dy?, size? }` for the name the renderer draws (clamped) | |
 
-Player names are drawn by the renderer, never by game code.
+Player names are drawn by the renderer, never by game code; a game styles them with `nameStyle`.
 
-`fx: Fx` = `{ camera, particles, sfx, time, dt, me }`. `me` is your player id (entity id === player id).
+`fx: Fx` = `{ camera, particles, sfx, time, dt, me, names }`. `me` is your player id (entity id === player id), `names` the display names by entity id.
 
 ## API
 

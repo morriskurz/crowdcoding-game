@@ -36,10 +36,22 @@ test("newFeature/validateFeature: exact format", () => {
   assert.ok(validateFeature({ ...f, extra: 1 }).length);
 });
 
+test("validateTasks: engine tasks (owner decision: the engine may be rebuilt)", () => {
+  const ok = task({ id: "t1", tier: "sonnet", files: ["packages/kit/src/fx.ts", "packages/kit/src/fx.test.ts"] });
+  assert.deepEqual(validateTasks([ok, task({ id: "t2", tier: "opus", files: ["apps/client/src/game/main.ts"] })], G), []);
+  const errs = (t) => validateTasks([t], G).join("\n");
+  assert.match(errs(task({ tier: "muse", files: ["packages/kit/src/fx.ts"] })), /sonnet or opus/);
+  assert.match(errs(task({ tier: "sonnet", files: ["packages/kit/src/fx.ts", G + "assets.ts"] })), /engine files only/);
+  assert.match(errs(task({ tier: "sonnet", files: ["packages/kit/src/fx.ts", "packages/kit/src/camera.ts"] })), /one engine source/);
+  for (const f of ["apps/server/src/room.ts", "apps/client/src/net.ts", "packages/kit/package.json", "scripts/guard.mjs"]) {
+    assert.match(errs(task({ tier: "opus", files: [f] })), /files outside/, f);
+  }
+});
+
 test("validateTasks: format and plan rules", () => {
   assert.deepEqual(validateTasks([task(), task({ id: "t2", tier: "sonnet", files: [G + "rules.ts", G + "rules.test.ts"] })], G), []);
   const errs = (t) => validateTasks([t], G).join("\n");
-  assert.match(errs(task({ files: ["packages/shared/src/x.ts"] })), /outside/);
+  assert.match(errs(task({ files: ["apps/server/src/x.ts"] })), /outside/);
   assert.match(errs(task({ files: [G + "../h/config.ts"] })), /outside/);
   assert.match(errs(task({ tier: "muse", files: [G + "rules.ts"] })), /muse tasks only/);
   assert.match(errs(task({ tier: "sonnet", files: [G + "rules.ts", G + "config.ts"] })), /one source file/);
