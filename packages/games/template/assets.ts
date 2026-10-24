@@ -37,6 +37,8 @@ export function drawEntity(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): vo
   if (e.kind === "player") drawPlayer(ctx, e, e.id === fx.me ? ME : playerColor(e.id));
   else if (e.kind === "pellet") drawPellet(ctx, e, fx);
   else if (e.kind === "bot") drawBot(ctx, e, fx);
+  else if (e.kind === "mote") drawMote(ctx, e, fx);
+  else if (e.kind === "drifter") drawDrifter(ctx, e, fx);
 }
 
 export function drawPlayer(ctx: CanvasRenderingContext2D, e: Entity, color: string): void {
@@ -66,6 +68,25 @@ export function drawBot(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void 
   ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = "#7a1010";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+export function drawMote(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
+  drawGlow(ctx, e.x, e.y, e.r * 2, "#5eead4", 0.2);
+  ctx.fillStyle = "#5eead4";
+  ctx.beginPath();
+  ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+export function drawDrifter(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
+  drawGlow(ctx, e.x, e.y, e.r * 2, "#c084fc", 0.3 + 0.15 * pulse(fx.time, 1.5));
+  ctx.fillStyle = "#c084fc";
+  ctx.beginPath();
+  ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#6b21a8";
   ctx.lineWidth = 2;
   ctx.stroke();
 }
