@@ -106,6 +106,25 @@ export function onSnapshot(prev: Readonly<Record<string, Entity>> | null, next: 
   for (const id of trails.keys()) if (!next[id]) trails.delete(id);
   if (!prev) return;
   const players = Object.values(next).filter((e) => e.kind === "player" || e.kind === "bot");
+  // Shake once on the first new player collision.
+  outer: for (let i = 0; i < players.length; i++) {
+    for (let j = i + 1; j < players.length; j++) {
+      const a = players[i];
+      const b = players[j];
+      const pa = prev[a.id];
+      const pb = prev[b.id];
+      if (!pa || !pb) continue;
+      if (pa.kind !== "player" && pa.kind !== "bot") continue;
+      if (pb.kind !== "player" && pb.kind !== "bot") continue;
+      const overlappingNow = Math.hypot(a.x - b.x, a.y - b.y) < a.r + b.r;
+      const overlappingBefore = Math.hypot(pa.x - pb.x, pa.y - pb.y) < pa.r + pb.r;
+      if (overlappingNow && !overlappingBefore) {
+        fx.camera.shake(config.collisionShakeIntensity, config.collisionShakeDuration);
+        fx.sfx.play("hit", { volume: 0.5 });
+        break outer;
+      }
+    }
+  }
   for (const id in prev) {
     const pel = prev[id];
     if (pel.kind !== "pellet" || next[id]) continue;
