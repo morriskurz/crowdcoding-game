@@ -6,5 +6,41 @@
     "A shaped player touching a smaller circle player resets that player; a circle player 20% bigger touching a shaped player destroys it and grows",
     "In the preview clip at least one shaped player is visible"
   ],
-  "rounds": []
+  "rounds": [
+    {
+      "verdict": "fix",
+      "score": 3,
+      "playerImpact": true,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "A player reaching max radius respawns at start size with a square or triangle shape",
+          "met": true,
+          "evidence": "diff: shapeCheck in rules.ts + test 'shapes: max size respawns small as square or triangle'. Not seen in any after shot."
+        },
+        {
+          "text": "Square and triangle players move at different speeds from circles, and the shape is visibly drawn as such",
+          "met": true,
+          "evidence": "speedFor in rules.ts with a speed test; drawPlayer in assets.ts draws square/triangle with white outline. No shape visible in after shots 1-3 though."
+        },
+        {
+          "text": "A shaped player touching a smaller circle player resets that player; a circle player 20% bigger touching a shaped player destroys it and grows",
+          "met": true,
+          "evidence": "shapeHuntCheck in rules.ts with two tests (hunt and bounty)."
+        },
+        {
+          "text": "In the preview clip at least one shaped player is visible",
+          "met": false,
+          "evidence": "after/shot-1,2,3 show only round bots (largest ~25px) and pellets, identical in look to before; no square or triangle anywhere."
+        }
+      ],
+      "findings": [
+        "Shapes never show in the preview clip: only bots are present and none reach config.maxSize=40. In config.ts lower maxSize (e.g. to about 18-22, just above what the biggest bot reaches by 90% of the scenario) so a shape appears in the clip.",
+        "Check that bots are covered by shapeCheck/shapeHuntCheck in rules.ts (bots appear to be a separate kind, so they never become shapes); let bots that reach maxSize also turn into shapes, or the feature is invisible without a human player.",
+        "Make shaped players easier to spot on a phone: in assets.ts drawPlayer, draw the shape larger or with a stronger outline/colour tint so square and triangle read clearly at small radius."
+      ],
+      "packagesTree": "09c05a82acd9a62c63587bbf226027ceb341b87a+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
+      "at": "2026-10-24T08:11:51.140Z"
+    }
+  ]
 }
