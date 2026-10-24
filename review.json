@@ -76,6 +76,40 @@
       ],
       "packagesTree": "f00c02e64e33a3ac41f72a41a0d87ef2b7933680+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
       "at": "2026-10-24T08:17:41.265Z"
+    },
+    {
+      "verdict": "pass",
+      "score": 3,
+      "playerImpact": true,
+      "visible": true,
+      "criteria": [
+        {
+          "text": "A player reaching max radius respawns at start size with a square or triangle shape",
+          "met": true,
+          "evidence": "diff: shapeCheck in rules.ts resets r to startSize and sets shape; tests in rules.test.ts; after/shot-3 shows a red triangle player."
+        },
+        {
+          "text": "Square and triangle players move at different speeds from circles, and the shape is visibly drawn as such",
+          "met": true,
+          "evidence": "speedFor/botStep apply squareSpeedMult 0.7 and triangleSpeedMult 1.5; after/shot-3 shows triangles with outlines (red player, white bots)."
+        },
+        {
+          "text": "A shaped player touching a smaller circle player resets that player; a circle player 20% bigger touching a shaped player destroys it and grows",
+          "met": true,
+          "evidence": "shapeHuntCheck in rules.ts handles both directions with shapeHuntMargin/shapeBounty, covered by new tests."
+        },
+        {
+          "text": "In the preview clip at least one shaped player is visible",
+          "met": true,
+          "evidence": "after/shot-3 shows three triangles; shot-1 and shot-2 look the same as before."
+        }
+      ],
+      "findings": [
+        "Shapes only appear by the 90% shot; shots 1 and 2 are identical to before. Consider lowering maxSize in config.ts or letting early-game growth reach it so a shape shows in the first 30 seconds.",
+        "Shaped sprites are small (about 25px) and the white bot triangles overlap their labels; enlarge them in assets.ts."
+      ],
+      "packagesTree": "c4dfb784d90c5f81e39555971f54b2286c882d41+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
+      "at": "2026-10-24T08:23:09.676Z"
     }
   ]
 }
