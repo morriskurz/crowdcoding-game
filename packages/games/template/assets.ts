@@ -30,7 +30,7 @@ export function detectKills(prev: Readonly<Record<string, Entity>>, next: Readon
   for (const vid of ids) {
     const pv = prev[vid];
     const nv = next[vid];
-    if (!(pv.r - nv.r > 2) || Math.hypot(nv.x - pv.x, nv.y - pv.y) <= 50) continue;
+    if (!(pv.r - nv.r > 1) || Math.hypot(nv.x - pv.x, nv.y - pv.y) <= 30) continue;
     let killer: string | null = null;
     let bestGrow = 0;
     let bestDist = Infinity;
@@ -196,7 +196,7 @@ export function onSnapshot(prev: Readonly<Record<string, Entity>> | null, next: 
     });
   }
   if (killFeed.length > config.killFeedMaxLines) killFeed.length = config.killFeedMaxLines;
-  const players =Object.values(next).filter((e) => e.kind === "player" || e.kind === "bot");
+  const players = Object.values(next).filter((e) => e.kind === "player" || e.kind === "bot");
   // Shake once on the first new player collision.
   outer: for (let i = 0; i < players.length; i++) {
     for (let j = i + 1; j < players.length; j++) {
