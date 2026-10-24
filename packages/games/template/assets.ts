@@ -19,6 +19,33 @@ function playerColor(id: string): string {
   return `hsl(${(h >>> 0) % 360} 80% 65%)`;
 }
 
+export interface KillEvent { killerId: string; victimId: string }
+const killFeed: { text: string; color: string; born: number }[] = [];
+
+// Pure: a victim shrank sharply and jumped far (respawn); the killer is whoever grew most.
+export function detectKills(prev: Readonly<Record<string, Entity>>, next: Readonly<Record<string, Entity>>): KillEvent[] {
+  const out: KillEvent[] = [];
+  const isP = (e: Entity | undefined): e is Entity => !!e && (e.kind === "player" || e.kind === "bot");
+  const ids = Object.keys(next).filter((id) => isP(next[id]) && isP(prev[id]));
+  for (const vid of ids) {
+    const pv = prev[vid];
+    const nv = next[vid];
+    if (!(pv.r - nv.r > 2) || Math.hypot(nv.x - pv.x, nv.y - pv.y) <= 50) continue;
+    let killer: string | null = null;
+    let bestGrow = 0;
+    let bestDist = Infinity;
+    for (const kid of ids) {
+      if (kid === vid) continue;
+      const grow = next[kid].r - prev[kid].r;
+      if (grow <= 0) continue;
+      const d = Math.hypot(prev[kid].x - pv.x, prev[kid].y - pv.y);
+      if (grow > bestGrow || (grow === bestGrow && d < bestDist)) { bestGrow = grow; bestDist = d; killer = kid; }
+    }
+    if (killer) out.push({ killerId: killer, victimId: vid });
+  }
+  return out;
+}
+
 export function drawBackground(ctx: CanvasRenderingContext2D, fx: Fx): void {
   ctx.fillStyle = "#11151f";
   ctx.fillRect(0, 0, scene.width, scene.height);
@@ -159,7 +186,17 @@ export function onSnapshot(prev: Readonly<Record<string, Entity>> | null, next: 
   latest = next as Record<string, Entity>;
   for (const id of trails.keys()) if (!next[id]) trails.delete(id);
   if (!prev) return;
-  const players = Object.values(next).filter((e) => e.kind === "player" || e.kind === "bot");
+  for (const k of detectKills(prev, next)) {
+    const ke = next[k.killerId];
+    const nameOf = (id: string, e: Entity): string => fx.names[id] ?? (e.kind === "bot" ? "Bot" : "Player");
+    killFeed.unshift({
+      text: `${nameOf(k.killerId, ke)} ate ${nameOf(k.victimId, next[k.victimId])}`,
+      color: k.killerId === fx.me ? ME : ke.kind === "bot" ? "#ff4d4d" : playerColor(k.killerId),
+      born: fx.time,
+    });
+  }
+  if (killFeed.length > config.killFeedMaxLines) killFeed.length = config.killFeedMaxLines;
+  const players =Object.values(next).filter((e) => e.kind === "player" || e.kind === "bot");
   // Shake once on the first new player collision.
   outer: for (let i = 0; i < players.length; i++) {
     for (let j = i + 1; j < players.length; j++) {
@@ -199,7 +236,33 @@ export function onSnapshot(prev: Readonly<Record<string, Entity>> | null, next: 
   }
 }
 
+function drawKillFeed(ctx: CanvasRenderingContext2D, fx: Fx): void {
+  for (let i = killFeed.length - 1; i >= 0; i--) {
+    const age = fx.time - killFeed[i].born;
+    if (age > config.killFeedLifetime || age < 0) killFeed.splice(i, 1);
+  }
+  ctx.save();
+  ctx.font = `bold ${config.killFeedFontSize}px sans-serif`;
+  ctx.textBaseline = "top";
+  ctx.textAlign = "left";
+  ctx.lineWidth = 3;
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "rgba(0,0,0,0.85)";
+  const fadeStart = config.killFeedLifetime - config.killFeedFade;
+  killFeed.forEach((m, i) => {
+    const age = fx.time - m.born;
+    ctx.globalAlpha = age <= fadeStart ? 1 : Math.max(0, (config.killFeedLifetime - age) / config.killFeedFade);
+    const x = config.killFeedMargin;
+    const y = config.killFeedMargin + i * config.killFeedLineHeight;
+    ctx.strokeText(m.text, x, y);
+    ctx.fillStyle = m.color;
+    ctx.fillText(m.text, x, y);
+  });
+  ctx.restore();
+}
+
 export function drawOverlay(ctx: CanvasRenderingContext2D, fx: Fx): void {
+  drawKillFeed(ctx, fx);
   ctx.save();
   const S = config.minimapSize;
   const M = config.minimapMargin;

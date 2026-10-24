@@ -25,6 +25,14 @@
       "packages/games/template/assets.ts"
     ],
     "estMin": 20,
-    "done": false
+    "actualMin": 1.3,
+    "done": true,
+    "attempts": [
+      {
+        "tier": "sonnet",
+        "ok": true,
+        "minutes": 1.3
+      }
+    ]
   }
 ]
