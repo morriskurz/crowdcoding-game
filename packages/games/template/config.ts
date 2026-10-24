@@ -11,3 +11,4 @@ export const config = {
   botCount: 4,
   botSpeed: 2,
 } as const;
+// Feature #6: players grow only by eating other players.
