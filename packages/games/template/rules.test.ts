@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createWorld, joinPlayer, runTick, bodies, get, spawn } from "@tcg/shared";
-import { botEatCheck, botFightCheck, botStep, eatCheck, magnetCheck, rules, spawnPellet, GROWTH_PER_PELLET } from "./rules.js";
+import { blowbackCheck, botEatCheck, botFightCheck, botStep, eatCheck, magnetCheck, rules, spawnPellet, GROWTH_PER_PELLET } from "./rules.js";
 import { config } from "./config.js";
 
 function world(seed = 7) {
@@ -145,6 +145,42 @@ describe("template agar", () => {
     const types = new Set(bodies(w, "pellet").map((q) => (q.data as any).type));
     for (const t of types) expect(["normal", "spiked", "sweet"]).toContain(t);
     expect(types.size).toBe(3);
+  });
+
+  it("blowback: bigger movers shove harder, stationary and distant do nothing", () => {
+    const shove = (r: number, moving: boolean, gap = 0) => {
+      const w = createWorld();
+      const a = spawn(w, { kind: "bot", x: 300, y: 300, r });
+      if (moving) a.vx = 1;
+      const b = spawn(w, { kind: "bot", x: 300 + r + 3 + gap, y: 300, r: 5 });
+      const x0 = b.x;
+      blowbackCheck(w);
+      expect(Number.isFinite(b.x) && Number.isFinite(b.y)).toBe(true);
+      return { dx: b.x - x0, dy: b.y - 300, ax: a.x };
+    };
+    const small = shove(10, true).dx;
+    const big = shove(40, true).dx;
+    expect(small).toBeCloseTo(Math.min(config.blowbackMax, config.blowbackStrength * 10), 5);
+    expect(big).toBeGreaterThan(small);
+    expect(shove(40, false).dx).toBe(0);
+    expect(shove(40, true, 50).dx).toBe(0);
+  });
+
+  it("blowback: zero distance gives finite push and stays in arena", () => {
+    const w = createWorld();
+    const a = spawn(w, { kind: "bot", x: 300, y: 300, r: 20 });
+    a.vy = 2;
+    const b = spawn(w, { kind: "player", x: 300, y: 300, r: 20 });
+    blowbackCheck(w);
+    expect(b.x).toBeGreaterThan(300);
+    expect(Number.isNaN(b.y)).toBe(false);
+    const w2 = createWorld();
+    const c = spawn(w2, { kind: "bot", x: 20, y: 300, r: 20 });
+    c.vx = 1;
+    const e = spawn(w2, { kind: "bot", x: 5, y: 300, r: 5 });
+    blowbackCheck(w2);
+    expect(e.x).toBeGreaterThanOrEqual(5);
+    expect(e.x).toBeLessThanOrEqual(config.bounds - 5);
   });
 
   it("is deterministic with bots", () => {

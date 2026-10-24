@@ -119,6 +119,35 @@ export function botFightCheck(w: World): void {
   }
 }
 
+// Moving circles shove overlapping players/bots away from them, harder when bigger.
+export function blowbackCheck(w: World): void {
+  const all = [...bodies(w, "player"), ...bodies(w, "bot")];
+  const push = new Map<number, { dx: number; dy: number }>();
+  for (const a of all) {
+    if (!a.vx && !a.vy) continue;
+    for (const b of all) {
+      if (a === b) continue;
+      const ddx = b.x - a.x;
+      const ddy = b.y - a.y;
+      const d = Math.sqrt(ddx * ddx + ddy * ddy);
+      if (d >= a.r + b.r) continue;
+      const ux = d > 0 ? ddx / d : 1;
+      const uy = d > 0 ? ddy / d : 0;
+      const amt = Math.min(config.blowbackMax, config.blowbackStrength * a.r);
+      const acc = push.get(b.id as unknown as number) ?? { dx: 0, dy: 0 };
+      acc.dx += ux * amt;
+      acc.dy += uy * amt;
+      push.set(b.id as unknown as number, acc);
+    }
+  }
+  for (const b of all) {
+    const acc = push.get(b.id as unknown as number);
+    if (!acc) continue;
+    b.x = Math.min(Math.max(b.x + acc.dx, b.r), config.bounds - b.r);
+    b.y = Math.min(Math.max(b.y + acc.dy, b.r), config.bounds - b.r);
+  }
+}
+
 export const rules: GameRules = {
   arena: { w: config.bounds, h: config.bounds },
   init(w) {
@@ -140,6 +169,7 @@ export const rules: GameRules = {
     eatCheck(w);
     botEatCheck(w);
     botFightCheck(w);
+    blowbackCheck(w);
     while (bodies(w, "pellet").length < config.pellets) spawnPellet(w);
   },
 };
