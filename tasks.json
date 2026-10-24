@@ -1,57 +1,12 @@
 [
   {
     "id": "t1",
-    "title": "config: botCount and botSpeed numbers",
-    "tier": "muse",
-    "files": [
-      "packages/games/template/config.ts"
-    ],
-    "estMin": 5,
-    "actualMin": 1.1,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.1
-      }
-    ]
-  },
-  {
-    "id": "t2",
-    "title": "rules: bots chase nearest pellet, eat and grow, can be eaten by bigger players + tests",
-    "tier": "sonnet",
-    "files": [
-      "packages/games/template/rules.ts",
-      "packages/games/template/rules.test.ts"
-    ],
-    "estMin": 18,
-    "actualMin": 1.1,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "sonnet",
-        "ok": true,
-        "minutes": 1.1
-      }
-    ]
-  },
-  {
-    "id": "t3",
-    "title": "assets: draw bots as red glowing circles distinct from players",
+    "title": "assets: bigger particle burst in the scorer's color when any player scores a pellet",
     "tier": "muse",
     "files": [
       "packages/games/template/assets.ts"
     ],
     "estMin": 10,
-    "actualMin": 1.2,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.2
-      }
-    ]
+    "done": false
   }
 ]

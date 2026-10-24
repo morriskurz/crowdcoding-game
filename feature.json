@@ -1,9 +1,9 @@
 {
-  "id": "2",
-  "spec": "Computer-controlled enemies added for all players to compete against",
+  "id": "5",
+  "spec": "a burst of particles when a player scores, for all players",
   "slug": "template",
   "game": "template",
-  "branch": "f/2-template",
-  "status": "ready",
-  "updatedAt": "2026-10-23T20:16:50.404Z"
+  "branch": "f/5-template",
+  "status": "building",
+  "updatedAt": "2026-10-24T05:35:21.360Z"
 }
