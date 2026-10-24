@@ -27,4 +27,10 @@ export const config = {
   triangleGrowthMult: 0.6,
   shapeBounty: 0.5,
   shapeHuntMargin: 1.2,
+  minimapSize: 220,
+  minimapMargin: 12,
+  minimapDotMin: 4,
+  minimapDotMax: 12,
+  minimapAlpha: 0.7,
+  cameraZoom: 1.8,
 } as const;

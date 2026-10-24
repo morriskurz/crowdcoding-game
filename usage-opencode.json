@@ -118,5 +118,37 @@
     "tokensOut": 1612,
     "costUsd": 0.003813,
     "ok": true
+  },
+  {
+    "at": "2026-10-24T10:34:59.422Z",
+    "model": "opencode-go/muse-spark-1.3-contributor",
+    "tokensIn": 37733,
+    "tokensOut": 308,
+    "costUsd": 0.001393,
+    "ok": true
+  },
+  {
+    "at": "2026-10-24T10:36:48.725Z",
+    "model": "opencode-go/muse-spark-1.3-contributor",
+    "tokensIn": 97148,
+    "tokensOut": 1763,
+    "costUsd": 0.002387,
+    "ok": true
+  },
+  {
+    "at": "2026-10-24T10:39:50.572Z",
+    "model": "opencode-go/muse-spark-1.3-contributor",
+    "tokensIn": 37975,
+    "tokensOut": 383,
+    "costUsd": 0.001432,
+    "ok": true
+  },
+  {
+    "at": "2026-10-24T10:41:32.353Z",
+    "model": "opencode-go/muse-spark-1.3-contributor",
+    "tokensIn": 83380,
+    "tokensOut": 2083,
+    "costUsd": 0.002415,
+    "ok": true
   }
 ]
