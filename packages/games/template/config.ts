@@ -20,7 +20,7 @@ export const config = {
   sweetGrowth: 2,
   specialistBonus: 0.5,
   specialistMin: 3,
-  maxSize: 40,
+  maxSize: 22,
   squareSpeedMult: 0.7,
   triangleSpeedMult: 1.5,
   squareGrowthMult: 1.5,
