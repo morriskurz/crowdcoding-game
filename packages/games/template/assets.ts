@@ -45,6 +45,32 @@ export function drawPlayer(ctx: CanvasRenderingContext2D, e: Entity, color: stri
   t.push(e.x, e.y);
   t.draw(ctx, { color, width: e.r * 1.2, alpha: 0.25, additive: true });
   drawGlow(ctx, e.x, e.y, e.r * 2.6, color, 0.35);
+  const shape = (e.data as { shape?: string } | undefined)?.shape;
+  if (shape === "square") {
+    ctx.fillStyle = color;
+    ctx.fillRect(e.x - e.r, e.y - e.r, e.r * 2, e.r * 2);
+    ctx.beginPath();
+    ctx.rect(e.x - e.r, e.y - e.r, e.r * 2, e.r * 2);
+    ctx.strokeStyle = "rgba(255,255,255,0.8)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    return;
+  }
+  if (shape === "triangle") {
+    const r = e.r * 1.15;
+    const angles = [-Math.PI / 2, Math.PI / 6, (Math.PI * 5) / 6];
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(e.x + Math.cos(angles[0]) * r, e.y + Math.sin(angles[0]) * r);
+    ctx.lineTo(e.x + Math.cos(angles[1]) * r, e.y + Math.sin(angles[1]) * r);
+    ctx.lineTo(e.x + Math.cos(angles[2]) * r, e.y + Math.sin(angles[2]) * r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.8)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    return;
+  }
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
