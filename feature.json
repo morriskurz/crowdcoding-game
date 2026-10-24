@@ -1,9 +1,9 @@
 {
-  "id": "5",
-  "spec": "a burst of particles when a player scores, for all players",
+  "id": "6",
+  "spec": "Remove red bubbles so players can only grow by eating other players for all players",
   "slug": "template",
   "game": "template",
-  "branch": "f/5-template",
-  "status": "ready",
-  "updatedAt": "2026-10-24T05:37:20.216Z"
+  "branch": "f/6-template",
+  "status": "building",
+  "updatedAt": "2026-10-24T05:57:23.281Z"
 }

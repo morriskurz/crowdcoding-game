@@ -1,20 +1,23 @@
 [
   {
     "id": "t1",
-    "title": "assets: bigger particle burst in the scorer's color when any player scores a pellet",
+    "title": "config: no pellets, no bots",
     "tier": "muse",
     "files": [
-      "packages/games/template/assets.ts"
+      "packages/games/template/config.ts"
     ],
-    "estMin": 10,
-    "actualMin": 1.4,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.4
-      }
-    ]
+    "estMin": 5,
+    "done": false
+  },
+  {
+    "id": "t2",
+    "title": "rules: remove bots/pellet growth, players eat smaller players + tests",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/template/rules.ts",
+      "packages/games/template/rules.test.ts"
+    ],
+    "estMin": 20,
+    "done": false
   }
 ]
