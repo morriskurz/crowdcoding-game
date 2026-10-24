@@ -199,6 +199,24 @@ describe("template agar", () => {
     expect(["square", "triangle"]).toContain(getShape(p));
   });
 
+  it("shapes: bots at max size become shapes, move by shape speed, lose shape when eaten", () => {
+    const w = createWorld(5);
+    const bot = spawn(w, { kind: "bot", x: 400, y: 400, r: config.maxSize });
+    shapeCheck(w);
+    expect(bot.r).toBe(config.startSize);
+    const shape = getShape(bot);
+    expect(["square", "triangle"]).toContain(shape);
+    spawn(w, { kind: "pellet", x: bot.x + 50, y: bot.y, r: 2 });
+    botStep(w);
+    const mult = shape === "square" ? config.squareSpeedMult : config.triangleSpeedMult;
+    expect(Math.hypot(bot.vx, bot.vy)).toBeCloseTo(Math.min(config.botSpeed * mult, 50), 5);
+    joinPlayer(w, rules, "a", "alice");
+    const p = get(w, "a")!;
+    p.x = bot.x; p.y = bot.y; p.r = bot.r * 2;
+    botFightCheck(w);
+    expect(getShape(bot)).toBe("circle");
+  });
+
   it("shapes: speed and pellet growth depend on shape", () => {
     const move = (shape?: string) => {
       const w = createWorld();

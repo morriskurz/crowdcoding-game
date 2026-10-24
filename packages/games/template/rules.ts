@@ -64,6 +64,13 @@ export function shapeCheck(w: World): void {
     p.x = 100; p.y = 100; p.r = config.startSize;
     (p.data as { shape?: Shape }).shape = randomRange(w, 0, 1) < 0.5 ? "square" : "triangle";
   }
+  for (const b of bodies(w, "bot")) {
+    if (b.r < config.maxSize) continue;
+    b.x = randomRange(w, 0, config.bounds);
+    b.y = randomRange(w, 0, config.bounds);
+    b.r = config.startSize;
+    (b.data as { shape?: Shape }).shape = randomRange(w, 0, 1) < 0.5 ? "square" : "triangle";
+  }
 }
 
 // Shaped players and circle players hunt each other when one is clearly bigger and they overlap.
@@ -129,7 +136,9 @@ export function botStep(w: World): void {
     }
     if (best) {
       const d = Math.sqrt(best.d2) || 1;
-      const s = Math.min(config.botSpeed, d);
+      const shape = getShape(bot);
+      const mult = shape === "square" ? config.squareSpeedMult : shape === "triangle" ? config.triangleSpeedMult : 1;
+      const s = Math.min(config.botSpeed * mult, d);
       bot.vx = ((best.x - bot.x) / d) * s;
       bot.vy = ((best.y - bot.y) / d) * s;
     } else {
@@ -158,6 +167,7 @@ export function botFightCheck(w: World): void {
         bot.x = randomRange(w, 0, config.bounds);
         bot.y = randomRange(w, 0, config.bounds);
         bot.r = config.startSize;
+        delete (bot.data as { shape?: Shape }).shape;
       } else if (bot.r > p.r * 1.2 && d2 < bot.r ** 2) {
         bot.r += p.r * 0.5;
         p.x = 100; p.y = 100; p.r = config.startSize;
