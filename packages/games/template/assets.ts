@@ -10,6 +10,7 @@ export const scene: Scene = { width: config.bounds, height: config.bounds, backg
 const ME = "#7dd3fc";
 const PELLET = "#ffd54a";
 const trails = new Map<string, Trail>();
+let latest: Record<string, Entity> = {};
 
 // Stable per-player hue so everyone keeps their color between snapshots.
 function playerColor(id: string): string {
@@ -155,6 +156,7 @@ export function drawBot(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void 
 
 // Pellets that vanished were eaten by the nearest player: sparkle, and a sound if it was you.
 export function onSnapshot(prev: Readonly<Record<string, Entity>> | null, next: Readonly<Record<string, Entity>>, fx: Fx): void {
+  latest = next as Record<string, Entity>;
   for (const id of trails.keys()) if (!next[id]) trails.delete(id);
   if (!prev) return;
   const players = Object.values(next).filter((e) => e.kind === "player" || e.kind === "bot");
@@ -197,4 +199,49 @@ export function onSnapshot(prev: Readonly<Record<string, Entity>> | null, next: 
   }
 }
 
-export const assets = { scene, drawBackground, drawEntity, onSnapshot } satisfies GameAssets<Entity>;
+export function drawOverlay(ctx: CanvasRenderingContext2D, fx: Fx): void {
+  ctx.save();
+  const S = config.minimapSize;
+  const M = config.minimapMargin;
+  const originX = ctx.canvas.width - S - M;
+  const originY = ctx.canvas.height - S - M;
+  ctx.fillStyle = `rgba(11,14,20,${config.minimapAlpha})`;
+  ctx.fillRect(originX, originY, S, S);
+  ctx.strokeStyle = "rgba(125,211,252,0.5)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(originX, originY, S, S);
+  const dotMin = config.minimapDotMin;
+  const dotMax = config.minimapDotMax;
+  const span = config.maxSize - config.startSize;
+  for (const e of Object.values(latest)) {
+    if (e.kind !== "bot") continue;
+    const dx = originX + (e.x / config.bounds) * S;
+    const dy = originY + (e.y / config.bounds) * S;
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle = "#ff4d4d";
+    ctx.beginPath();
+    ctx.arc(dx, dy, dotMin, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  for (const e of Object.values(latest)) {
+    if (e.kind !== "player") continue;
+    const dx = originX + (e.x / config.bounds) * S;
+    const dy = originY + (e.y / config.bounds) * S;
+    let t = span === 0 ? 0 : (e.r - config.startSize) / span;
+    t = Math.min(1, Math.max(0, t));
+    const radius = Math.min(dotMax, Math.max(dotMin, dotMin + t * (dotMax - dotMin)));
+    ctx.fillStyle = e.id === fx.me ? ME : playerColor(e.id);
+    ctx.beginPath();
+    ctx.arc(dx, dy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    if (e.id === fx.me) {
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+export const assets = { scene, drawBackground, drawEntity, drawOverlay, onSnapshot } satisfies GameAssets<Entity>;
