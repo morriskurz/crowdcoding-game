@@ -5,7 +5,7 @@ import { Trail, drawGlow, pulse, type Fx, type GameAssets, type Scene } from "@t
 import type { Entity } from "@tcg/shared";
 import { config } from "./config.js";
 
-export const scene: Scene = { width: config.bounds, height: config.bounds, background: "#0b0e14" };
+export const scene: Scene = { width: config.bounds, height: config.bounds, background: "#0b0e14", zoom: config.cameraZoom };
 
 const ME = "#7dd3fc";
 const PELLET = "#ffd54a";
@@ -207,8 +207,8 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, fx: Fx): void {
   const originY = ctx.canvas.height - S - M;
   ctx.fillStyle = `rgba(11,14,20,${config.minimapAlpha})`;
   ctx.fillRect(originX, originY, S, S);
-  ctx.strokeStyle = "rgba(125,211,252,0.5)";
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(125,211,252,0.9)";
+  ctx.lineWidth = 2;
   ctx.strokeRect(originX, originY, S, S);
   const dotMin = config.minimapDotMin;
   const dotMax = config.minimapDotMax;
@@ -241,6 +241,39 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, fx: Fx): void {
       ctx.stroke();
     }
   }
+  let biggest: Entity | null = null;
+  for (const e of Object.values(latest)) {
+    if (e.kind !== "player") continue;
+    if (!biggest || e.r > biggest.r) biggest = e;
+  }
+  if (biggest) {
+    const dx = originX + (biggest.x / config.bounds) * S;
+    const dy = originY + (biggest.y / config.bounds) * S;
+    let t = span === 0 ? 0 : (biggest.r - config.startSize) / span;
+    t = Math.min(1, Math.max(0, t));
+    const radius = Math.min(dotMax, Math.max(dotMin, dotMin + t * (dotMax - dotMin)));
+    ctx.strokeStyle = "#ffd54a";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(dx, dy, radius + 2, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  const zoom = fx.camera.zoom;
+  const vw = ctx.canvas.width / zoom;
+  const vh = ctx.canvas.height / zoom;
+  const left = fx.camera.x - vw / 2;
+  const top = fx.camera.y - vh / 2;
+  let rw = (vw / config.bounds) * S;
+  let rh = (vh / config.bounds) * S;
+  rw = Math.min(S, rw);
+  rh = Math.min(S, rh);
+  let rx = originX + (left / config.bounds) * S;
+  let ry = originY + (top / config.bounds) * S;
+  rx = Math.min(originX + S - rw, Math.max(originX, rx));
+  ry = Math.min(originY + S - rh, Math.max(originY, ry));
+  ctx.strokeStyle = "rgba(255,255,255,0.6)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(rx, ry, rw, rh);
   ctx.restore();
 }
 
