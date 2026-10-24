@@ -53,5 +53,36 @@
         "minutes": 1.5
       }
     ]
+  },
+  {
+    "id": "t4",
+    "title": "config: lower maxSize to 22 so shapes appear",
+    "tier": "muse",
+    "files": [
+      "packages/games/template/config.ts"
+    ],
+    "estMin": 3,
+    "done": false
+  },
+  {
+    "id": "t5",
+    "title": "rules: bots at maxSize also respawn as shapes + test",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/template/rules.ts",
+      "packages/games/template/rules.test.ts"
+    ],
+    "estMin": 15,
+    "done": false
+  },
+  {
+    "id": "t6",
+    "title": "assets: draw shaped bots and stronger shape outline",
+    "tier": "muse",
+    "files": [
+      "packages/games/template/assets.ts"
+    ],
+    "estMin": 10,
+    "done": false
   }
 ]
