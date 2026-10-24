@@ -32,5 +32,11 @@ export const config = {
   minimapDotMin: 4,
   minimapDotMax: 12,
   minimapAlpha: 0.7,
+  killFeedLifetime: 5,
+  killFeedFade: 1.5,
+  killFeedMaxLines: 5,
+  killFeedFontSize: 16,
+  killFeedLineHeight: 22,
+  killFeedMargin: 12,
   cameraZoom: 1.8,
 } as const;
