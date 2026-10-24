@@ -80,6 +80,27 @@ Both live at the repo root on the feature branch. Their formats are fixed; `orch
 
 Owner decision 2026-10-24: when a feature needs more than the game files can do, the engine changes too. An engine task lists one file from `packages/kit/src/`, `packages/shared/src/` or `apps/client/src/game/` (+ its `.test.ts`), tier `sonnet` or `opus`, and comes before the game tasks that use it. The guard accepts these files on `f/*` only when the plan lists them. Frozen as before: the network and security core (`apps/server/src/room.ts`, `apps/client/src/net.ts`, the worker, CSP), the registry, `.github/`, `scripts/`. Engine changes stay additive: every archived game must still pass the gates.
 
+## Review: someone looks at the result
+
+Gates prove the code compiles, tests pass, the server survives 30 bots and nothing flashes. They do not prove the feature is worth anything. Feature #8 ("large moving circles absorb smaller static circles on contact") was planned as purple "drifters" eating teal "motes", built in four minutes, green everywhere, and no player ever met either. Three steps close that gap:
+
+1. **Acceptance criteria up front.** `plan --accept <file>` requires `{intent, accept}`: what a player experiences differently, and 2–5 criteria anyone can check by watching or by a test. Written by the orchestrator, never the raw spec. Stored in `review.json` at the repo root, committed with the plan.
+2. **Preview.** `node scripts/preview.mjs` records before (`origin/main`, a reused worktree at `.orchestrator/preview-base`) and after (the working tree) with `scripts/present/run.mjs`, the same recorder, seed and scenario CI uses for the ship-vote clip (~45 s). `--after-only` records just the working tree (~15 s); the muse-builder uses it to look at its visual tasks before reporting done.
+3. **Reviewer gate.** The `feature-reviewer` subagent (Sonnet, fresh context) gets the criteria and the six screenshots, reads the diff, and writes a verdict: per criterion `met` + evidence, `playerImpact`, `visible`, a 1–5 score and concrete findings. `orchestrate.mjs review --verdict <file>` records it as a round in `review.json`; a `pass` with an unmet criterion, no player impact, nothing visible or a score below 3 is turned into `fix`.
+
+`review` refuses a preview whose code hash (`packages/` + `apps/` trees of the working tree) differs from the current code, and `finish` refuses a review whose code hash differs. So any change after the review means preview and review again.
+
+On `fix` the orchestrator plans 1–3 fix tasks from the findings (`plan --append`, which keeps the criteria), builds them, and reviews again. After `MAX_FIX_ROUNDS` (2) fix rounds the next review lets `finish` proceed whatever it says: fail forward, the queue never sticks. The failed review stays in `review.json`; the bot reads it and does not ship such a feature without real votes.
+
+`review.json`:
+
+```json
+{ "intent": "…", "accept": ["…", "…"],
+  "rounds": [{ "verdict": "fix", "score": 1, "playerImpact": false, "visible": true,
+               "criteria": [{ "text": "…", "met": false, "evidence": "…" }], "findings": ["…"],
+               "packagesTree": "<tree>+<tree>", "at": "2026-10-24T07:00:00.000Z" }] }
+```
+
 ## Ending a feature
 
 A feature ends `ready` (`finish`) or `failed` (`fail --reason <text>`, for a spec nothing can build, even with engine tasks). Never leave it at `building`: the scheduler takes a branch without progress for a dead session and starts it again. The bot frees the queue on `failed`.
@@ -91,6 +112,7 @@ A feature ends `ready` (`finish`) or `failed` (`fail --reason <text>`, for a spe
 | `muse` | `muse-builder` | Haiku, driving Muse Spark via `scripts/muse.mjs` | `config.ts` numbers, `assets.ts` visuals/audio |
 | `sonnet` | `sonnet-builder` | Sonnet | `rules.ts` logic + vitest tests; muse escalations |
 | `opus` | `opus-builder` | Opus | hard tasks, sonnet escalations, the bootstrap task |
+| — | `feature-reviewer` | Sonnet | judges the finished feature against its criteria from screenshots + diff |
 
 `scripts/muse.mjs` runs `opencode run -m opencode-go/muse-spark-1.3-contributor --format json --auto "<prompt>"` with only the task prompt and the target file list, Bash and web access denied by config, secrets stripped from its environment, and a timeout (default 300 s). It parses the JSON event stream (tokens, cost, edited files, errors), reverts edits outside the target files, and appends the usage entry. The OpenCode key comes from the cloud environment's network secret; `OPENCODE_API_KEY` is only a placeholder.
 
@@ -127,6 +149,7 @@ muse → muse(retry) → sonnet → sonnet(retry) → opus → opus(retry) → f
 - Every task that finishes, done or failed, is one commit with its files, `tasks.json`, `feature.json` and `usage-opencode.json`, then a push (retried with backoff 2/4/8/16 s).
 - Failed attempts that will be retried are not committed; their record is in the next commit's `attempts`.
 - Commits stage only those paths. Anything else dirty is reported as `uncommitted` and left out.
+- `review` commits `review.json` with the new round.
 - `finish` commits the final status.
 
 So a session that dies loses at most the task in progress.
@@ -153,12 +176,14 @@ Payload with `bootstrap: true` and `slug` = new game directory.
 ```bash
 node scripts/orchestrate.mjs start --payload <file>
 node scripts/orchestrate.mjs bootstrap
-node scripts/orchestrate.mjs plan --tasks <file> [--append]
+node scripts/orchestrate.mjs plan --tasks <file> --accept <file> [--append]
 node scripts/orchestrate.mjs next
 node scripts/orchestrate.mjs begin <id> --tier muse|sonnet|opus [--reest <min>]
 node scripts/orchestrate.mjs verify <id>
 node scripts/orchestrate.mjs reset <id>
 node scripts/orchestrate.mjs resplit <id> --tasks <file>
+node scripts/preview.mjs [--after-only] [--secs 12]
+node scripts/orchestrate.mjs review --verdict <file>
 node scripts/orchestrate.mjs finish
 node scripts/orchestrate.mjs fail --reason <text>
 node scripts/orchestrate.mjs validate | show
@@ -179,4 +204,10 @@ Unit tests for `muse.mjs` (recorded Muse event stream in `scripts/fixtures/`), `
 node scripts/orchestrate.mjs dry-run --worktree /tmp/orch-dry
 ```
 
-Runs the whole protocol on the toy spec "pellets glow for all players" (`scripts/fixtures/dry-run-glow.json`) in a separate worktree, with canned edits in place of the LLM builders: branch `f/dry1-pellets-glow`, plan of three tasks, full gates after each, one task escalated muse → muse → sonnet on a real typecheck failure, final status `ready`, guard green. Nothing is pushed.
+Runs the whole protocol on the toy spec "pellets glow for all players" (`scripts/fixtures/dry-run-glow.json`) in a separate worktree, with canned edits in place of the LLM builders: branch `f/dry1-pellets-glow`, plan of three tasks, full gates after each, one task escalated muse → muse → sonnet on a real typecheck failure, final status `ready`, guard green. Nothing is pushed. (That fixture predates the shipped glow feature, so its edits no longer apply to the current game.)
+
+```bash
+node scripts/orchestrate.mjs dry-run --scenario scripts/fixtures/dry-run-review.json --worktree /tmp/orch-dry
+```
+
+One config task, then the review step with a canned verdict (no browser, no reviewer) and `finish`: branch `f/dry2-faster-bots`, commits plan → t1 → review 1 pass → ready.
