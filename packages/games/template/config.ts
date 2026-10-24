@@ -8,6 +8,8 @@ export const config = {
   startSize: 8,
   pelletGlowRadius: 16,
   pelletGlowAlpha: 0.8,
+  blowbackStrength: 0.15,
+  blowbackMax: 12,
   botCount: 4,
   botSpeed: 2,
   spikedChance: 0.2,
