@@ -11,6 +11,7 @@
 //   reset <id>                   restore the task's files to HEAD (before escalating to a new tier)
 //   resplit <id> --tasks <file>  replace a failed task by smaller subtasks (ids <id>.1, <id>.2, ...)
 //   finish                       final gates; status ready only when all tasks done and gates green
+//   fail --reason <text>         the feature cannot be built at all: status failed, commit, push (frees the queue)
 //   validate | show
 //   dry-run [--scenario <file>] [--worktree <dir>]   whole flow on a toy spec, no LLM, no push
 //
@@ -27,6 +28,13 @@ export const TIERS = ["muse", "sonnet", "opus"];
 export const STATUSES = ["planning", "building", "gates", "ready", "failed"];
 export const TRIES_PER_TIER = 2; // first try + 1 retry
 const MUSE_FILES = /^(config|assets)\.ts$/;
+/**
+ * Engine files an `engine` task may change when a feature needs more than the game files can do
+ * (owner decision 2026-10-24: the engine may be rebuilt). The network and security core stays frozen
+ * (scripts/guard.mjs FROZEN: room.ts, net.ts, worker, CSP, .github, scripts).
+ */
+export const ENGINE_FILES = [/^packages\/kit\/src\/[\w-]+(\.test)?\.ts$/, /^packages\/shared\/src\/([\w-]+\/)?[\w-]+(\.test)?\.ts$/, /^apps\/client\/src\/game\/[\w-]+(\.test)?\.ts$/];
+export const isEngineFile = (f) => ENGINE_FILES.some((re) => re.test(f));
 const FEATURE = "feature.json";
 const TASKS = "tasks.json";
 const USAGE = "usage-opencode.json";
@@ -82,7 +90,7 @@ const TASK_KEYS = ["id", "title", "tier", "files", "estMin", "agentReEst", "actu
 
 /**
  * Validate tasks.json. gameDir = "packages/games/<slug>/". Rules on top of the format:
- * ids unique; files under gameDir; a directory entry only on the bootstrap task;
+ * ids unique; files under gameDir (or engine files, see ENGINE_FILES); a directory entry only on the bootstrap task;
  * other tasks touch one source file (+ its .test.ts); muse tasks only config.ts / assets.ts.
  */
 export function validateTasks(tasks, gameDir) {
@@ -109,6 +117,15 @@ export function validateTasks(tasks, gameDir) {
       }
     }
     if (!Array.isArray(t.files) || !t.files.length || t.files.some((f) => typeof f !== "string")) { errs.push(`${at}: files must be a non-empty string array`); continue; }
+    if (t.files.some(isEngineFile)) {
+      // Engine task: one engine source file (+ its .test.ts), sonnet or opus, never mixed with game files.
+      if (t.files.some((f) => !isEngineFile(f) || f.includes(".."))) errs.push(`${at}: an engine task lists engine files only: ${t.files.join(",")}`);
+      const src = t.files.filter((f) => !f.endsWith(".test.ts"));
+      const tests = t.files.filter((f) => f.endsWith(".test.ts"));
+      if (src.length !== 1 || tests.length > 1) errs.push(`${at}: one engine source file (+ a .test.ts) per task; split it`);
+      if (t.tier === "muse") errs.push(`${at}: engine tasks need tier sonnet or opus`);
+      continue;
+    }
     const bad = t.files.filter((f) => !f.startsWith(gameDir) || f.includes("..") || f === gameDir && t.id !== "bootstrap");
     if (bad.length) errs.push(`${at}: files outside ${gameDir} (or dir entry on a non-bootstrap task): ${bad.join(",")}`);
     if (t.id === "bootstrap") {
@@ -217,6 +234,21 @@ const readJson = (f) => JSON.parse(fs.readFileSync(f, "utf8"));
 const writeJson = (f, v) => fs.writeFileSync(f, JSON.stringify(v, null, 2) + "\n");
 const readInput = (f) => (f === "-" ? fs.readFileSync(0, "utf8") : fs.readFileSync(f, "utf8"));
 const statePath = () => process.env.ORCH_STATE ?? ".orchestrator/state.json";
+/**
+ * Fetch main, then the feature branch if it exists. One `git fetch origin main <branch>` fails as a whole
+ * when the branch is not on origin yet (every new feature), which left origin/main stale: fetch them apart.
+ */
+function fetchOrigin(branch) {
+  let r;
+  for (let i = 0; i < 4; i++) {
+    r = spawnSync("git", ["fetch", "-q", "origin", "+refs/heads/main:refs/remotes/origin/main"], { encoding: "utf8" });
+    if (r.status === 0) break;
+  }
+  if (r.status !== 0) throw new Error(`git fetch origin main failed: ${(r.stderr ?? "").trim().slice(0, 200)}`);
+  const ls = spawnSync("git", ["ls-remote", "--exit-code", "--heads", "origin", branch], { encoding: "utf8" });
+  if (ls.status === 0) spawnSync("git", ["fetch", "-q", "origin", `+refs/heads/${branch}:refs/remotes/origin/${branch}`], { stdio: "ignore" });
+}
+
 function loadState() { try { return readJson(statePath()); } catch { return {}; } }
 function saveState(s) { fs.mkdirSync(path.dirname(statePath()), { recursive: true }); writeJson(statePath(), s); }
 
@@ -283,12 +315,16 @@ export const commands = {
   start(args) {
     const pl = parsePayload(readInput(args.payload ?? "-"));
     const game = resolveGame(pl, process.cwd(), { resuming: git("rev-parse", "--abbrev-ref", "HEAD") === pl.branch });
-    if (!args["no-fetch"]) spawnSync("git", ["fetch", "-q", "origin", "main", pl.branch], { stdio: "ignore" });
+    if (!args["no-fetch"]) fetchOrigin(pl.branch);
     let resumed = false;
     if (git("rev-parse", "--abbrev-ref", "HEAD") === pl.branch) resumed = fs.existsSync(FEATURE);
     else if (gitOk("rev-parse", "--verify", "-q", `refs/remotes/origin/${pl.branch}`)) { git("checkout", "-q", "-B", pl.branch, `origin/${pl.branch}`); resumed = true; }
     else if (gitOk("rev-parse", "--verify", "-q", `refs/heads/${pl.branch}`)) { git("checkout", "-q", pl.branch); resumed = true; }
-    else git("checkout", "-q", "-b", pl.branch, gitOk("rev-parse", "--verify", "-q", "origin/main") ? "origin/main" : "HEAD");
+    else {
+      // A new feature always starts from the current main, never from the session's checkout.
+      if (!args["no-fetch"] && !gitOk("rev-parse", "--verify", "-q", "origin/main")) throw new Error("origin/main missing after fetch; refusing to branch from a stale checkout");
+      git("checkout", "-q", "-b", pl.branch, gitOk("rev-parse", "--verify", "-q", "origin/main") ? "origin/main" : "HEAD");
+    }
     saveState({ game, branch: pl.branch, bootstrap: pl.bootstrap });
 
     let feature;
@@ -411,6 +447,16 @@ export const commands = {
     const ready = gates.ok === true && gates.complete === true;
     saveFeature(feature, { status: ready ? "ready" : "building" });
     return { ok: ready, status: ready ? "ready" : "building", gates, ...commit(`${feature.branch}: ${ready ? "ready" : "final gates red"}`) };
+  },
+
+  // The spec cannot be built at all (not even with engine tasks): mark it failed so the bot frees the queue.
+  fail(args) {
+    const reason = String(args.reason ?? "").trim();
+    if (!reason) throw new Error("fail needs --reason <text>");
+    const feature = loadFeature();
+    if (feature.status === "ready") throw new Error("feature is ready; nothing to fail");
+    saveFeature(feature, { status: "failed" });
+    return { ok: true, status: "failed", reason: reason.slice(0, 300), ...commit(`${feature.branch}: failed\n\n${reason.slice(0, 1000)}`) };
   },
 
   validate() {

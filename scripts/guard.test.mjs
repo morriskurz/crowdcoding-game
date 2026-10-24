@@ -69,11 +69,19 @@ test("checkDiff: plan coverage, no per-game file cap", () => {
   assert.deepEqual(checkDiff(["tasks.json", "apps/server/src/worker.ts"], []), []);
 });
 
-test("checkDiff: frozen files, including kit and streamer", () => {
-  for (const f of ["packages/shared/src/sim/physics.ts", "packages/kit/src/camera.ts", "apps/streamer/run.sh", "apps/server/src/room.ts", "apps/client/src/net.ts", ".github/workflows/ci.yml"]) {
+test("checkDiff: engine files only when the plan lists them", () => {
+  for (const f of ["packages/shared/src/sim/physics.ts", "packages/kit/src/camera.ts", "apps/client/src/game/main.ts"]) {
+    assert.deepEqual(checkDiff([f], [f]), [], f);
+    assert.match(checkDiff([f], [])[0] ?? "", /not in committed tasks\.json plan/, f);
+  }
+  assert.match(checkDiff(["packages/kit/package.json"], [])[0] ?? "", /not in committed tasks\.json plan/);
+});
+
+test("checkDiff: frozen files, including streamer and the network core", () => {
+  for (const f of ["apps/streamer/run.sh", "apps/server/src/room.ts", "apps/client/src/net.ts", ".github/workflows/ci.yml"]) {
     assert.match(checkDiff([f], [f])[0] ?? "", /changed frozen/, f);
   }
-  assert.deepEqual(checkDiff(["packages/shared/package.json", "apps/server/src/roomy.ts"], []), []);
+  assert.deepEqual(checkDiff(["apps/server/src/roomy.ts"], []), []);
 });
 
 test("checkDiff: game registry is frozen; a game's package.json only via the bootstrap dir entry", () => {

@@ -93,6 +93,7 @@ export function botFightCheck(w: World): void {
 }
 
 export const rules: GameRules = {
+  arena: { w: config.bounds, h: config.bounds },
   init(w) {
     for (let i = 0; i < config.pellets; i++) spawnPellet(w);
     for (let i = 0; i < config.botCount; i++) spawnBot(w);

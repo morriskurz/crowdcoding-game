@@ -1,5 +1,5 @@
-// Idle bots for archived rooms (owner decision): an old week's game feels alive when someone drops
-// in, at ~zero cost. Bots are server-side players, never fake WebSocket clients: they join through
+// Idle bots (owner decisions): an old week's game feels alive when someone drops in, and the current
+// game is never an empty arena on stream, at ~zero cost. Bots are server-side players, never fake WebSocket clients: they join through
 // the game's own rules.join, get one input per tick like every player, and rules.step moves them.
 // They exist only while at least one real player or spectator is connected (the room does not tick otherwise).
 // The AI is deterministic: a pure function of the world and the bot's number, no clocks, no RNG.
@@ -7,13 +7,18 @@ import { joinPlayer, leavePlayer, type GameRules, type Input, type World } from 
 
 /** An archived room with players is filled up to this many players with bots. */
 export const BOT_FILL = 6;
+/**
+ * The current game is filled up to this many players while anyone watches, so the stream never shows an
+ * empty arena (owner decision 2026-10-24). Fewer than an archive: real players should still matter.
+ */
+export const CURRENT_FILL = 3;
 /** Bot player ids. Client connection ids (partysocket `_pk`) with this prefix are refused. */
 export const BOT_PREFIX = "bot:";
 export const isBotId = (id: string): boolean => id.startsWith(BOT_PREFIX);
 
-/** Bots a room should run: archived and anyone connected (player or spectator) -> fill the players up to BOT_FILL; else none. */
+/** Bots a room should run: anyone connected (player or spectator) -> fill the players up to BOT_FILL (archive) or CURRENT_FILL; else none. */
 export function botTarget(archived: boolean, humans: number, spectators = 0): number {
-  return archived && humans + spectators > 0 ? Math.max(0, BOT_FILL - humans) : 0;
+  return humans + spectators > 0 ? Math.max(0, (archived ? BOT_FILL : CURRENT_FILL) - humans) : 0;
 }
 
 const clamp1 = (v: number) => Math.max(-1, Math.min(1, v));

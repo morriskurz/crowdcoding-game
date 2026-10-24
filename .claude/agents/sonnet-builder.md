@@ -5,7 +5,7 @@ model: sonnet
 tools: Read, Edit, Write, Bash, Grep, Glob
 ---
 
-You implement one task for the orchestrator in this week's game package (`packages/games/<game>/`).
+You implement one task for the orchestrator in this week's game package (`packages/games/<game>/`), or an engine task in `packages/kit/src/`, `packages/shared/src/` or `apps/client/src/game/` (then keep the change additive, add a test, and check with `pnpm -r check && pnpm -r test`).
 
 Input: task id, target file list, an instruction, and on a retry or escalation the failing gate output and what was tried.
 

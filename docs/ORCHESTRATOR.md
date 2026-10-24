@@ -37,7 +37,7 @@ Only the current game takes new features. Every other `packages/games/<slug>/` i
 
 ## Branch
 
-`f/<featureId>-<slug>`. `start` checks it out from `origin/<branch>` if it exists (resume), otherwise creates it from `origin/main`. On a new branch `tasks.json` starts as `[]`, so `main`'s placeholder plan never leaks into a feature.
+`f/<featureId>-<slug>`. `start` fetches `main` and (if it exists) the branch separately, then checks the branch out from `origin/<branch>` (resume) or creates it from the fresh `origin/main`; a failed fetch of `main` stops `start`, so a feature never starts from a stale checkout. (Fetching both in one `git fetch` failed for every new feature, because the branch did not exist yet.) On a new branch `tasks.json` starts as `[]`, so `main`'s placeholder plan never leaks into a feature.
 
 ## Files
 
@@ -75,6 +75,14 @@ Both live at the repo root on the feature branch. Their formats are fixed; `orch
 `usage-opencode.json` (repo root): one entry per Muse call, `{at, model, tokensIn, tokensOut, costUsd, ok}`. It is committed with the task that made the calls.
 
 `.orchestrator/` (git-ignored): the payload copy, plan drafts and the attempt timer.
+
+## Engine tasks
+
+Owner decision 2026-10-24: when a feature needs more than the game files can do, the engine changes too. An engine task lists one file from `packages/kit/src/`, `packages/shared/src/` or `apps/client/src/game/` (+ its `.test.ts`), tier `sonnet` or `opus`, and comes before the game tasks that use it. The guard accepts these files on `f/*` only when the plan lists them. Frozen as before: the network and security core (`apps/server/src/room.ts`, `apps/client/src/net.ts`, the worker, CSP), the registry, `.github/`, `scripts/`. Engine changes stay additive: every archived game must still pass the gates.
+
+## Ending a feature
+
+A feature ends `ready` (`finish`) or `failed` (`fail --reason <text>`, for a spec nothing can build, even with engine tasks). Never leave it at `building`: the scheduler takes a branch without progress for a dead session and starts it again. The bot frees the queue on `failed`.
 
 ## Tiers and builders
 
@@ -152,6 +160,7 @@ node scripts/orchestrate.mjs verify <id>
 node scripts/orchestrate.mjs reset <id>
 node scripts/orchestrate.mjs resplit <id> --tasks <file>
 node scripts/orchestrate.mjs finish
+node scripts/orchestrate.mjs fail --reason <text>
 node scripts/orchestrate.mjs validate | show
 node scripts/orchestrate.mjs dry-run [--scenario <file>] [--worktree <dir>]
 ```
