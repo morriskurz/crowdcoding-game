@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createWorld, joinPlayer, runTick, bodies, get, spawn } from "@tcg/shared";
-import { botEatCheck, botFightCheck, botStep, eatCheck, magnetCheck, rules, GROWTH_PER_PELLET } from "./rules.js";
+import { botEatCheck, botFightCheck, botStep, eatCheck, magnetCheck, rules, spawnPellet, GROWTH_PER_PELLET } from "./rules.js";
 import { config } from "./config.js";
 
 function world(seed = 7) {
@@ -99,6 +99,52 @@ describe("template agar", () => {
     expect(p.r).toBe(config.startSize);
     expect(bot.r).toBeCloseTo(30 + config.startSize * 0.5, 5);
     expect(get(w, "a")).toBeDefined();
+  });
+
+  it("pellet types grow by type and are recorded", () => {
+    const w = createWorld();
+    joinPlayer(w, rules, "a", "alice");
+    const p = get(w, "a")!;
+    p.x = 10; p.y = 10;
+    spawn(w, { kind: "pellet", x: 10, y: 10, r: 2, data: { type: "spiked" } });
+    eatCheck(w);
+    expect(p.r).toBeCloseTo(config.startSize + config.spikedGrowth, 5);
+    spawn(w, { kind: "pellet", x: 10, y: 10, r: 2, data: { type: "sweet" } });
+    eatCheck(w);
+    expect(p.r).toBeCloseTo(config.startSize + config.spikedGrowth + config.sweetGrowth, 5);
+    expect((p.data as any).eaten).toEqual({ normal: 0, spiked: 1, sweet: 1 });
+  });
+
+  it("bots grow by pellet type", () => {
+    const w = createWorld();
+    const bot = spawn(w, { kind: "bot", x: 400, y: 400, r: config.startSize });
+    spawn(w, { kind: "pellet", x: 400, y: 400, r: 2, data: { type: "sweet" } });
+    botEatCheck(w);
+    expect(bot.r).toBeCloseTo(config.startSize + config.sweetGrowth, 5);
+  });
+
+  it("specialist bonus applies once a type dominates", () => {
+    const w = createWorld();
+    joinPlayer(w, rules, "a", "alice");
+    const p = get(w, "a")!;
+    p.x = 10; p.y = 10;
+    const grow: number[] = [];
+    for (let i = 0; i < config.specialistMin; i++) {
+      spawn(w, { kind: "pellet", x: 10, y: 10, r: 2, data: { type: "sweet" } });
+      const before = p.r;
+      eatCheck(w);
+      grow.push(p.r - before);
+    }
+    expect(grow[0]).toBeCloseTo(config.sweetGrowth, 5);
+    expect(grow[config.specialistMin - 1]).toBeCloseTo(config.sweetGrowth * (1 + config.specialistBonus), 5);
+  });
+
+  it("spawned pellets carry a valid type", () => {
+    const w = createWorld(3);
+    for (let i = 0; i < 100; i++) spawnPellet(w);
+    const types = new Set(bodies(w, "pellet").map((q) => (q.data as any).type));
+    for (const t of types) expect(["normal", "spiked", "sweet"]).toContain(t);
+    expect(types.size).toBe(3);
   });
 
   it("is deterministic with bots", () => {

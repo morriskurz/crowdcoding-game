@@ -12,8 +12,35 @@ const EAT_REACH = 4;
 
 const arena: Box = { x: 0, y: 0, w: config.bounds, h: config.bounds };
 
+export type PelletType = "normal" | "spiked" | "sweet";
+const TYPES: PelletType[] = ["normal", "spiked", "sweet"];
+
 export function spawnPellet(w: World): void {
-  spawn(w, { kind: "pellet", x: randomRange(w, 0, config.bounds), y: randomRange(w, 0, config.bounds), r: 2 });
+  const x = randomRange(w, 0, config.bounds);
+  const y = randomRange(w, 0, config.bounds);
+  const roll = randomRange(w, 0, 1);
+  const type: PelletType = roll < config.spikedChance ? "spiked" : roll < config.spikedChance + config.sweetChance ? "sweet" : "normal";
+  spawn(w, { kind: "pellet", x, y, r: 2, data: { type } });
+}
+
+function pelletType(pel: { data: object }): PelletType {
+  const t = (pel.data as { type?: unknown }).type;
+  return t === "spiked" || t === "sweet" ? t : "normal";
+}
+
+export function pelletGrowth(type: PelletType): number {
+  return type === "spiked" ? config.spikedGrowth : type === "sweet" ? config.sweetGrowth : GROWTH_PER_PELLET;
+}
+
+// Records the eaten pellet on the player and returns the growth (with specialist bonus).
+function playerGrowth(p: { data: object }, type: PelletType): number {
+  const d = p.data as { eaten?: Record<PelletType, number> };
+  const eaten = (d.eaten ??= { normal: 0, spiked: 0, sweet: 0 });
+  eaten[type] = (eaten[type] ?? 0) + 1;
+  const mine = eaten[type];
+  const isTop = TYPES.every((t) => t === type || (eaten[t] ?? 0) < mine);
+  const growth = pelletGrowth(type);
+  return isTop && mine >= config.specialistMin ? growth * (1 + config.specialistBonus) : growth;
 }
 
 export function magnetCheck(w: World): void {
@@ -36,7 +63,7 @@ export function eatCheck(w: World): void {
   for (const p of bodies(w, "player")) {
     for (const pel of bodies(w, "pellet")) {
       const d2 = (p.x - pel.x) ** 2 + (p.y - pel.y) ** 2;
-      if (d2 < (p.r + EAT_REACH) ** 2) { p.r += GROWTH_PER_PELLET; despawn(w, pel.id); }
+      if (d2 < (p.r + EAT_REACH) ** 2) { p.r += playerGrowth(p, pelletType(pel)); despawn(w, pel.id); }
     }
   }
 }
@@ -70,7 +97,7 @@ export function botEatCheck(w: World): void {
   for (const bot of bodies(w, "bot")) {
     for (const pel of bodies(w, "pellet")) {
       const d2 = (bot.x - pel.x) ** 2 + (bot.y - pel.y) ** 2;
-      if (d2 < (bot.r + EAT_REACH) ** 2) { bot.r += GROWTH_PER_PELLET; despawn(w, pel.id); }
+      if (d2 < (bot.r + EAT_REACH) ** 2) { bot.r += pelletGrowth(pelletType(pel)); despawn(w, pel.id); }
     }
   }
 }

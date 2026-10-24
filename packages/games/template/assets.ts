@@ -52,6 +52,37 @@ export function drawPlayer(ctx: CanvasRenderingContext2D, e: Entity, color: stri
 }
 
 export function drawPellet(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
+  const type = (e.data as { type?: string } | undefined)?.type;
+  if (type === "spiked") {
+    const radius = config.pelletGlowRadius + 3 * pulse(fx.time + e.x * 0.01, 1.5);
+    drawGlow(ctx, e.x, e.y, radius * 1.8, "#ff5a3c", 0.25);
+    drawGlow(ctx, e.x, e.y, radius, "#ff5a3c", config.pelletGlowAlpha);
+    ctx.fillStyle = "#ff5a3c";
+    ctx.beginPath();
+    const outer = 5;
+    const inner = 2;
+    for (let i = 0; i < 16; i++) {
+      const r = i % 2 === 0 ? outer : inner;
+      const a = (i / 16) * Math.PI * 2;
+      const px = e.x + Math.cos(a) * r;
+      const py = e.y + Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+  if (type === "sweet") {
+    const radius = config.pelletGlowRadius + 3 * pulse(fx.time + e.x * 0.01, 1.5);
+    drawGlow(ctx, e.x, e.y, radius * 1.8, "#6ee77a", 0.25);
+    drawGlow(ctx, e.x, e.y, radius, "#6ee77a", config.pelletGlowAlpha);
+    ctx.fillStyle = "#6ee77a";
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
   const radius = config.pelletGlowRadius + 3 * pulse(fx.time + e.x * 0.01, 1.5);
   drawGlow(ctx, e.x, e.y, radius * 1.8, PELLET, 0.25);
   drawGlow(ctx, e.x, e.y, radius, PELLET, config.pelletGlowAlpha);

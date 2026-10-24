@@ -1,9 +1,9 @@
 {
-  "id": "5",
-  "spec": "a burst of particles when a player scores, for all players",
+  "id": "9",
+  "spec": "Add varied small food types (e.g. spiked pellets) for all players, with growth path shaped by which types a player eats most.",
   "slug": "template",
   "game": "template",
-  "branch": "f/5-template",
+  "branch": "f/9-template",
   "status": "ready",
-  "updatedAt": "2026-10-24T05:37:20.216Z"
+  "updatedAt": "2026-10-24T06:26:53.600Z"
 }

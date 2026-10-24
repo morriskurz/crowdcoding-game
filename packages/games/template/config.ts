@@ -10,4 +10,10 @@ export const config = {
   pelletGlowAlpha: 0.8,
   botCount: 4,
   botSpeed: 2,
+  spikedChance: 0.2,
+  sweetChance: 0.2,
+  spikedGrowth: 0.3,
+  sweetGrowth: 2,
+  specialistBonus: 0.5,
+  specialistMin: 3,
 } as const;
