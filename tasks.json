@@ -1,39 +1,22 @@
 [
   {
     "id": "t1",
-    "title": "config: blowback strength constants",
+    "title": "config: collisionShake intensity and duration",
     "tier": "muse",
     "files": [
       "packages/games/template/config.ts"
     ],
     "estMin": 5,
-    "actualMin": 1.1,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.1
-      }
-    ]
+    "done": false
   },
   {
     "id": "t2",
-    "title": "rules: moving circles push overlapping circles away, push scaled by mover radius + tests",
-    "tier": "sonnet",
+    "title": "assets: shake camera when two players/bots newly overlap",
+    "tier": "muse",
     "files": [
-      "packages/games/template/rules.ts",
-      "packages/games/template/rules.test.ts"
+      "packages/games/template/assets.ts"
     ],
-    "estMin": 15,
-    "actualMin": 1.3,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "sonnet",
-        "ok": true,
-        "minutes": 1.3
-      }
-    ]
+    "estMin": 10,
+    "done": false
   }
 ]

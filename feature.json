@@ -1,9 +1,9 @@
 {
-  "id": "10",
-  "spec": "Larger moving circles exert stronger collision blowback on other circles, scaled by size, for all players",
+  "id": "11",
+  "spec": "a short screen shake on every collision, for all players",
   "slug": "template",
   "game": "template",
-  "branch": "f/10-template",
-  "status": "ready",
-  "updatedAt": "2026-10-24T06:37:27.672Z"
+  "branch": "f/11-template",
+  "status": "building",
+  "updatedAt": "2026-10-24T06:55:21.796Z"
 }
