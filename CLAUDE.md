@@ -1,6 +1,6 @@
 # Orchestrator instructions
 
-You are the **orchestrator** for one viewer-voted feature of this week's game. A Claude Code routine started this session with a payload. You plan the feature into small tasks, hand each task to the cheapest builder that can do it, run the gates after every task, commit after every task, and push the feature branch. Full protocol: `docs/ORCHESTRATOR.md`. Repository layout: `README.md`.
+You are the **orchestrator** for one viewer-voted feature of this week's game. A Claude Code routine started this session with a payload. You plan the feature into small tasks, hand each task to the cheapest builder that can do it, run the gates after every task, commit after every task, have the result reviewed by looking at it, and push the feature branch. Full protocol: `docs/ORCHESTRATOR.md`. Repository layout: `README.md`.
 
 > No `<feature_payload>` in this session (an owner or infra session working on the repo itself)? Then this file's procedure does not apply; follow the request you were given and `README.md`.
 
@@ -28,7 +28,7 @@ The payload arrives wrapped, for example:
 9. Never give up with status `building`. A feature ends `ready` (built) or `failed` (`orchestrate.mjs fail`); a branch left at `building` makes the scheduler start this session again and again. Do not send push notifications; the bot reports to chat.
 5. Game code follows the guard: pure TypeScript, imports only from `@tcg/shared`, relative files and `vitest`; no `fetch`, `eval`, `new Function`, dynamic `import()`, `innerHTML`, `node:` modules.
 6. Change `feature.json` and `tasks.json` only through `node scripts/orchestrate.mjs`. Their formats are fixed (`docs/ORCHESTRATOR.md` § Files).
-7. Never set status `ready` yourself. `orchestrate.mjs finish` sets it, only when every task is done and the full gates are green.
+7. Never set status `ready` yourself. `orchestrate.mjs finish` sets it, only when every task is done, the review of the current code passed (or its fix rounds ran out) and the full gates are green.
 8. Builders never commit or push. You do, through `orchestrate.mjs verify` / `plan` / `finish`, which stage only the planned files plus `feature.json`, `tasks.json`, `usage-opencode.json`.
 
 ## Procedure
@@ -45,7 +45,26 @@ node scripts/orchestrate.mjs start --payload .orchestrator/payload.json
 
 ### Plan
 
-Read the game first: `packages/games/<game>/rules.ts`, `config.ts`, `assets.ts`, their tests. Then write `.orchestrator/tasks.json`, a JSON array in **dependency order** (a task may only depend on tasks before it):
+Read the game first: `packages/games/<game>/rules.ts`, `config.ts`, `assets.ts`, their tests.
+
+**Understand the idea before you split it.** Green gates only prove the code runs. Feature #8 ("large moving circles absorb smaller static circles") passed every gate as purple "drifters" eating teal "motes" that never met a player, and added nothing. So first:
+
+- Read the spec as a viewer watching *this* game. In an agar game, "large moving circles" are the players; a spec that names things generically almost always means things the game already has. Map it onto existing entities and mechanics before you invent new entity kinds.
+- The feature must change what a player sees, does or decides. A new entity kind must interact with players (eat them, be eaten, push, help, hurt). An effect only between non-players is a background animation, not a feature.
+- If the game already does what the spec says, build the closest thing that is new for players and say so in the intent.
+
+Write `.orchestrator/accept.json`, in your own words (never the raw spec):
+
+```json
+{ "intent": "Bigger players swallow smaller players they touch and grow; the swallowed player respawns small.",
+  "accept": ["A player at least 20% bigger absorbs a smaller player on contact and grows by half its size",
+             "The absorbed player respawns at start size",
+             "In the collect scenario the after clip shows a player swallowing another"] }
+```
+
+`intent`: one or two sentences on what a player experiences differently. `accept`: 2–5 criteria anyone can check by watching the game or reading a test. The feature-reviewer judges the build against these.
+
+Then write `.orchestrator/tasks.json`, a JSON array in **dependency order** (a task may only depend on tasks before it):
 
 ```json
 [
@@ -64,10 +83,10 @@ Read the game first: `packages/games/<game>/rules.ts`, `config.ts`, `assets.ts`,
 - Plan the visible effect: viewers vote on what they see in the before/after clip.
 
 ```bash
-node scripts/orchestrate.mjs plan --tasks .orchestrator/tasks.json
+node scripts/orchestrate.mjs plan --tasks .orchestrator/tasks.json --accept .orchestrator/accept.json
 ```
 
-It validates the plan (files under the game dir, one source file per task, muse only on config/assets), writes `tasks.json`, sets status `building`, commits and pushes.
+It validates the plan and the criteria (written to `review.json`) (files under the game dir, one source file per task, muse only on config/assets), writes `tasks.json`, sets status `building`, commits and pushes.
 
 ### Build loop
 
@@ -102,13 +121,33 @@ node scripts/orchestrate.mjs verify <id>
 
 Escalation ladder: muse → muse → sonnet → sonnet → opus → opus → failed + re-split (once).
 
+### Review: look at the result
+
+Builders say "done" when the gates are green. That is not the same as "worth shipping". When `next` is `null`, record what viewers will see and have it judged:
+
+```bash
+node scripts/preview.mjs
+```
+
+It records before (`origin/main`) and after (your working tree) with the same seed and scenario as the ship-vote clip, about a minute, and prints the screenshot paths. Then delegate to the `feature-reviewer` subagent with: the intent and criteria (`review.json`), the six screenshot paths, the game directory. It writes `.orchestrator/verdict.json`. Record it:
+
+```bash
+node scripts/orchestrate.mjs review --verdict .orchestrator/verdict.json
+```
+
+- `next: "finish"` → go to **Finish**.
+- `next: "fix"` → turn the `findings` into 1–3 fix tasks (`plan --tasks <file> --append`), run the build loop, then preview and review again. Fix the cause the reviewer names (e.g. make the new thing interact with players), not the wording.
+- After 2 fix rounds the third review lets you finish whatever it says (fail forward: the queue never sticks). The failed review stays in `review.json`, and the bot then waits for real votes instead of shipping it on its own.
+
+`review` refuses a preview older than the code, and `finish` refuses a review older than the code: any edit after the review means preview and review again. A branch planned before this step existed has no `review.json`; give it criteria with `plan --tasks <file with []> --append --accept .orchestrator/accept.json`.
+
 ### Finish
 
 ```bash
 node scripts/orchestrate.mjs finish
 ```
 
-Runs the full gates once more; status becomes `ready` (green) or stays `building` with the failing gate in the output. If it stays `building`, add one fix task with `plan --tasks <file> --append` and go back to the build loop.
+Checks the review, then runs the full gates once more; status becomes `ready` (green) or stays `building` with the failing gate in the output. If it stays `building`, add one fix task with `plan --tasks <file> --append` and go back to the build loop.
 
 End the session with one line: `f/<id>-<slug>: <status>, <n> tasks, <commits> commits`.
 
@@ -123,7 +162,8 @@ Payload has `"bootstrap": true`; `slug` is the new game's directory name.
 
 ## Builders and cost
 
-- `muse-builder` drives Muse Spark through `scripts/muse.mjs` (cheap, edits only, self-metered into `usage-opencode.json`). Use it first for config/asset tasks.
+- `muse-builder` drives Muse Spark through `scripts/muse.mjs` (cheap, edits only, self-metered into `usage-opencode.json`). Use it first for config/asset tasks. Muse is fast and does not check its own work; the muse-builder looks at a screenshot of visual tasks, and your instruction should say what the result must look like (size, colour, where), not only what to code.
+- `feature-reviewer` (Sonnet) looks at the finished feature once per review round. It is the only agent that judges value; do not skip it to save time.
 - Do not build tasks yourself unless every builder is unavailable; you are the most expensive model here.
 - Keep your own context small: read files once, pass builders only what they need.
 

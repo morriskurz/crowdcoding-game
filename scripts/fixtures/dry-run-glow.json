@@ -89,5 +89,31 @@
         }
       ]
     ]
+  },
+  "accept": {
+    "intent": "Every pellet gets a soft glow so players can spot food from further away.",
+    "accept": [
+      "Every pellet on screen has a visible glow halo in the after screenshots",
+      "The glow is drawn for all players, not only the local one"
+    ]
+  },
+  "verdict": {
+    "verdict": "pass",
+    "score": 4,
+    "playerImpact": true,
+    "visible": true,
+    "criteria": [
+      {
+        "text": "Every pellet on screen has a visible glow halo in the after screenshots",
+        "met": true,
+        "evidence": "dry run"
+      },
+      {
+        "text": "The glow is drawn for all players, not only the local one",
+        "met": true,
+        "evidence": "dry run"
+      }
+    ],
+    "findings": []
   }
 }

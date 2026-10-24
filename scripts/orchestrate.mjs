@@ -4,13 +4,15 @@
 //
 //   start --payload <file>       validate payload, create/continue f/<featureId>-<slug>, write feature.json
 //   bootstrap                    (bootstrap payloads only) copy packages/games/template -> packages/games/<slug>
-//   plan --tasks <file> [--append]  validate + write tasks.json (array order = dependency order), commit
+//   plan --tasks <file> --accept <file> [--append]  validate + write tasks.json (array order = dependency
+//                                order) and review.json (intent + acceptance criteria), commit
 //   next                         next runnable task + the tier to use
 //   begin <id> --tier <t> [--reest <min>]   start an attempt (records the start time locally)
 //   verify <id> [--error <msg>] [--skip smoke]  run gates, record the attempt, done/retry/escalate/fail, commit
 //   reset <id>                   restore the task's files to HEAD (before escalating to a new tier)
 //   resplit <id> --tasks <file>  replace a failed task by smaller subtasks (ids <id>.1, <id>.2, ...)
-//   finish                       final gates; status ready only when all tasks done and gates green
+//   review --verdict <file>      record the feature-reviewer's verdict on the current code (needs a fresh preview)
+//   finish                       final gates; status ready only when all tasks done, the review passed and gates green
 //   fail --reason <text>         the feature cannot be built at all: status failed, commit, push (frees the queue)
 //   validate | show
 //   dry-run [--scenario <file>] [--worktree <dir>]   whole flow on a toy spec, no LLM, no push
@@ -22,6 +24,7 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { currentSlug, isGameSlug, listGames } from "./registry.mjs";
+import { codeTree, DEFAULT_OUT as PREVIEW_OUT } from "./preview.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const TIERS = ["muse", "sonnet", "opus"];
@@ -38,6 +41,12 @@ export const isEngineFile = (f) => ENGINE_FILES.some((re) => re.test(f));
 const FEATURE = "feature.json";
 const TASKS = "tasks.json";
 const USAGE = "usage-opencode.json";
+const REVIEW = "review.json";
+/**
+ * Review rounds that may send the feature back for fixes. After that it is finished anyway (fail forward:
+ * the queue never sticks) with the failed review on record; the bot then does not ship it unattended.
+ */
+export const MAX_FIX_ROUNDS = 2;
 
 // ---------- pure helpers (unit tested) ----------
 
@@ -143,6 +152,52 @@ export function validateTasks(tasks, gameDir) {
     if (t.tier === "muse" && !names.every((n) => MUSE_FILES.test(n))) errs.push(`${at}: muse tasks only edit config.ts / assets.ts`);
   }
   return errs;
+}
+
+/**
+ * review.json, written by `plan --accept` and `review`: what the feature is for, in the orchestrator's
+ * words, and how anyone can tell it works by watching the game. Crowdcoding feature #8: green gates, a
+ * plan that never touched a player, nobody looked. These criteria are what the reviewer checks.
+ */
+export function validateAccept(a) {
+  const errs = [];
+  if (!a || typeof a !== "object" || Array.isArray(a)) return ["accept: must be an object {intent, accept}"];
+  for (const k of Object.keys(a)) if (!["intent", "accept"].includes(k)) errs.push(`accept: unknown key ${k}`);
+  if (typeof a.intent !== "string" || a.intent.trim().length < 20 || a.intent.length > 600) errs.push("accept.intent: 20-600 chars, what a player sees or does differently");
+  if (!Array.isArray(a.accept) || a.accept.length < 2 || a.accept.length > 5) errs.push("accept.accept: 2-5 criteria");
+  else for (const [i, c] of a.accept.entries()) if (typeof c !== "string" || c.trim().length < 10 || c.length > 300) errs.push(`accept.accept[${i}]: 10-300 chars, observable in the game`);
+  return errs;
+}
+
+/** The feature-reviewer's verdict (.claude/agents/feature-reviewer.md). Returns {errs, verdict} with the verdict made consistent. */
+export function checkVerdict(v, accept) {
+  const errs = [];
+  if (!v || typeof v !== "object" || Array.isArray(v)) return { errs: ["verdict: must be an object"] };
+  if (!["pass", "fix"].includes(v.verdict)) errs.push("verdict.verdict: pass|fix");
+  if (!Number.isInteger(v.score) || v.score < 1 || v.score > 5) errs.push("verdict.score: integer 1-5");
+  if (typeof v.playerImpact !== "boolean") errs.push("verdict.playerImpact: boolean");
+  if (typeof v.visible !== "boolean") errs.push("verdict.visible: boolean");
+  if (!Array.isArray(v.criteria) || v.criteria.some((c) => typeof c?.text !== "string" || typeof c?.met !== "boolean")) errs.push("verdict.criteria: [{text, met, evidence}]");
+  else if (accept && v.criteria.length !== accept.length) errs.push(`verdict.criteria: one entry per acceptance criterion (${accept.length})`);
+  if (v.findings != null && (!Array.isArray(v.findings) || v.findings.some((f) => typeof f !== "string"))) errs.push("verdict.findings: string array");
+  if (errs.length) return { errs };
+  // A pass needs every criterion met, a player who feels it and something to see; anything less is a fix.
+  const misses = [...v.criteria.filter((c) => !c.met).map((c) => `not met: ${c.text}`), ...(v.playerImpact ? [] : ["no player impact"]), ...(v.visible ? [] : ["not visible in the after shots"])];
+  const verdict = v.verdict === "pass" && !misses.length && v.score >= 3 ? "pass" : "fix";
+  const findings = [...(v.findings ?? []), ...(verdict !== v.verdict ? [`verdict changed to fix: ${misses.join("; ") || `score ${v.score} < 3`}`] : [])];
+  return { errs, verdict: { verdict, score: v.score, playerImpact: v.playerImpact, visible: v.visible, criteria: v.criteria.map((c) => ({ text: c.text.slice(0, 300), met: c.met, evidence: String(c.evidence ?? "").slice(0, 300) })), findings: findings.map((f) => f.slice(0, 400)).slice(0, 10) } };
+}
+
+/** What `finish` may do given review.json and the current code hash: {ok} or {ok: false, reason}. */
+export function reviewGate(review, tree) {
+  const rounds = review?.rounds ?? [];
+  const last = rounds[rounds.length - 1];
+  if (!last) return { ok: false, reason: "no review yet: run scripts/preview.mjs, the feature-reviewer, then orchestrate.mjs review" };
+  if (last.packagesTree !== tree) return { ok: false, reason: "the code changed since the last review: preview and review again" };
+  if (last.verdict === "pass") return { ok: true, verdict: "pass" };
+  const fixes = rounds.filter((r) => r.verdict === "fix").length;
+  if (fixes > MAX_FIX_ROUNDS) return { ok: true, verdict: "fix", warning: `review still says fix after ${MAX_FIX_ROUNDS} fix rounds; finishing anyway (no unattended ship)` };
+  return { ok: false, reason: `review says fix (round ${rounds.length}): add fix tasks with plan --append, build, preview, review again` };
 }
 
 /** Superseded = failed and replaced by subtasks via resplit. */
@@ -255,6 +310,7 @@ function saveState(s) { fs.mkdirSync(path.dirname(statePath()), { recursive: tru
 function git(...args) {
   return execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 }
+const dirtyCode = () => execFileSync("git", ["status", "--porcelain", "--", "packages", "apps"], { encoding: "utf8" }).split("\n").filter(Boolean).map((l) => l.slice(3));
 const gitOk = (...args) => spawnSync("git", args, { stdio: "ignore" }).status === 0;
 
 function loadFeature() { return readJson(FEATURE); }
@@ -266,6 +322,7 @@ function saveFeature(f, patch = {}) {
   const { id, spec, slug, game, branch, status, resumeFrom, updatedAt } = f;
   writeJson(FEATURE, { id, spec, slug, ...(game ? { game } : {}), branch, status, ...(resumeFrom ? { resumeFrom } : {}), updatedAt });
 }
+function loadReview() { try { return readJson(REVIEW); } catch { return null; } }
 function loadTasks() { try { return readJson(TASKS); } catch { return []; } }
 function saveTasks(tasks) {
   const errs = validateTasks(tasks, gameDirOf());
@@ -290,6 +347,7 @@ function push(branch) {
 /** Stage only the plan's files + state files, commit, push. Anything else dirty is reported, not committed. */
 function commit(message, files = []) {
   const paths = [FEATURE, TASKS, ...files];
+  if (fs.existsSync(REVIEW)) paths.push(REVIEW);
   if (fs.existsSync(USAGE)) paths.push(USAGE);
   if (files.some((f) => f.endsWith("/"))) paths.push("pnpm-lock.yaml");
   git("add", "-A", "--", ...paths.filter((p) => fs.existsSync(p) || gitOk("ls-files", "--error-unmatch", p)));
@@ -341,6 +399,7 @@ export const commands = {
       saveFeature(feature);
       tasks = [];
       writeJson(TASKS, tasks); // main's placeholder plan never carries into a feature branch
+      fs.rmSync(REVIEW, { force: true });
     }
     return { branch: pl.branch, game, gameDir: `packages/games/${game}/`, bootstrap: pl.bootstrap, resumed, status: loadFeature().status, tasks: tasks.length, next: nextTask(tasks) };
   },
@@ -367,7 +426,16 @@ export const commands = {
     const feature = loadFeature();
     const fresh = incoming.map((t) => ({ ...t, done: t.done ?? false }));
     const tasks = args.append ? [...loadTasks(), ...fresh] : fresh;
+    // A new plan says what it is for and how to tell it works; fix rounds (--append) keep the criteria.
+    let review = loadReview();
+    if (args.accept) {
+      const a = JSON.parse(readInput(args.accept));
+      const errs = validateAccept(a);
+      if (errs.length) throw new Error(errs.join("; "));
+      review = { intent: a.intent.trim(), accept: a.accept.map((c) => c.trim()), rounds: args.append ? review?.rounds ?? [] : [] };
+    } else if (!args.append || !review) throw new Error("plan needs --accept <file>: {intent, accept: [2-5 criteria]} (CLAUDE.md § Plan)");
     saveTasks(tasks);
+    writeJson(REVIEW, review);
     saveFeature(feature, { status: "building" });
     return { tasks: tasks.length, next: nextTask(tasks), ...commit(`${feature.branch}: plan (${tasks.length} tasks)`) };
   },
@@ -438,15 +506,44 @@ export const commands = {
     return { tasks: tasks.length, next: nextTask(tasks), ...commit(`${feature.branch}: re-split ${id}`) };
   },
 
+  // Record the feature-reviewer's verdict on the code as it is now, seen through a fresh preview.
+  review(args) {
+    const feature = loadFeature();
+    const tasks = loadTasks();
+    if (!allDone(tasks)) return { ok: false, reason: "tasks not all done; review the finished feature", next: nextTask(tasks) };
+    const review = loadReview();
+    if (!review) throw new Error("no review.json: plan with --accept first");
+    // Review what ships: code edits reach the branch only through verify, so nothing may be pending.
+    if (dirtyCode().length) return { ok: false, reason: `uncommitted code (${dirtyCode().join(", ")}): build it through a task (verify commits it) before the review` };
+    const tree = codeTree();
+    // ORCH_NO_PREVIEW only counts in dry runs (ORCH_NO_PUSH=1): a pushed branch is always looked at.
+    if (!(process.env.ORCH_NO_PREVIEW === "1" && process.env.ORCH_NO_PUSH === "1")) {
+      let p = null;
+      try { p = readJson(path.join(PREVIEW_OUT, "preview.json")); } catch {}
+      if (!p?.before?.length || !p?.after?.length) return { ok: false, reason: "no before/after preview: run node scripts/preview.mjs and give the reviewer its screenshots" };
+      if (p.packagesTree !== tree) return { ok: false, reason: "the preview is older than the code: run node scripts/preview.mjs again" };
+    }
+    const { errs, verdict } = checkVerdict(JSON.parse(readInput(args.verdict ?? "-")), review.accept);
+    if (errs.length) throw new Error(errs.join("; "));
+    review.rounds = [...(review.rounds ?? []), { ...verdict, packagesTree: tree, at: new Date().toISOString() }];
+    writeJson(REVIEW, review);
+    saveFeature(feature);
+    const gate = reviewGate(review, tree);
+    const next = gate.ok ? "finish" : "fix";
+    return { ok: true, verdict: verdict.verdict, round: review.rounds.length, next, ...(gate.warning ? { warning: gate.warning } : {}), findings: verdict.findings, ...commit(`${feature.branch}: review ${review.rounds.length} ${verdict.verdict} (${verdict.score}/5)`) };
+  },
+
   finish(args) {
     const feature = loadFeature();
     const tasks = loadTasks();
     if (!allDone(tasks)) return { ok: false, status: feature.status, reason: "tasks not all done", next: nextTask(tasks) };
+    const gate = dirtyCode().length ? { ok: false, reason: `uncommitted code (${dirtyCode().join(", ")}): it would not ship; build it through a task` } : reviewGate(loadReview(), codeTree());
+    if (!gate.ok) return { ok: false, status: feature.status, reason: gate.reason };
     saveFeature(feature, { status: "gates" });
     const gates = runGates();
     const ready = gates.ok === true && gates.complete === true;
     saveFeature(feature, { status: ready ? "ready" : "building" });
-    return { ok: ready, status: ready ? "ready" : "building", gates, ...commit(`${feature.branch}: ${ready ? "ready" : "final gates red"}`) };
+    return { ok: ready, status: ready ? "ready" : "building", review: gate.verdict, ...(gate.warning ? { warning: gate.warning } : {}), gates, ...commit(`${feature.branch}: ${ready ? "ready" : "final gates red"}`) };
   },
 
   // The spec cannot be built at all (not even with engine tasks): mark it failed so the bot frees the queue.
@@ -507,7 +604,9 @@ function dryRun(args) {
   step("start", commands.start({ payload: payloadFile, "no-fetch": true }));
   const tasksFile = path.join(wt, ".orchestrator", "tasks.json");
   writeJson(tasksFile, scenario.tasks);
-  step("plan", commands.plan({ tasks: tasksFile }));
+  const acceptFile = path.join(wt, ".orchestrator", "accept.json");
+  writeJson(acceptFile, scenario.accept);
+  step("plan", commands.plan({ tasks: tasksFile, accept: acceptFile }));
 
   for (let guard = 0; guard < 50; guard++) {
     const { next } = commands.next();
@@ -522,6 +621,11 @@ function dryRun(args) {
     if (v.next === "escalate") step(`reset ${next.id}`, commands.reset({ _: [next.id] }));
     if (v.next === "resplit" || v.next === "feature-failed") break;
   }
+  // No browser or reviewer in a dry run: the canned verdict stands in for both.
+  process.env.ORCH_NO_PREVIEW = "1";
+  const verdictFile = path.join(wt, ".orchestrator", "verdict.json");
+  writeJson(verdictFile, scenario.verdict);
+  step("review", commands.review({ verdict: verdictFile }));
   const fin = step("finish", commands.finish({}));
   const val = step("validate", commands.validate());
   const guardRun = spawnSync(process.execPath, ["scripts/guard.mjs"], { encoding: "utf8", env: { ...process.env, GITHUB_HEAD_REF: "", GITHUB_REF_NAME: "" } });
