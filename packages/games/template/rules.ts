@@ -95,6 +95,26 @@ export function shapeHuntCheck(w: World): void {
       }
     }
   }
+  // Shaped bots take part too against circle players. Resolved pairs are flagged so botFightCheck skips them.
+  for (const bot of bodies(w, "bot")) {
+    if (getShape(bot) === "circle") continue;
+    for (const p of bodies(w, "player")) {
+      if (getShape(p) !== "circle") continue;
+      const d2 = (p.x - bot.x) ** 2 + (p.y - bot.y) ** 2;
+      if (bot.r > p.r * config.shapeHuntMargin && d2 < bot.r ** 2) {
+        bot.r += p.r * 0.5;
+        p.x = 100; p.y = 100; p.r = config.startSize;
+        (bot.data as { huntPair?: number[] }).huntPair = [...((bot.data as { huntPair?: number[] }).huntPair ?? []), p.id as unknown as number];
+      } else if (p.r > bot.r * config.shapeHuntMargin && d2 < p.r ** 2) {
+        p.r += bot.r * config.shapeBounty;
+        bot.x = randomRange(w, 0, config.bounds);
+        bot.y = randomRange(w, 0, config.bounds);
+        bot.r = config.startSize;
+        delete (bot.data as { shape?: Shape }).shape;
+        (bot.data as { huntPair?: number[] }).huntPair = [...((bot.data as { huntPair?: number[] }).huntPair ?? []), p.id as unknown as number];
+      }
+    }
+  }
 }
 
 export function magnetCheck(w: World): void {
@@ -161,6 +181,8 @@ export function botEatCheck(w: World): void {
 export function botFightCheck(w: World): void {
   for (const p of bodies(w, "player")) {
     for (const bot of bodies(w, "bot")) {
+      const hp = (bot.data as { huntPair?: number[] }).huntPair;
+      if (hp && hp.includes(p.id as unknown as number)) continue;
       const d2 = (p.x - bot.x) ** 2 + (p.y - bot.y) ** 2;
       if (p.r > bot.r * 1.2 && d2 < p.r ** 2) {
         p.r += bot.r * 0.5;
@@ -174,6 +196,7 @@ export function botFightCheck(w: World): void {
       }
     }
   }
+  for (const bot of bodies(w, "bot")) delete (bot.data as { huntPair?: number[] }).huntPair;
 }
 
 // Moving circles shove overlapping players/bots away from them, harder when bigger.

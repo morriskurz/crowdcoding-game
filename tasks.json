@@ -136,7 +136,15 @@
       "packages/games/template/rules.test.ts"
     ],
     "estMin": 15,
-    "done": false
+    "actualMin": 1.1,
+    "done": true,
+    "attempts": [
+      {
+        "tier": "sonnet",
+        "ok": true,
+        "minutes": 1.1
+      }
+    ]
   },
   {
     "id": "t9",

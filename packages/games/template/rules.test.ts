@@ -275,6 +275,37 @@ describe("template agar", () => {
     expect(getShape(s)).toBe("circle");
   });
 
+  it("shape hunt: shaped bot eats a smaller circle player once (no double trigger with botFightCheck)", () => {
+    const w = createWorld();
+    joinPlayer(w, rules, "a", "alice");
+    const p = get(w, "a")!;
+    const bot = spawn(w, { kind: "bot", x: 100, y: 100, r: 20 });
+    (bot.data as any).shape = "square";
+    p.x = 100; p.y = 100; p.r = 10;
+    shapeHuntCheck(w);
+    expect(bot.r).toBeCloseTo(25, 5);
+    expect(p.r).toBe(config.startSize);
+    botFightCheck(w);
+    expect(bot.r).toBeCloseTo(25, 5);
+    expect(getShape(bot)).toBe("square");
+  });
+
+  it("shape hunt: bigger circle player destroys a shaped bot and gets a bounty", () => {
+    const w = createWorld();
+    joinPlayer(w, rules, "a", "alice");
+    const p = get(w, "a")!;
+    const bot = spawn(w, { kind: "bot", x: 300, y: 300, r: 10 });
+    (bot.data as any).shape = "triangle";
+    p.x = 300; p.y = 300; p.r = 20;
+    shapeHuntCheck(w);
+    expect(p.r).toBeCloseTo(20 + 10 * config.shapeBounty, 5);
+    expect(bot.r).toBe(config.startSize);
+    expect(getShape(bot)).toBe("circle");
+    const r = p.r;
+    botFightCheck(w);
+    expect(p.r).toBe(r);
+  });
+
   it("is deterministic with bots", () => {
     const run = () => {
       const w = world(9);
