@@ -6,6 +6,7 @@ import { bodies, despawn, moveBody, randomRange, spawn, type Box, type GameRules
 import { config } from "./config.js";
 
 export const GROWTH_PER_PELLET = 1.0;
+export const GROWTH_FACTOR = 0.08;
 export const MAGNET_RADIUS = 80;
 export const MAGNET_PULL = 1.5;
 const EAT_REACH = 4;
@@ -36,9 +37,13 @@ export function eatCheck(w: World): void {
   for (const p of bodies(w, "player")) {
     for (const pel of bodies(w, "pellet")) {
       const d2 = (p.x - pel.x) ** 2 + (p.y - pel.y) ** 2;
-      if (d2 < (p.r + EAT_REACH) ** 2) { p.r += GROWTH_PER_PELLET; despawn(w, pel.id); }
+      if (d2 < (p.r + EAT_REACH) ** 2) { p.r *= 1 + GROWTH_FACTOR; despawn(w, pel.id); }
     }
   }
+}
+
+export function speedScale(r: number): number {
+  return Math.min(1, config.startSize / r);
 }
 
 export function spawnBot(w: World): void {
@@ -104,8 +109,9 @@ export const rules: GameRules = {
   step(w, inputs) {
     for (const p of bodies(w, "player")) {
       const inp = inputs[p.id];
-      p.vx = (inp?.dx ?? 0) * config.speed;
-      p.vy = (inp?.dy ?? 0) * config.speed;
+      const k = config.speed * speedScale(p.r);
+      p.vx = (inp?.dx ?? 0) * k;
+      p.vy = (inp?.dy ?? 0) * k;
       moveBody(p, { bounds: arena });
     }
     botStep(w);

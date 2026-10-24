@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createWorld, joinPlayer, runTick, bodies, get, spawn } from "@tcg/shared";
-import { botEatCheck, botFightCheck, botStep, eatCheck, magnetCheck, rules, GROWTH_PER_PELLET } from "./rules.js";
+import { botEatCheck, botFightCheck, botStep, eatCheck, magnetCheck, rules, GROWTH_PER_PELLET, GROWTH_FACTOR, speedScale } from "./rules.js";
 import { config } from "./config.js";
 
 function world(seed = 7) {
@@ -25,7 +25,26 @@ describe("template agar", () => {
     expect(get(w, "a")!.x).toBe(config.startSize);
   });
 
-  it("feature #1: grows 1.0 per pellet", () => {
+  it("repeated eating compounds growth", () => {
+    const w = createWorld();
+    joinPlayer(w, rules, "a", "alice");
+    const p = get(w, "a")!;
+    p.x = 10; p.y = 10;
+    spawn(w, { kind: "pellet", x: 10, y: 10, r: 2 });
+    spawn(w, { kind: "pellet", x: 10, y: 10, r: 2 });
+    eatCheck(w);
+    expect(p.r).toBeCloseTo(config.startSize * (1 + GROWTH_FACTOR) ** 2, 5);
+  });
+
+  it("a player at 2x start size moves at half speed", () => {
+    const w = world();
+    get(w, "a")!.r = config.startSize * 2;
+    runTick(w, rules, { a: { dx: 1, dy: 0, action: false } });
+    expect(get(w, "a")!.x).toBeCloseTo(100 + config.speed / 2, 5);
+    expect(speedScale(config.startSize * 2)).toBeCloseTo(0.5, 5);
+  });
+
+  it("feature #1: grows exponentially per pellet", () => {
     const w = createWorld();
     joinPlayer(w, rules, "a", "alice");
     const p = get(w, "a")!;
@@ -33,7 +52,7 @@ describe("template agar", () => {
     spawn(w, { kind: "pellet", x: 10, y: 10, r: 2 });
     eatCheck(w);
     expect(bodies(w, "pellet")).toHaveLength(0);
-    expect(p.r).toBeCloseTo(config.startSize + GROWTH_PER_PELLET, 5);
+    expect(p.r).toBeCloseTo(config.startSize * (1 + GROWTH_FACTOR), 5);
   });
 
   it("feature #2: pulls nearby pellets toward player", () => {
