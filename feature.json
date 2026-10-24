@@ -1,9 +1,9 @@
 {
-  "id": "5",
-  "spec": "a burst of particles when a player scores, for all players",
+  "id": "8",
+  "spec": "Large moving circles absorb smaller static circles on contact, growing in size, for all players",
   "slug": "template",
   "game": "template",
-  "branch": "f/5-template",
+  "branch": "f/8-template",
   "status": "ready",
-  "updatedAt": "2026-10-24T05:37:20.216Z"
+  "updatedAt": "2026-10-24T06:12:42.921Z"
 }

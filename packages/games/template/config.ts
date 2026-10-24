@@ -10,4 +10,11 @@ export const config = {
   pelletGlowAlpha: 0.8,
   botCount: 4,
   botSpeed: 2,
+  drifterCount: 3,
+  drifterStart: 24,
+  drifterSpeed: 1.5,
+  drifterMaxRadius: 90,
+  drifterGrowth: 3,
+  moteCount: 30,
+  moteSize: 5,
 } as const;
