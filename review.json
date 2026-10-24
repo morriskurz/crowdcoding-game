@@ -42,6 +42,41 @@
       ],
       "packagesTree": "8e5d6dabdc71dfe0364221190230a6c311a36495+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
       "at": "2026-10-24T12:39:49.489Z"
+    },
+    {
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": true,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "When one player/bot swallows another, a line naming killer and victim appears in a corner of the screen",
+          "met": false,
+          "evidence": "after/shot-1..3: no kill-feed text anywhere; code in assets.ts drawKillFeed/detectKills exists and is unit-tested but nothing shows in the real scenario"
+        },
+        {
+          "text": "Each line is coloured by the killer's colour (own = light blue, bots = red) and fades out within a few seconds",
+          "met": false,
+          "evidence": "No line visible in any after shot; colouring/fade only in code (assets.ts drawKillFeed)"
+        },
+        {
+          "text": "At most a handful of lines show at once, newest on top, and they do not overlap the minimap",
+          "met": false,
+          "evidence": "Cap of 5 in config and feed at top-left away from minimap, but no line appears in shots so it cannot be confirmed; also unshift plus index layout is code-only evidence"
+        },
+        {
+          "text": "In the preview after clip at least one kill-feed message is visible",
+          "met": false,
+          "evidence": "after/shot-1, shot-2, shot-3 identical in HUD to before/shot-2: only the debug line top-left, no kill message"
+        }
+      ],
+      "findings": [
+        "No kill message appears in any after shot: in packages/games/template/assets.ts detectKills still relies on snapshot heuristics (victim r drops >1 and jumps >30) that the preview scenario never triggers; derive kills from what the scenario actually produces (e.g. victim disappearing or shrinking by any amount, or compare against rules.ts absorption events) and verify against the preview recording",
+        "Feed is drawn at (12,12) in drawOverlay, where the debug text 'live present...' also sits; move it below that line (e.g. killFeedMargin y about 40 in config.ts) so it is not hidden or overlapped",
+        "If the preview scenario has no kills at all, add a visible fallback in assets.ts such as feed lines for pellet/spike deaths or a 'joined' line so the clip shows the feed, or make bots in the preview actually collide (rules.ts) so a kill occurs by 90%"
+      ],
+      "packagesTree": "8079423bc1fce34b9cd4edeb533268c9c9470c31+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
+      "at": "2026-10-24T12:43:33.409Z"
     }
   ]
 }
