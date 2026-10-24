@@ -1,74 +1,22 @@
 [
   {
     "id": "t1",
-    "title": "config: minimap size, margin, dot radius range",
+    "title": "config: kill feed settings (lifetime, max lines, font size, margin, line height)",
     "tier": "muse",
     "files": [
       "packages/games/template/config.ts"
     ],
     "estMin": 5,
-    "actualMin": 1.4,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.4
-      }
-    ]
+    "done": false
   },
   {
     "id": "t2",
-    "title": "assets: cache players in onSnapshot, draw minimap corner in drawOverlay",
-    "tier": "muse",
+    "title": "assets: detect kills in onSnapshot (entity radius drops sharply + teleport, killer = nearby entity that grew) and draw fading coloured lines top-left in drawOverlay",
+    "tier": "sonnet",
     "files": [
       "packages/games/template/assets.ts"
     ],
-    "estMin": 15,
-    "actualMin": 1.9,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.9
-      }
-    ]
-  },
-  {
-    "id": "t3",
-    "title": "config: larger minimap, bigger dots, cameraZoom",
-    "tier": "muse",
-    "files": [
-      "packages/games/template/config.ts"
-    ],
-    "estMin": 5,
-    "actualMin": 1.4,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.4
-      }
-    ]
-  },
-  {
-    "id": "t4",
-    "title": "assets: zoom camera via scene.zoom, brighter minimap, ring the leader dot",
-    "tier": "muse",
-    "files": [
-      "packages/games/template/assets.ts"
-    ],
-    "estMin": 10,
-    "actualMin": 1.7,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.7
-      }
-    ]
+    "estMin": 20,
+    "done": false
   }
 ]

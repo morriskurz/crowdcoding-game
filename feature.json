@@ -1,9 +1,9 @@
 {
-  "id": "13",
-  "spec": "Live minimap corner showing all players as colored dots sized by score for all players",
+  "id": "14",
+  "spec": "Colored event ticker in the corner showing brief fading kill feed messages for all players",
   "slug": "template",
   "game": "template",
-  "branch": "f/13-template",
-  "status": "ready",
-  "updatedAt": "2026-10-24T10:44:22.938Z"
+  "branch": "f/14-template",
+  "status": "building",
+  "updatedAt": "2026-10-24T12:35:31.991Z"
 }
