@@ -6,5 +6,42 @@
     "Dot size grows with the player's size, so a larger player has a visibly larger dot",
     "The after clip shows dots moving on the minimap as players move"
   ],
-  "rounds": []
+  "rounds": [
+    {
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": false,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "A minimap panel is visible in a corner of the screen throughout play",
+          "met": true,
+          "evidence": "after/shot-1,2,3: 140px panel bottom-right in the dark margin, present in all three shots; it overlaps nothing"
+        },
+        {
+          "text": "Every player appears as a dot at the matching arena position, in the same color as their circle, and your own dot is highlighted",
+          "met": false,
+          "evidence": "after shots: green player dots and red hostile dots match circle colours and positions, but the scenario is a spectator run (no 'me'), so the own-dot highlight (white ring in drawOverlay) is not shown anywhere and is only code-read"
+        },
+        {
+          "text": "Dot size grows with the player's size, so a larger player has a visibly larger dot",
+          "met": true,
+          "evidence": "after/shot-1: bot4/bot0 dots are visibly larger than bot5/bot7 dots; drawOverlay scales radius 2.5..9 by size"
+        },
+        {
+          "text": "The after clip shows dots moving on the minimap as players move",
+          "met": true,
+          "evidence": "minimap dot layout differs between after shot-1, shot-2 and shot-3, following the arena positions"
+        }
+      ],
+      "findings": [
+        "Minimap adds almost no information: the 800x800 arena is already almost entirely on screen (the whole arena is visible in the before shots), so the minimap just repeats what the main view shows. Make it matter: e.g. in packages/games/template/config.ts/rules.ts zoom the camera in (scene.zoom in assets.ts) so the arena no longer fits and the minimap becomes the only way to see off-screen rivals, or",
+        "Minimap is too small and low-contrast to read on a phone (140px of 1280, dots 2.5-9px, alpha 0.55): in config.ts raise minimapSize to roughly 200-240 and dotMin to about 4, and draw it with brighter border and labels or a highlight on the leader in assets.ts drawOverlay.",
+        "Own-dot highlight is never shown in the preview scenario (spectator, no me): either pulse or ring the biggest player's dot too so the highlight is visible in the clip, in assets.ts drawOverlay.",
+        "OCR gate failure is not caused by the minimap: it sits in the dark margin at x 1128-1268, y 568-708, clear of the arena (right edge x=1040), HUD text and bot labels. The overlapping labels (bot1/bot7, bot2/bot6 in after/shot-3) and the top-left status text are the likelier cause and are pre-existing."
+      ],
+      "packagesTree": "3f0986cbe8568828e25b7be527f00769665452bd+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
+      "at": "2026-10-24T10:39:28.443Z"
+    }
+  ]
 }
