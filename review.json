@@ -77,6 +77,42 @@
       ],
       "packagesTree": "8079423bc1fce34b9cd4edeb533268c9c9470c31+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
       "at": "2026-10-24T12:43:33.409Z"
+    },
+    {
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": false,
+      "visible": true,
+      "criteria": [
+        {
+          "text": "When one player/bot swallows another, a line naming killer and victim appears in a corner of the screen",
+          "met": false,
+          "evidence": "No 'X ate Y' line in any after shot (1-3); only pellet lines. detectKills in assets.ts is a client-side heuristic (victim shrank and jumped >30px) with no on-screen proof."
+        },
+        {
+          "text": "Each line is coloured by the killer's colour (own = light blue, bots = red) and fades out within a few seconds",
+          "met": false,
+          "evidence": "Visible lines are green/orange by pellet type, not killer colour; kill-line colouring is unseen. Lifetime is 8s with 2s fade, not 'a few seconds'."
+        },
+        {
+          "text": "At most a handful of lines show at once, newest on top, and they do not overlap the minimap",
+          "met": true,
+          "evidence": "after/shot-1: 5 lines, newest on top, top-left, clear of the bottom-right minimap. They do overlap bot name labels in shot 1."
+        },
+        {
+          "text": "In the preview after clip at least one kill-feed message is visible",
+          "met": false,
+          "evidence": "Messages are visible in shots 1-3, but all are pellet events, not kills."
+        }
+      ],
+      "findings": [
+        "No kill message appears in the after clip, so the core feature is unproven: make kill detection reliable (preferably from a server-side event or an exact rule in rules.ts) and show a real 'A ate B' line in the preview scenario.",
+        "Pellet-eat lines are mostly bot noise (bot9/Bot/bot0 repeated) and push out any kill lines (max 5): show only the local player's pellet events or give kills priority in assets.ts.",
+        "Lines overlap player name labels near the top-left (after/shot-1): offset or reduce the feed in assets.ts drawKillFeed.",
+        "accept.json still describes a kill feed with killer-colour rules; align the criteria with the pellet ticker or drop pellet lines."
+      ],
+      "packagesTree": "96a65f6e8825c7e97b00dcdc111c3c2e79aafffa+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
+      "at": "2026-10-24T12:46:22.081Z"
     }
   ]
 }
