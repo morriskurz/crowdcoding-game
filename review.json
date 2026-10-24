@@ -6,5 +6,42 @@
     "At most a handful of lines show at once, newest on top, and they do not overlap the minimap",
     "In the preview after clip at least one kill-feed message is visible"
   ],
-  "rounds": []
+  "rounds": [
+    {
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": true,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "When one player/bot swallows another, a line naming killer and victim appears in a corner of the screen",
+          "met": false,
+          "evidence": "after/shot-1..3: top-left corner shows only the debug caption; no 'X ate Y' line. Diff adds detectKills/drawKillFeed in assets.ts but no test proves it fires."
+        },
+        {
+          "text": "Each line is coloured by the killer's colour (own = light blue, bots = red) and fades out within a few seconds",
+          "met": false,
+          "evidence": "No line visible in any after shot; fade logic exists in drawKillFeed (config killFeedLifetime 5s) but is unproven."
+        },
+        {
+          "text": "At most a handful of lines show at once, newest on top, and they do not overlap the minimap",
+          "met": false,
+          "evidence": "Code caps at killFeedMaxLines=5 and draws top-left (minimap is bottom-right), but nothing is visible in the shots to confirm."
+        },
+        {
+          "text": "In the preview after clip at least one kill-feed message is visible",
+          "met": false,
+          "evidence": "after/shot-1, shot-2, shot-3 contain no kill-feed text; they look identical to before apart from entity motion."
+        }
+      ],
+      "findings": [
+        "Kill feed never shows in the preview: in packages/games/template/assets.ts detectKills probably never matches real snapshots (requires victim r drop >2 AND jump >50 between snapshots; check how rules.ts respawns/shrinks the eaten player and relax or adapt the heuristic, e.g. detect respawn by position jump alone or by a size drop relative to the victim's previous size).",
+        "No tests: add packages/games/template/assets.test.ts (or similar) covering detectKills with a synthetic prev/next pair where one player eats another, and a no-kill case.",
+        "Stray formatting in onSnapshot (`const players =Object.values`) in assets.ts; tidy.",
+        "Ensure the preview scenario produces a kill within the clip (bots collide), and that the feed text is large/contrasting enough to read on a phone (fontSize 16 is small; raise killFeedFontSize in config.ts to ~22)."
+      ],
+      "packagesTree": "8e5d6dabdc71dfe0364221190230a6c311a36495+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
+      "at": "2026-10-24T12:39:49.489Z"
+    }
+  ]
 }
