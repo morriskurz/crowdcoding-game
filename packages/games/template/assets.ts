@@ -195,7 +195,6 @@ export function onSnapshot(prev: Readonly<Record<string, Entity>> | null, next: 
       born: fx.time,
     });
   }
-  if (killFeed.length > config.killFeedMaxLines) killFeed.length = config.killFeedMaxLines;
   const players = Object.values(next).filter((e) => e.kind === "player" || e.kind === "bot");
   // Shake once on the first new player collision.
   outer: for (let i = 0; i < players.length; i++) {
@@ -227,6 +226,15 @@ export function onSnapshot(prev: Readonly<Record<string, Entity>> | null, next: 
     }
     if (!eater || best > (eater.r + 30) ** 2) continue; // respawned/despawned, not eaten
     const mine = eater.id === fx.me;
+    const ptype = (pel.data as { type?: unknown }).type;
+    if (ptype === "sweet" || ptype === "spiked") {
+      const who = fx.names[eater.id] ?? (eater.kind === "bot" ? "Bot" : "Player");
+      killFeed.unshift({
+        text: ptype === "sweet" ? `${who} ate a sweet pellet` : `${who} hit a spiked pellet`,
+        color: ptype === "sweet" ? "#6ee77a" : "#ff5a3c",
+        born: fx.time,
+      });
+    }
     fx.particles.emit({ x: pel.x, y: pel.y, count: 18, color: mine ? ME : eater.kind === "bot" ? "#ff4d4d" : playerColor(eater.id), speed: 140, life: 0.6, size: 3, drag: 2 });
     fx.particles.emit({ x: pel.x, y: pel.y, count: 8, color: PELLET, speed: 90, life: 0.45, size: 2.5, drag: 2 });
     if (mine) {
@@ -234,6 +242,7 @@ export function onSnapshot(prev: Readonly<Record<string, Entity>> | null, next: 
       if (eater.r >= config.startSize + 10 && eater.r % 10 < 1) { fx.sfx.play("powerup"); fx.camera.shake(6, 0.25); }
     }
   }
+  if (killFeed.length > config.killFeedMaxLines) killFeed.length = config.killFeedMaxLines;
 }
 
 function drawKillFeed(ctx: CanvasRenderingContext2D, fx: Fx): void {
@@ -253,7 +262,7 @@ function drawKillFeed(ctx: CanvasRenderingContext2D, fx: Fx): void {
     const age = fx.time - m.born;
     ctx.globalAlpha = age <= fadeStart ? 1 : Math.max(0, (config.killFeedLifetime - age) / config.killFeedFade);
     const x = config.killFeedMargin;
-    const y = config.killFeedMargin + i * config.killFeedLineHeight;
+    const y = config.killFeedMargin + 30 + i * config.killFeedLineHeight;
     ctx.strokeText(m.text, x, y);
     ctx.fillStyle = m.color;
     ctx.fillText(m.text, x, y);
