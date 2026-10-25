@@ -48,6 +48,45 @@
       ],
       "packagesTree": "37db26c5338b77b256c1641344ae1a94d340457e+772b675028535c5d0b59e612d4a0d0477b84672b",
       "at": "2026-10-25T16:51:53.319Z"
+    },
+    {
+      "verdict": "pass",
+      "score": 3,
+      "playerImpact": true,
+      "visible": true,
+      "criteria": [
+        {
+          "text": "Players run left/right and jump (hold for a slightly higher jump) under gravity, landing on platforms and falling when they miss",
+          "met": true,
+          "evidence": "rules.test.ts: 'stands on the ground under gravity', 'jumps, and holding the button jumps higher', 'pressing up (dy < -0.5) jumps', 'falls off the edge of a ledge'. after/shot-1..3: players visible on the ground and sliding sideways; no jump captured in the clip because the chase scenario sends only"
+        },
+        {
+          "text": "A tower of 12 random sections from four types is built each round; every player sees the same tower and starts on the ground floor",
+          "met": true,
+          "evidence": "after/shot-1..3: ledges and coins of the shared tower with all bots on the ground floor; tests 'builds sectionCount sections and a top platform, deterministically' and 'every section type stays within the tower and is reachable by jumping'."
+        },
+        {
+          "text": "Touching the top platform or the 180 s timer ends the round, shows a short results phase with the winner and wins count, then builds a new tower",
+          "met": true,
+          "evidence": "tests 'touching the top ends the round and the toucher wins', 'times out with the highest player winning', 'results freeze players, then a new tower and a reset'. Timer 2:58 to 2:50 visible in after shots; the results phase itself is not in the clip."
+        },
+        {
+          "text": "Players push each other, so a bump can knock someone off a ledge",
+          "met": true,
+          "evidence": "test 'bumping players push each other apart'; after/shot-2..3 show bots bunched and overlapping at the ground, not a clear shove."
+        },
+        {
+          "text": "The view is side-on following the player, with a height bar showing climb progress and each player's height",
+          "met": true,
+          "evidence": "after/shot-1..3: side-on tower, camera now at the bottom where the players are, right-hand height bar with marker, 10m/25m labels on the right and no longer under the leaderboard."
+        }
+      ],
+      "findings": [
+        "Optional: the preview clip shows bots only sliding along the ground, with no jumping or climbing across the three shots. In rules.ts, make the idle bot or chase input make players jump (for example when dy<-0.5 is not sent, hop periodically) so the clip shows climbing.",
+        "Optional: player name labels overlap into an unreadable bunch (bot6bot7bot2...) because players stack at the same spot. In rules.ts spread the spawn x positions or lower the push overlap, so players do not start piled on top of each other."
+      ],
+      "packagesTree": "3abf075523bfce4380a2947a41fbe77c9ccf95f7+772b675028535c5d0b59e612d4a0d0477b84672b",
+      "at": "2026-10-25T16:55:48.255Z"
     }
   ]
 }
