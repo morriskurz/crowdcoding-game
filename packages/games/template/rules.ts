@@ -467,7 +467,10 @@ function botInput(w: World, id: string, n: number): Input {
   const r = get<RoundData>(w, ROUND_ID);
   if (!me || !r || r.data.phase !== "play") return idle;
   const d = me.data;
-  const from = d.last ? get<PlatformData>(w, d.last) : undefined;
+  const lastPl = d.last ? get<PlatformData>(w, d.last) : undefined;
+  // Back on the floor (fell, or killed) counts as never having climbed: `last` is stale then.
+  const onFloor = me.y >= config.floorY - config.playerR - 1;
+  const from = onFloor || lastPl?.data.type === "ground" ? undefined : lastPl;
   if (!from) {
     // On the ground (or never landed yet): go to the lowest platform's foot and jump.
     let first: Entity<PlatformData> | null = null;

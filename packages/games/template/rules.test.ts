@@ -428,6 +428,21 @@ describe("tower climb: bots", () => {
     expect(Math.min(...heights)).toBeGreaterThan(sectionPx / 2);
   });
 
+  it("a bot back on the floor with a stale last platform heads for the lowest platform", () => {
+    const w = world();
+    const bot = pl(w);
+    const first = safe(w).reduce((a, b) => (platformTop(b) > platformTop(a) ? b : a));
+    const high = safe(w).reduce((a, b) => (platformTop(b) < platformTop(a) ? b : a));
+    bot.data.last = high.id;
+    bot.data.on = "";
+    bot.y = startY;
+    bot.ground = true;
+    bot.x = Math.min(Math.max(first.x + 400, config.playerR), config.towerWidth - config.playerR);
+    if (Math.abs(first.x - bot.x) < 100) bot.x = Math.max(config.playerR, first.x - 400);
+    const inp = rules.bot!(w, "a", 1);
+    expect(inp.dx).toBe(Math.sign(first.x - bot.x));
+  });
+
   it("bot inputs are valid wire inputs", () => {
     const w = world();
     const inp = rules.bot!(w, "a", 1);
