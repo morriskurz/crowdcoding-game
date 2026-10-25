@@ -57,4 +57,8 @@ export interface GameAssets<E extends { id: string } = { id: string; kind: strin
   nameStyle?(e: E, name: string, fx: Fx): NameStyle | null | undefined;
   // Once per authoritative snapshot: diff prev -> next to fire particles, sfx, shake.
   onSnapshot?(prev: Readonly<Record<string, E>> | null, next: Readonly<Record<string, E>>, fx: Fx): void;
+  // Spectating (no own player): the world point the camera should follow, or null to let the host's
+  // director pick the action. Called every frame with the interpolated entities. The game knows best
+  // where its action is (a race leader, a long fall); spectate itself stays the host's (every game has it).
+  spectateTarget?(entities: readonly E[], names: Readonly<Record<string, string>>, fx: Fx): { x: number; y: number; focus?: string } | null;
 }

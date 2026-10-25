@@ -1,5 +1,7 @@
 // Keyboard -> Input, and the send policy for prediction: inputs go out only when they change
-// (server holds the last one), each with a new seq; unacknowledged inputs are resent.
+// (server holds the last one), each with a new seq; unacknowledged inputs are resent. A change of the
+// action button goes out at once: a short jump tap must reach the server as pressed and released, as
+// the client predicted it (the server rate limit's burst absorbs it).
 import type { Input } from "@tcg/shared";
 
 export function readKeys(keys: ReadonlySet<string>): Input {
@@ -25,11 +27,15 @@ export class InputSender {
 
   // Call once per local tick. Returns the message to send now, if any. `acked` = seq the server applied.
   tick(input: Input, now: number, acked: number): (Input & { seq: number }) | null {
+    let urgent = false;
     if (!this.current) { this.current = { ...input }; this.dirty = true; }
-    else if (!same(input, this.current)) { this.seq++; this.current = { ...input }; this.dirty = true; }
+    else if (!same(input, this.current)) {
+      urgent = input.action !== this.current.action;
+      this.seq++; this.current = { ...input }; this.dirty = true;
+    }
     const since = now - this.lastSend;
     const resend = !this.dirty && acked < this.seq && since >= this.resendMs;
-    if ((this.dirty && since >= this.minGapMs) || resend) {
+    if ((this.dirty && (urgent || since >= this.minGapMs)) || resend) {
       this.dirty = false;
       this.lastSend = now;
       return { ...this.current, seq: this.seq };

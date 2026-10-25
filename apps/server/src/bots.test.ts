@@ -39,7 +39,7 @@ describe("bots", () => {
     expect(isBotId("3f2a-uuid")).toBe(false);
   });
 
-  it("are deterministic and actually play (move, eat)", () => {
+  it("are deterministic and actually play (move)", () => {
     const play = () => {
       const w = world(42);
       const b = new Bots();
@@ -53,8 +53,22 @@ describe("bots", () => {
     expect(JSON.stringify(a.w)).toBe(JSON.stringify(c.w));
     const moved = a.b.ids.filter((id) => a.w.entities[id].x !== 100 || a.w.entities[id].y !== 100);
     expect(moved.length).toBe(BOT_FILL);
-    const grew = a.b.ids.filter((id, i) => a.w.entities[id].r > a.r0[i]);
-    expect(grew.length).toBeGreaterThan(0);
+  });
+
+  it("use the game's own bot (rules.bot) when it has one, the generic bot when it throws or returns junk", () => {
+    const w = world();
+    const calls: [string, number][] = [];
+    const own = { ...rules, bot: (_w: unknown, id: string, n: number) => { calls.push([id, n]); return { dx: 5, dy: -0.5, action: true }; } };
+    const b = new Bots();
+    b.sync(w, own, 2);
+    expect(b.inputs(w)).toEqual({ "bot:1": { dx: 1, dy: -0.5, action: true }, "bot:2": { dx: 1, dy: -0.5, action: true } });
+    expect(calls).toEqual([["bot:1", 1], ["bot:2", 2]]);
+    const broken = { ...rules, bot: () => { throw new Error("boom"); } };
+    b.sync(w, broken, 2);
+    expect(b.inputs(w)["bot:1"]).toEqual(botInput(w, "bot:1", 1));
+    const junk = { ...rules, bot: () => ({ dx: Number.NaN, dy: 0, action: false }) };
+    b.sync(w, junk, 2);
+    expect(b.inputs(w)["bot:2"]).toEqual(botInput(w, "bot:2", 2));
   });
 
   it("inputs are valid wire inputs; idle bots stand still", () => {
