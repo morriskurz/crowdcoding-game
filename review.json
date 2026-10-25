@@ -34,6 +34,36 @@
       ],
       "packagesTree": "668d39a97710908826e6be1c3eab34fb9fcc4261+b683f8aebd48564d0ebc736bb9dff3496a82aa70",
       "at": "2026-10-25T18:24:26.475Z"
+    },
+    {
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": true,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "The tower is at least 3x wider than before",
+          "met": true,
+          "evidence": "config.ts towerWidth 600->2400 (4x). after/shot-2: the two tower walls visible in before/shot-2 are gone from the frame, but no platforms or players are shown, so the width is not visible."
+        },
+        {
+          "text": "Falling off a platform usually means a long drop past many levels instead of landing on the next ledge",
+          "met": true,
+          "evidence": "rules.test.ts long-drop test (median 871px vs rise 54px). Not visible in any after shot; all three show empty space with players at 9m."
+        },
+        {
+          "text": "Every platform is still reachable and the top can still be reached",
+          "met": true,
+          "evidence": "rules.test.ts reachability test plus the botInput floor fix in rules.ts. Not shown in the screenshots, which all sit at 9m with no climbing."
+        }
+      ],
+      "findings": [
+        "All three after shots are empty dark frames. No platform, player or drop line appears, and the before shots are nearly as empty. A viewer cannot tell the clips apart. Make the clip show the feature: frame the camera on the players or platforms (or have the bots climb and fall within the 3 sampled moments), so platforms spread across the wide tower and a long fall are on screen.",
+        "Camera/renderer: with a 2400px tower the view is not clamped to the tower, and the tower walls vanish from the frame. Check the client camera or assets.ts so the wider tower and its walls and platforms are in frame, zoomed out if needed.",
+        "The drop lines in assets.ts drawPlatform are 160px long at alpha 0.08, so they are effectively invisible. Make them bolder (alpha about 0.3, longer, or dashed) or drop them. Also confirm the bots climb in the preview scenario: the leaderboard stays at 9m for the whole clip."
+      ],
+      "packagesTree": "7b6d9d7532b6fbee41e89afd52e206a7149fda08+b683f8aebd48564d0ebc736bb9dff3496a82aa70",
+      "at": "2026-10-25T18:27:12.405Z"
     }
   ]
 }
