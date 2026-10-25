@@ -81,5 +81,26 @@
         "minutes": 0.4
       }
     ]
+  },
+  {
+    "id": "t5",
+    "title": "rules: up input (dy<-0.5) also jumps, + test",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/template/rules.ts",
+      "packages/games/template/rules.test.ts"
+    ],
+    "estMin": 8,
+    "done": false
+  },
+  {
+    "id": "t6",
+    "title": "assets: camera follows climbers when no own player; leaderboard clear of height labels",
+    "tier": "muse",
+    "files": [
+      "packages/games/template/assets.ts"
+    ],
+    "estMin": 8,
+    "done": false
   }
 ]
