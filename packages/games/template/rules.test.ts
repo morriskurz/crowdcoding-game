@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createWorld, joinPlayer, runTick, bodies, get, type Entity, type Input, type World } from "@tcg/shared";
-import { rules, SECTION_TYPES, MAX_RISE, airTicks, buildTower, maxGap, platformTop, typesFor, type PlatformData, type PlayerData, type RoundData } from "./rules.js";
+import { rules, SECTION_TYPES, MAX_RISE, airTicks, buildTower, maxGap, nextTarget, platformTop, typesFor, type PlatformData, type PlayerData, type RoundData } from "./rules.js";
 import { config } from "./config.js";
 
 const idle = { dx: 0, dy: 0, action: false };
@@ -243,6 +243,63 @@ describe("tower climb: the tower", () => {
   });
 });
 
+describe("tower climb: wide tower", () => {
+  const SEEDS = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
+  const median = (a: number[]) => [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)];
+
+  it("the chain of nextTarget from the lowest platform reaches the top, and safe platforms fit 0..towerWidth", () => {
+    for (const seed of SEEDS) {
+      const w = createWorld(seed);
+      buildTower(w);
+      // Moving platforms are judged at the centre of their range (that is where the tower is built to be reachable).
+      for (const q of platforms(w)) q.x = q.data.ox;
+      const ps = safe(w).filter((q) => q.data.type !== "ground");
+      for (const q of ps) {
+        expect(q.data.ox - q.data.w / 2 - (q.data.range ?? 0)).toBeGreaterThanOrEqual(-0.001);
+        expect(q.data.ox + q.data.w / 2 + (q.data.range ?? 0)).toBeLessThanOrEqual(config.towerWidth + 0.001);
+      }
+      const top = ps.find((q) => q.data.type === "top")!;
+      let cur = ps.reduce((a, b) => (platformTop(b) > platformTop(a) ? b : a));
+      for (let steps = 0; cur !== top && steps < 1000; steps++) {
+        const next = nextTarget(w, cur);
+        expect(next, `seed ${seed}: stuck at ${cur.id}`).not.toBeNull();
+        expect(platformTop(next!)).toBeLessThan(platformTop(cur));
+        cur = next!;
+      }
+      expect(cur).toBe(top);
+    }
+  });
+
+  it("falls are long: the median drop from a platform edge is at least 2x the typical rise", () => {
+    const drops: number[] = [];
+    const rises: number[] = [];
+    for (const seed of SEEDS) {
+      const w = createWorld(seed);
+      buildTower(w);
+      const all = platforms(w).filter((q) => q.data.type !== "kill");
+      const ps = all.filter((q) => q.data.type !== "ground");
+      let prev: Entity<PlatformData> | null = null;
+      for (const q of [...ps].sort((a, b) => platformTop(b) - platformTop(a))) {
+        if (prev) rises.push(platformTop(prev) - platformTop(q));
+        prev = q;
+      }
+      for (const q of ps) {
+        for (const edge of [q.data.ox - q.data.w / 2, q.data.ox + q.data.w / 2]) {
+          let floor: number = config.floorY;
+          for (const o of all) {
+            if (o === q || o.data.type === "ground") continue;
+            const t = platformTop(o);
+            if (t > platformTop(q) && t < floor && Math.abs(edge - o.data.ox) <= o.data.w / 2) floor = t;
+          }
+          drops.push(floor - platformTop(q));
+        }
+      }
+    }
+    // Measured at width 2400: median drop ~870 vs median rise ~54 (most edges have nothing below them).
+    expect(median(drops)).toBeGreaterThanOrEqual(2 * median(rises));
+  });
+});
+
 describe("tower climb: falls and kill bricks", () => {
   it("a missed jump drops you to whatever is below", () => {
     const w = flat();
@@ -426,6 +483,21 @@ describe("tower climb: bots", () => {
     const sectionPx = (config.floorY - rd(w).topY) / config.sectionCount;
     expect(Math.max(...heights)).toBeGreaterThan(3 * sectionPx);
     expect(Math.min(...heights)).toBeGreaterThan(sectionPx / 2);
+  });
+
+  it("a bot back on the floor with a stale last platform heads for the lowest platform", () => {
+    const w = world();
+    const bot = pl(w);
+    const first = safe(w).reduce((a, b) => (platformTop(b) > platformTop(a) ? b : a));
+    const high = safe(w).reduce((a, b) => (platformTop(b) < platformTop(a) ? b : a));
+    bot.data.last = high.id;
+    bot.data.on = "";
+    bot.y = startY;
+    bot.ground = true;
+    bot.x = Math.min(Math.max(first.x + 400, config.playerR), config.towerWidth - config.playerR);
+    if (Math.abs(first.x - bot.x) < 100) bot.x = Math.max(config.playerR, first.x - 400);
+    const inp = rules.bot!(w, "a", 1);
+    expect(inp.dx).toBe(Math.sign(first.x - bot.x));
   });
 
   it("bot inputs are valid wire inputs", () => {

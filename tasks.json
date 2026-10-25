@@ -1,31 +1,59 @@
 [
   {
     "id": "t1",
-    "title": "config: blast chance, radius, lifetime, knock values",
+    "title": "config: widen tower to 2400",
     "tier": "muse",
     "files": [
       "packages/games/template/config.ts"
     ],
     "estMin": 5,
-    "actualMin": 1.4,
+    "actualMin": 1.1,
     "done": true,
     "attempts": [
       {
         "tier": "muse",
+        "ok": false,
+        "minutes": 0.7
+      },
+      {
+        "tier": "muse",
+        "ok": false,
+        "minutes": 0.1
+      },
+      {
+        "tier": "sonnet",
         "ok": true,
-        "minutes": 1.4
+        "minutes": 0.3
       }
     ]
   },
   {
     "id": "t2",
-    "title": "rules: 1/30 jump explosion entity that knocks players in radius down and away + tests",
+    "title": "rules: bots standing on the ground restart from the first platform + test",
     "tier": "sonnet",
     "files": [
       "packages/games/template/rules.ts",
       "packages/games/template/rules.test.ts"
     ],
-    "estMin": 20,
+    "estMin": 15,
+    "actualMin": 1,
+    "done": true,
+    "attempts": [
+      {
+        "tier": "sonnet",
+        "ok": true,
+        "minutes": 1
+      }
+    ]
+  },
+  {
+    "id": "t3",
+    "title": "tests: wide tower stays reachable and falls are long",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/template/rules.test.ts"
+    ],
+    "estMin": 15,
     "actualMin": 1.6,
     "done": true,
     "attempts": [
@@ -37,20 +65,38 @@
     ]
   },
   {
-    "id": "t3",
-    "title": "assets: draw expanding fireball for blast entities, sound and shake",
+    "id": "t4",
+    "title": "assets: faint drop line under each platform so long falls read",
     "tier": "muse",
     "files": [
       "packages/games/template/assets.ts"
     ],
     "estMin": 10,
-    "actualMin": 1.9,
+    "actualMin": 1.5,
     "done": true,
     "attempts": [
       {
         "tier": "muse",
         "ok": true,
-        "minutes": 1.9
+        "minutes": 1.5
+      }
+    ]
+  },
+  {
+    "id": "t5",
+    "title": "assets: bolder drop lines",
+    "tier": "muse",
+    "files": [
+      "packages/games/template/assets.ts"
+    ],
+    "estMin": 5,
+    "actualMin": 0.3,
+    "done": true,
+    "attempts": [
+      {
+        "tier": "muse",
+        "ok": true,
+        "minutes": 0.3
       }
     ]
   }

@@ -1,44 +1,98 @@
 {
-  "intent": "Each jump has a 1-in-30 chance to set off a short-lived explosion where the jumper took off. Anyone caught in its small radius (jumper included) is blasted away and slammed downward, losing height; a visible fireball and shake make it readable.",
+  "intent": "The tower is several times wider, so the climbing path spreads out and a player who slips off a platform drops a long way before anything catches them.",
   "accept": [
-    "Some jumps (roughly 1 in 30) produce a visible explosion at the take-off point; most do not",
-    "A player inside the blast radius is thrown sideways and downward, and a player outside is unaffected",
-    "The explosion looks the same regardless of who jumped",
-    "A test forces the chance roll and checks the blast hits only players in range"
+    "The tower is at least 3x wider than before",
+    "Falling off a platform usually means a long drop past many levels instead of landing on the next ledge",
+    "Every platform is still reachable and the top can still be reached"
   ],
   "rounds": [
     {
-      "verdict": "pass",
+      "verdict": "fix",
       "score": 3,
       "playerImpact": true,
-      "visible": true,
+      "visible": false,
       "criteria": [
         {
-          "text": "Some jumps (roughly 1 in 30) produce a visible explosion at the take-off point; most do not",
+          "text": "The tower is at least 3x wider than before",
           "met": true,
-          "evidence": "rules.ts movePlayer spawns a blast on randomInt(blastOdds)===0 at p.x,p.y; test 'about 1 in blastOdds jumps explodes' checks the rate; assets.ts drawBlast draws a 70px orange fireball + ring + particles. Not seen in after shots (all 3 identical to before; random and rare)."
+          "evidence": "config.ts towerWidth 600 -> 2400 (4x). after/shot-2: side walls no longer in view, unlike before/shot-2."
         },
         {
-          "text": "A player inside the blast radius is thrown sideways and downward, and a player outside is unaffected",
+          "text": "Falling off a platform usually means a long drop past many levels instead of landing on the next ledge",
           "met": true,
-          "evidence": "applyBlasts sets kick and vy=blastSlam for players within r; test asserts jumper and close player slammed/kicked, far player vy 0, kick 0, still on ground."
+          "evidence": "New rules.test.ts tests report median drop ~871px vs median rise 54px. Not visible in any shot (no platforms on screen)."
         },
         {
-          "text": "The explosion looks the same regardless of who jumped",
+          "text": "Every platform is still reachable and the top can still be reached",
           "met": true,
-          "evidence": "drawBlast ignores the owner; blast entity carries no player data, only ticksLeft/fresh."
-        },
-        {
-          "text": "A test forces the chance roll and checks the blast hits only players in range",
-          "met": true,
-          "evidence": "rules.test.ts 'jump blasts' uses hitSeed() to find a seed with a blast, then checks near vs far players."
+          "evidence": "New reachability tests in rules.test.ts; botInput floor fix in rules.ts so bots restart from the lowest platform after falling."
         }
       ],
       "findings": [
-        "Caveat: the preview clip (after shot-1..3) shows no blast, so a viewer comparing clips may see no difference. This is inherent to the 1-in-30 spec; consider only that the effect is large when it fires. Optionally make the preview scenario show jumping players."
+        "The after clip cannot show the feature: all three shots are an empty dark camera at 300-340m while players sit at 9m, and the only visible difference from before is that the side walls are off-screen. Fix the camera framing or the preview scenario so it follows the players and shows platforms and a fall (packages/games/template/assets.ts camera or follow hook, if the game controls it; otherwise an",
+        "With a 2400px tower the walls are far off-screen. Consider an assets.ts cue, such as a faint level marker or ledge highlight, so a viewer can read the wider spread and the long falls."
       ],
-      "packagesTree": "087a9f8ae81e2659eafbe006701726d71cef6970+34577ea47ea00a8c0ec2624f08646beae1708f9d",
-      "at": "2026-10-25T18:10:46.980Z"
+      "packagesTree": "668d39a97710908826e6be1c3eab34fb9fcc4261+b683f8aebd48564d0ebc736bb9dff3496a82aa70",
+      "at": "2026-10-25T18:24:26.475Z"
+    },
+    {
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": true,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "The tower is at least 3x wider than before",
+          "met": true,
+          "evidence": "config.ts towerWidth 600->2400 (4x). after/shot-2: the two tower walls visible in before/shot-2 are gone from the frame, but no platforms or players are shown, so the width is not visible."
+        },
+        {
+          "text": "Falling off a platform usually means a long drop past many levels instead of landing on the next ledge",
+          "met": true,
+          "evidence": "rules.test.ts long-drop test (median 871px vs rise 54px). Not visible in any after shot; all three show empty space with players at 9m."
+        },
+        {
+          "text": "Every platform is still reachable and the top can still be reached",
+          "met": true,
+          "evidence": "rules.test.ts reachability test plus the botInput floor fix in rules.ts. Not shown in the screenshots, which all sit at 9m with no climbing."
+        }
+      ],
+      "findings": [
+        "All three after shots are empty dark frames. No platform, player or drop line appears, and the before shots are nearly as empty. A viewer cannot tell the clips apart. Make the clip show the feature: frame the camera on the players or platforms (or have the bots climb and fall within the 3 sampled moments), so platforms spread across the wide tower and a long fall are on screen.",
+        "Camera/renderer: with a 2400px tower the view is not clamped to the tower, and the tower walls vanish from the frame. Check the client camera or assets.ts so the wider tower and its walls and platforms are in frame, zoomed out if needed.",
+        "The drop lines in assets.ts drawPlatform are 160px long at alpha 0.08, so they are effectively invisible. Make them bolder (alpha about 0.3, longer, or dashed) or drop them. Also confirm the bots climb in the preview scenario: the leaderboard stays at 9m for the whole clip."
+      ],
+      "packagesTree": "7b6d9d7532b6fbee41e89afd52e206a7149fda08+b683f8aebd48564d0ebc736bb9dff3496a82aa70",
+      "at": "2026-10-25T18:27:12.405Z"
+    },
+    {
+      "verdict": "fix",
+      "score": 3,
+      "playerImpact": true,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "The tower is at least 3x wider than before",
+          "met": true,
+          "evidence": "config.ts towerWidth 600->2400 (4x). after/shot-1..3: the two wall bars at x~335 and x~945 that are in before/shot-1..3 are gone, but no platforms or players are in any shot, so the width itself is not shown."
+        },
+        {
+          "text": "Falling off a platform usually means a long drop past many levels instead of landing on the next ledge",
+          "met": true,
+          "evidence": "rules.test.ts 'falls are long: the median drop from a platform edge is at least 2x the typical rise'. Not visible in any after shot (empty space, no drop lines or platforms)."
+        },
+        {
+          "text": "Every platform is still reachable and the top can still be reached",
+          "met": true,
+          "evidence": "rules.test.ts 'the chain of nextTarget from the lowest platform reaches the top, and safe platforms fit 0..towerWidth' plus the bot floor-fix test; rules.ts botInput now ignores a stale last platform when on the floor. Not shown in the clip."
+        }
+      ],
+      "findings": [
+        "Clip shows no difference a viewer can read: all three after shots are empty dark space with the same HUD, and the only change versus before is that the side walls left the frame. The camera framing is a preview quirk, but the feature is invisible in the vote clip as it stands. In apps/client/src/game or the preview scenario this cannot be fixed by game files alone; within packages/games/template/a",
+        "Camera/scenario issue: if the preview camera cannot be framed on players in the template game files, the orchestrator should accept that the reviewer cannot see the feature and decide by votes; criteria are met by tests only."
+      ],
+      "packagesTree": "dbde7a738d4e9254fa18aa66d4ed1808345f1606+b683f8aebd48564d0ebc736bb9dff3496a82aa70",
+      "at": "2026-10-25T18:28:51.812Z"
     }
   ]
 }

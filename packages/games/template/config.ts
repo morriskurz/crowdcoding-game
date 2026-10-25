@@ -5,7 +5,7 @@ export const config = {
   drainSeconds: 60, // per-game drain window, Q19
 
   // Tower. y grows downward; the ground surface is at floorY.
-  towerWidth: 600,
+  towerWidth: 2400,
   towerHeight: 3700,
   floorY: 3600,
   groundH: 40,
