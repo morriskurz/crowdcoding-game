@@ -72,6 +72,14 @@
       "packages/games/template/config.ts"
     ],
     "estMin": 3,
-    "done": false
+    "actualMin": 0.4,
+    "done": true,
+    "attempts": [
+      {
+        "tier": "muse",
+        "ok": true,
+        "minutes": 0.4
+      }
+    ]
   }
 ]
