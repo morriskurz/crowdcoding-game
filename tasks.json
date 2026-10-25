@@ -7,8 +7,8 @@
       "packages/games/template/config.ts"
     ],
     "estMin": 5,
-    "done": false,
-    "error": "gates: test: /home/user/crowdcoding-game/packages/games/template: |  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @tcg/game-template@0.1.0 test: `vitest run` | Exit status 1",
+    "actualMin": 1.1,
+    "done": true,
     "attempts": [
       {
         "tier": "muse",
@@ -19,6 +19,11 @@
         "tier": "muse",
         "ok": false,
         "minutes": 0.1
+      },
+      {
+        "tier": "sonnet",
+        "ok": true,
+        "minutes": 0.3
       }
     ]
   },
