@@ -81,5 +81,15 @@
         "minutes": 1.5
       }
     ]
+  },
+  {
+    "id": "t5",
+    "title": "assets: bolder drop lines",
+    "tier": "muse",
+    "files": [
+      "packages/games/template/assets.ts"
+    ],
+    "estMin": 5,
+    "done": false
   }
 ]
