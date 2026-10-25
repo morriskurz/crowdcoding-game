@@ -1,78 +1,118 @@
 {
-  "intent": "A small minimap sits in a screen corner and shows every player in the arena as a colored dot, bigger dots for bigger players, so you can always see where rivals are and who is winning.",
+  "intent": "A kill feed in the top-left corner shows short coloured messages like 'Alice ate Bot' whenever a player or bot swallows another; each line fades out after a few seconds, so players see who is hunting whom.",
   "accept": [
-    "A minimap panel is visible in a corner of the screen throughout play",
-    "Every player appears as a dot at the matching arena position, in the same color as their circle, and your own dot is highlighted",
-    "Dot size grows with the player's size, so a larger player has a visibly larger dot",
-    "The after clip shows dots moving on the minimap as players move"
+    "When one player/bot swallows another, a line naming killer and victim appears in a corner of the screen",
+    "Each line is coloured by the killer's colour (own = light blue, bots = red) and fades out within a few seconds",
+    "At most a handful of lines show at once, newest on top, and they do not overlap the minimap",
+    "In the preview after clip at least one kill-feed message is visible"
   ],
   "rounds": [
     {
       "verdict": "fix",
       "score": 2,
-      "playerImpact": false,
+      "playerImpact": true,
       "visible": false,
       "criteria": [
         {
-          "text": "A minimap panel is visible in a corner of the screen throughout play",
-          "met": true,
-          "evidence": "after/shot-1,2,3: 140px panel bottom-right in the dark margin, present in all three shots; it overlaps nothing"
-        },
-        {
-          "text": "Every player appears as a dot at the matching arena position, in the same color as their circle, and your own dot is highlighted",
+          "text": "When one player/bot swallows another, a line naming killer and victim appears in a corner of the screen",
           "met": false,
-          "evidence": "after shots: green player dots and red hostile dots match circle colours and positions, but the scenario is a spectator run (no 'me'), so the own-dot highlight (white ring in drawOverlay) is not shown anywhere and is only code-read"
+          "evidence": "after/shot-1..3: top-left corner shows only the debug caption; no 'X ate Y' line. Diff adds detectKills/drawKillFeed in assets.ts but no test proves it fires."
         },
         {
-          "text": "Dot size grows with the player's size, so a larger player has a visibly larger dot",
-          "met": true,
-          "evidence": "after/shot-1: bot4/bot0 dots are visibly larger than bot5/bot7 dots; drawOverlay scales radius 2.5..9 by size"
+          "text": "Each line is coloured by the killer's colour (own = light blue, bots = red) and fades out within a few seconds",
+          "met": false,
+          "evidence": "No line visible in any after shot; fade logic exists in drawKillFeed (config killFeedLifetime 5s) but is unproven."
         },
         {
-          "text": "The after clip shows dots moving on the minimap as players move",
-          "met": true,
-          "evidence": "minimap dot layout differs between after shot-1, shot-2 and shot-3, following the arena positions"
+          "text": "At most a handful of lines show at once, newest on top, and they do not overlap the minimap",
+          "met": false,
+          "evidence": "Code caps at killFeedMaxLines=5 and draws top-left (minimap is bottom-right), but nothing is visible in the shots to confirm."
+        },
+        {
+          "text": "In the preview after clip at least one kill-feed message is visible",
+          "met": false,
+          "evidence": "after/shot-1, shot-2, shot-3 contain no kill-feed text; they look identical to before apart from entity motion."
         }
       ],
       "findings": [
-        "Minimap adds almost no information: the 800x800 arena is already almost entirely on screen (the whole arena is visible in the before shots), so the minimap just repeats what the main view shows. Make it matter: e.g. in packages/games/template/config.ts/rules.ts zoom the camera in (scene.zoom in assets.ts) so the arena no longer fits and the minimap becomes the only way to see off-screen rivals, or",
-        "Minimap is too small and low-contrast to read on a phone (140px of 1280, dots 2.5-9px, alpha 0.55): in config.ts raise minimapSize to roughly 200-240 and dotMin to about 4, and draw it with brighter border and labels or a highlight on the leader in assets.ts drawOverlay.",
-        "Own-dot highlight is never shown in the preview scenario (spectator, no me): either pulse or ring the biggest player's dot too so the highlight is visible in the clip, in assets.ts drawOverlay.",
-        "OCR gate failure is not caused by the minimap: it sits in the dark margin at x 1128-1268, y 568-708, clear of the arena (right edge x=1040), HUD text and bot labels. The overlapping labels (bot1/bot7, bot2/bot6 in after/shot-3) and the top-left status text are the likelier cause and are pre-existing."
+        "Kill feed never shows in the preview: in packages/games/template/assets.ts detectKills probably never matches real snapshots (requires victim r drop >2 AND jump >50 between snapshots; check how rules.ts respawns/shrinks the eaten player and relax or adapt the heuristic, e.g. detect respawn by position jump alone or by a size drop relative to the victim's previous size).",
+        "No tests: add packages/games/template/assets.test.ts (or similar) covering detectKills with a synthetic prev/next pair where one player eats another, and a no-kill case.",
+        "Stray formatting in onSnapshot (`const players =Object.values`) in assets.ts; tidy.",
+        "Ensure the preview scenario produces a kill within the clip (bots collide), and that the feed text is large/contrasting enough to read on a phone (fontSize 16 is small; raise killFeedFontSize in config.ts to ~22)."
       ],
-      "packagesTree": "3f0986cbe8568828e25b7be527f00769665452bd+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
-      "at": "2026-10-24T10:39:28.443Z"
+      "packagesTree": "8e5d6dabdc71dfe0364221190230a6c311a36495+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
+      "at": "2026-10-24T12:39:49.489Z"
     },
     {
-      "verdict": "pass",
-      "score": 3,
+      "verdict": "fix",
+      "score": 2,
       "playerImpact": true,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "When one player/bot swallows another, a line naming killer and victim appears in a corner of the screen",
+          "met": false,
+          "evidence": "after/shot-1..3: no kill-feed text anywhere; code in assets.ts drawKillFeed/detectKills exists and is unit-tested but nothing shows in the real scenario"
+        },
+        {
+          "text": "Each line is coloured by the killer's colour (own = light blue, bots = red) and fades out within a few seconds",
+          "met": false,
+          "evidence": "No line visible in any after shot; colouring/fade only in code (assets.ts drawKillFeed)"
+        },
+        {
+          "text": "At most a handful of lines show at once, newest on top, and they do not overlap the minimap",
+          "met": false,
+          "evidence": "Cap of 5 in config and feed at top-left away from minimap, but no line appears in shots so it cannot be confirmed; also unshift plus index layout is code-only evidence"
+        },
+        {
+          "text": "In the preview after clip at least one kill-feed message is visible",
+          "met": false,
+          "evidence": "after/shot-1, shot-2, shot-3 identical in HUD to before/shot-2: only the debug line top-left, no kill message"
+        }
+      ],
+      "findings": [
+        "No kill message appears in any after shot: in packages/games/template/assets.ts detectKills still relies on snapshot heuristics (victim r drops >1 and jumps >30) that the preview scenario never triggers; derive kills from what the scenario actually produces (e.g. victim disappearing or shrinking by any amount, or compare against rules.ts absorption events) and verify against the preview recording",
+        "Feed is drawn at (12,12) in drawOverlay, where the debug text 'live present...' also sits; move it below that line (e.g. killFeedMargin y about 40 in config.ts) so it is not hidden or overlapped",
+        "If the preview scenario has no kills at all, add a visible fallback in assets.ts such as feed lines for pellet/spike deaths or a 'joined' line so the clip shows the feed, or make bots in the preview actually collide (rules.ts) so a kill occurs by 90%"
+      ],
+      "packagesTree": "8079423bc1fce34b9cd4edeb533268c9c9470c31+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
+      "at": "2026-10-24T12:43:33.409Z"
+    },
+    {
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": false,
       "visible": true,
       "criteria": [
         {
-          "text": "A minimap panel is visible in a corner of the screen throughout play",
-          "met": true,
-          "evidence": "after/shot-1,2,3: 220px bordered panel bottom-right, with a white viewport rectangle; camera now zoomed 1.8x so the arena no longer fits (before shot-2 showed the whole arena)"
+          "text": "When one player/bot swallows another, a line naming killer and victim appears in a corner of the screen",
+          "met": false,
+          "evidence": "No 'X ate Y' line in any after shot (1-3); only pellet lines. detectKills in assets.ts is a client-side heuristic (victim shrank and jumped >30px) with no on-screen proof."
         },
         {
-          "text": "Every player appears as a dot at the matching arena position, in the same color as their circle, and your own dot is highlighted",
-          "met": true,
-          "evidence": "after/shot-2: lime dots match lime player circles, red dots for hazards, own dot has a white outline; drawOverlay uses playerColor(e.id) and e.x/bounds scaling"
+          "text": "Each line is coloured by the killer's colour (own = light blue, bots = red) and fades out within a few seconds",
+          "met": false,
+          "evidence": "Visible lines are green/orange by pellet type, not killer colour; kill-line colouring is unseen. Lifetime is 8s with 2s fade, not 'a few seconds'."
         },
         {
-          "text": "Dot size grows with the player's size, so a larger player has a visibly larger dot",
+          "text": "At most a handful of lines show at once, newest on top, and they do not overlap the minimap",
           "met": true,
-          "evidence": "after/shot-1: larger bot0 has a visibly larger dot than the small ones; radius scaled min 4 to max 12 by r in drawOverlay; leader gets a gold ring"
+          "evidence": "after/shot-1: 5 lines, newest on top, top-left, clear of the bottom-right minimap. They do overlap bot name labels in shot 1."
         },
         {
-          "text": "The after clip shows dots moving on the minimap as players move",
-          "met": true,
-          "evidence": "after/shot-1 to shot-3: dot clusters change positions between shots (ring formation, then spread, then pairs near top)"
+          "text": "In the preview after clip at least one kill-feed message is visible",
+          "met": false,
+          "evidence": "Messages are visible in shots 1-3, but all are pellet events, not kills."
         }
       ],
-      "findings": [],
-      "packagesTree": "f1c9ca67996bad1e374f74c4c4cda969fdbc51c7+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
-      "at": "2026-10-24T10:43:51.851Z"
+      "findings": [
+        "No kill message appears in the after clip, so the core feature is unproven: make kill detection reliable (preferably from a server-side event or an exact rule in rules.ts) and show a real 'A ate B' line in the preview scenario.",
+        "Pellet-eat lines are mostly bot noise (bot9/Bot/bot0 repeated) and push out any kill lines (max 5): show only the local player's pellet events or give kills priority in assets.ts.",
+        "Lines overlap player name labels near the top-left (after/shot-1): offset or reduce the feed in assets.ts drawKillFeed.",
+        "accept.json still describes a kill feed with killer-colour rules; align the criteria with the pellet ticker or drop pellet lines."
+      ],
+      "packagesTree": "96a65f6e8825c7e97b00dcdc111c3c2e79aafffa+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
+      "at": "2026-10-24T12:46:22.081Z"
     }
   ]
 }
