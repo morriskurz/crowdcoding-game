@@ -1,74 +1,33 @@
 [
   {
     "id": "t1",
-    "title": "config: minimap size, margin, dot radius range",
+    "title": "config: tower, jump, round and camera numbers",
     "tier": "muse",
     "files": [
       "packages/games/template/config.ts"
     ],
-    "estMin": 5,
-    "actualMin": 1.4,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.4
-      }
-    ]
+    "estMin": 8,
+    "done": false
   },
   {
     "id": "t2",
-    "title": "assets: cache players in onSnapshot, draw minimap corner in drawOverlay",
+    "title": "rules: tower builder (4 section types), platformer physics, bumping, round loop, wins + tests",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/template/rules.ts",
+      "packages/games/template/rules.test.ts"
+    ],
+    "estMin": 20,
+    "done": false
+  },
+  {
+    "id": "t3",
+    "title": "assets: side-view tower drawing, height bar, results/leaderboard overlay",
     "tier": "muse",
     "files": [
       "packages/games/template/assets.ts"
     ],
     "estMin": 15,
-    "actualMin": 1.9,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.9
-      }
-    ]
-  },
-  {
-    "id": "t3",
-    "title": "config: larger minimap, bigger dots, cameraZoom",
-    "tier": "muse",
-    "files": [
-      "packages/games/template/config.ts"
-    ],
-    "estMin": 5,
-    "actualMin": 1.4,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.4
-      }
-    ]
-  },
-  {
-    "id": "t4",
-    "title": "assets: zoom camera via scene.zoom, brighter minimap, ring the leader dot",
-    "tier": "muse",
-    "files": [
-      "packages/games/template/assets.ts"
-    ],
-    "estMin": 10,
-    "actualMin": 1.7,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.7
-      }
-    ]
+    "done": false
   }
 ]

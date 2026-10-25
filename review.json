@@ -1,78 +1,11 @@
 {
-  "intent": "A small minimap sits in a screen corner and shows every player in the arena as a colored dot, bigger dots for bigger players, so you can always see where rivals are and who is winning.",
+  "intent": "The top-down arena becomes a side-view race up one shared tower of 12 stacked sections (ledges, moving platforms, gap jumps, narrow beams). Players run and jump, can bump each other off ledges, and fall back down with no checkpoints; the first to the top or the highest after 180 s wins, then a new tower is built.",
   "accept": [
-    "A minimap panel is visible in a corner of the screen throughout play",
-    "Every player appears as a dot at the matching arena position, in the same color as their circle, and your own dot is highlighted",
-    "Dot size grows with the player's size, so a larger player has a visibly larger dot",
-    "The after clip shows dots moving on the minimap as players move"
+    "Players run left/right and jump (hold for a slightly higher jump) under gravity, landing on platforms and falling when they miss",
+    "A tower of 12 random sections from four types is built each round; every player sees the same tower and starts on the ground floor",
+    "Touching the top platform or the 180 s timer ends the round, shows a short results phase with the winner and wins count, then builds a new tower",
+    "Players push each other, so a bump can knock someone off a ledge",
+    "The view is side-on following the player, with a height bar showing climb progress and each player's height"
   ],
-  "rounds": [
-    {
-      "verdict": "fix",
-      "score": 2,
-      "playerImpact": false,
-      "visible": false,
-      "criteria": [
-        {
-          "text": "A minimap panel is visible in a corner of the screen throughout play",
-          "met": true,
-          "evidence": "after/shot-1,2,3: 140px panel bottom-right in the dark margin, present in all three shots; it overlaps nothing"
-        },
-        {
-          "text": "Every player appears as a dot at the matching arena position, in the same color as their circle, and your own dot is highlighted",
-          "met": false,
-          "evidence": "after shots: green player dots and red hostile dots match circle colours and positions, but the scenario is a spectator run (no 'me'), so the own-dot highlight (white ring in drawOverlay) is not shown anywhere and is only code-read"
-        },
-        {
-          "text": "Dot size grows with the player's size, so a larger player has a visibly larger dot",
-          "met": true,
-          "evidence": "after/shot-1: bot4/bot0 dots are visibly larger than bot5/bot7 dots; drawOverlay scales radius 2.5..9 by size"
-        },
-        {
-          "text": "The after clip shows dots moving on the minimap as players move",
-          "met": true,
-          "evidence": "minimap dot layout differs between after shot-1, shot-2 and shot-3, following the arena positions"
-        }
-      ],
-      "findings": [
-        "Minimap adds almost no information: the 800x800 arena is already almost entirely on screen (the whole arena is visible in the before shots), so the minimap just repeats what the main view shows. Make it matter: e.g. in packages/games/template/config.ts/rules.ts zoom the camera in (scene.zoom in assets.ts) so the arena no longer fits and the minimap becomes the only way to see off-screen rivals, or",
-        "Minimap is too small and low-contrast to read on a phone (140px of 1280, dots 2.5-9px, alpha 0.55): in config.ts raise minimapSize to roughly 200-240 and dotMin to about 4, and draw it with brighter border and labels or a highlight on the leader in assets.ts drawOverlay.",
-        "Own-dot highlight is never shown in the preview scenario (spectator, no me): either pulse or ring the biggest player's dot too so the highlight is visible in the clip, in assets.ts drawOverlay.",
-        "OCR gate failure is not caused by the minimap: it sits in the dark margin at x 1128-1268, y 568-708, clear of the arena (right edge x=1040), HUD text and bot labels. The overlapping labels (bot1/bot7, bot2/bot6 in after/shot-3) and the top-left status text are the likelier cause and are pre-existing."
-      ],
-      "packagesTree": "3f0986cbe8568828e25b7be527f00769665452bd+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
-      "at": "2026-10-24T10:39:28.443Z"
-    },
-    {
-      "verdict": "pass",
-      "score": 3,
-      "playerImpact": true,
-      "visible": true,
-      "criteria": [
-        {
-          "text": "A minimap panel is visible in a corner of the screen throughout play",
-          "met": true,
-          "evidence": "after/shot-1,2,3: 220px bordered panel bottom-right, with a white viewport rectangle; camera now zoomed 1.8x so the arena no longer fits (before shot-2 showed the whole arena)"
-        },
-        {
-          "text": "Every player appears as a dot at the matching arena position, in the same color as their circle, and your own dot is highlighted",
-          "met": true,
-          "evidence": "after/shot-2: lime dots match lime player circles, red dots for hazards, own dot has a white outline; drawOverlay uses playerColor(e.id) and e.x/bounds scaling"
-        },
-        {
-          "text": "Dot size grows with the player's size, so a larger player has a visibly larger dot",
-          "met": true,
-          "evidence": "after/shot-1: larger bot0 has a visibly larger dot than the small ones; radius scaled min 4 to max 12 by r in drawOverlay; leader gets a gold ring"
-        },
-        {
-          "text": "The after clip shows dots moving on the minimap as players move",
-          "met": true,
-          "evidence": "after/shot-1 to shot-3: dot clusters change positions between shots (ring formation, then spread, then pairs near top)"
-        }
-      ],
-      "findings": [],
-      "packagesTree": "f1c9ca67996bad1e374f74c4c4cda969fdbc51c7+a9d4864acae59e45b710a6ac9123c9c2daa70d33",
-      "at": "2026-10-24T10:43:51.851Z"
-    }
-  ]
+  "rounds": []
 }
