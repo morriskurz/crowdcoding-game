@@ -1,44 +1,9 @@
 {
-  "intent": "Each jump has a 1-in-30 chance to set off a short-lived explosion where the jumper took off. Anyone caught in its small radius (jumper included) is blasted away and slammed downward, losing height; a visible fireball and shake make it readable.",
+  "intent": "The tower is several times wider, so the climbing path spreads out and a player who slips off a platform drops a long way before anything catches them.",
   "accept": [
-    "Some jumps (roughly 1 in 30) produce a visible explosion at the take-off point; most do not",
-    "A player inside the blast radius is thrown sideways and downward, and a player outside is unaffected",
-    "The explosion looks the same regardless of who jumped",
-    "A test forces the chance roll and checks the blast hits only players in range"
+    "The tower is at least 3x wider than before",
+    "Falling off a platform usually means a long drop past many levels instead of landing on the next ledge",
+    "Every platform is still reachable and the top can still be reached"
   ],
-  "rounds": [
-    {
-      "verdict": "pass",
-      "score": 3,
-      "playerImpact": true,
-      "visible": true,
-      "criteria": [
-        {
-          "text": "Some jumps (roughly 1 in 30) produce a visible explosion at the take-off point; most do not",
-          "met": true,
-          "evidence": "rules.ts movePlayer spawns a blast on randomInt(blastOdds)===0 at p.x,p.y; test 'about 1 in blastOdds jumps explodes' checks the rate; assets.ts drawBlast draws a 70px orange fireball + ring + particles. Not seen in after shots (all 3 identical to before; random and rare)."
-        },
-        {
-          "text": "A player inside the blast radius is thrown sideways and downward, and a player outside is unaffected",
-          "met": true,
-          "evidence": "applyBlasts sets kick and vy=blastSlam for players within r; test asserts jumper and close player slammed/kicked, far player vy 0, kick 0, still on ground."
-        },
-        {
-          "text": "The explosion looks the same regardless of who jumped",
-          "met": true,
-          "evidence": "drawBlast ignores the owner; blast entity carries no player data, only ticksLeft/fresh."
-        },
-        {
-          "text": "A test forces the chance roll and checks the blast hits only players in range",
-          "met": true,
-          "evidence": "rules.test.ts 'jump blasts' uses hitSeed() to find a seed with a blast, then checks near vs far players."
-        }
-      ],
-      "findings": [
-        "Caveat: the preview clip (after shot-1..3) shows no blast, so a viewer comparing clips may see no difference. This is inherent to the 1-in-30 spec; consider only that the effect is large when it fires. Optionally make the preview scenario show jumping players."
-      ],
-      "packagesTree": "087a9f8ae81e2659eafbe006701726d71cef6970+34577ea47ea00a8c0ec2624f08646beae1708f9d",
-      "at": "2026-10-25T18:10:46.980Z"
-    }
-  ]
+  "rounds": []
 }

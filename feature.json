@@ -1,9 +1,9 @@
 {
-  "id": "19",
-  "spec": "Every jump by any player has a 1/30 chance to trigger an explosion at the jump location, damaging players in a small blast radius. The explosion is identical for all players and purely chance-based.",
+  "id": "18",
+  "spec": "Make the whole tower much much wider so that falling from a platform lets players fall down really far before landing.",
   "slug": "tower-climb-20261025",
   "game": "template",
-  "branch": "f/19-tower-climb-20261025",
-  "status": "ready",
-  "updatedAt": "2026-10-25T18:11:14.872Z"
+  "branch": "f/18-tower-climb-20261025",
+  "status": "building",
+  "updatedAt": "2026-10-25T18:17:26.057Z"
 }

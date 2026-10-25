@@ -1,57 +1,12 @@
 [
   {
     "id": "t1",
-    "title": "config: blast chance, radius, lifetime, knock values",
+    "title": "config: widen tower to 2400",
     "tier": "muse",
     "files": [
       "packages/games/template/config.ts"
     ],
     "estMin": 5,
-    "actualMin": 1.4,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.4
-      }
-    ]
-  },
-  {
-    "id": "t2",
-    "title": "rules: 1/30 jump explosion entity that knocks players in radius down and away + tests",
-    "tier": "sonnet",
-    "files": [
-      "packages/games/template/rules.ts",
-      "packages/games/template/rules.test.ts"
-    ],
-    "estMin": 20,
-    "actualMin": 1.6,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "sonnet",
-        "ok": true,
-        "minutes": 1.6
-      }
-    ]
-  },
-  {
-    "id": "t3",
-    "title": "assets: draw expanding fireball for blast entities, sound and shake",
-    "tier": "muse",
-    "files": [
-      "packages/games/template/assets.ts"
-    ],
-    "estMin": 10,
-    "actualMin": 1.9,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.9
-      }
-    ]
+    "done": false
   }
 ]
