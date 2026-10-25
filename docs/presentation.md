@@ -45,8 +45,14 @@ on stream.
 ## Agent inputs (at the PR head, all untrusted)
 
 - `feature.json`: `{id, spec, slug, game?, branch, status, scenario?}`. `featureId` comes from `id`.
-  `scenario` must name one of `scripts/scenarios` (`idle-crowd` (default), `chase`, `collect`).
-  Any other value falls back to the default.
+  `scenario` must name one of `scripts/scenarios` (`idle-crowd` (default), `chase`, `collect`, `play`).
+  Any other value falls back to the default. Without a valid `scenario` it is inferred from `spec`,
+  and a game with its own bot (`rules.bot`) plays itself instead (`play`: every bot runs the game's
+  bot AI), because the steering-only scenarios never press action (no jumping, climbing or racing).
+  `index.json` records the scenario that actually ran.
+- The recorder watches as a spectator (`?spectate=1`), like the stream overlay: the camera follows the
+  action (the game's `spectateTarget`, else the director), so a world larger than the view (a tall
+  tower) is filmed where the players are, not at its top-left corner.
   `game` (written by `orchestrate.mjs start`) is the game directory both sides present, loaded through
   the game registry (`@tcg/games`). A side whose checkout has no such game (the before side of a weekly
   bootstrap) presents that checkout's current game; an invalid value is ignored. `index.json` records

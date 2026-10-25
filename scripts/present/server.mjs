@@ -8,10 +8,14 @@
 // connects, so tick N is identical across runs for the same seed, scenario and game code. The viewer
 // is a spectator: it gets snapshots, has no entity, and its inputs are ignored.
 //
+// Scenario: --scenario as given with --explicit (feature.json named it, or a baseline run). Without
+// --explicit the name is a guess (inferred from the spec), and a game with its own bot (rules.bot)
+// plays itself instead (scenario "play"): steering-only scenarios never jump, climb or race.
+//
 // Game: --game <slug> (feature.json `game`) if that checkout has it, else the checkout's current game
 // (@tcg/games). / and /game serve that game, as the Worker does for the current one.
 //
-// Run: node scripts/present/server.mjs --root <checkout> --port 8787 [--seed 1337] [--scenario idle-crowd] [--game <slug>]
+// Run: node scripts/present/server.mjs --root <checkout> --port 8787 [--seed 1337] [--scenario idle-crowd] [--explicit] [--game <slug>]
 // Prints one JSON line {"ready":true,...} on stdout when listening.
 import fs from "node:fs";
 import http from "node:http";
@@ -21,7 +25,7 @@ import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
 import { tsImport } from "tsx/esm/api";
 import { WebSocketServer } from "ws";
-import { resolveScenario } from "../scenarios/index.mjs";
+import { GAME_BOT_SCENARIO, resolveScenario } from "../scenarios/index.mjs";
 import { writeRegistry } from "../registry.mjs";
 
 export const TICK_HZ = 15;
@@ -50,9 +54,19 @@ export async function loadGame(root, game = null) {
   return { shared, rules: mod.rules, gamePkg, game: null };
 }
 
+/** A game bot's input, clamped like a client's; null when unusable (same rule as apps/server bots.ts). */
+function cleanInput(i) {
+  if (!i || typeof i !== "object") return null;
+  const { dx, dy, action } = i;
+  if (typeof dx !== "number" || typeof dy !== "number" || !Number.isFinite(dx) || !Number.isFinite(dy)) return null;
+  const c = (v) => Math.max(-1, Math.min(1, v));
+  return { dx: c(dx), dy: c(dy), action: action === true };
+}
+
 /** Deterministic sim with scripted bots. Pure apart from rules; no IO. */
-export function createSim(shared, rules, { seed, scenario }) {
-  const sc = resolveScenario(scenario);
+export function createSim(shared, rules, { seed, scenario, explicit = true }) {
+  const gameBot = typeof rules.bot === "function" ? rules.bot : null;
+  const sc = resolveScenario(!explicit && gameBot ? GAME_BOT_SCENARIO : scenario);
   const world = shared.createWorld(seed);
   rules.init?.(world);
   const botIds = Array.from({ length: sc.bots }, (_, i) => `bot${i}`);
@@ -61,6 +75,11 @@ export function createSim(shared, rules, { seed, scenario }) {
     get tick() { return world.tick; },
     get entities() { return Object.values(world.entities); },
     bot: (i) => world.entities[botIds[i]],
+    // The game's own bot input for bot i (1-based number, as the live server numbers them); null without one.
+    gameBot: (i) => {
+      if (!gameBot) return null;
+      try { return cleanInput(gameBot(world, botIds[i], i + 1)); } catch { return null; }
+    },
   };
   let exceptions = 0;
   return {
@@ -80,9 +99,9 @@ export function createSim(shared, rules, { seed, scenario }) {
 
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".wasm": "application/wasm" };
 
-export async function startServer({ root, port, seed = 1337, scenario, version = "present", game = null }) {
+export async function startServer({ root, port, seed = 1337, scenario, explicit = true, version = "present", game = null }) {
   const { shared, rules, gamePkg, game: slug } = await loadGame(root, game);
-  const sim = createSim(shared, rules, { seed, scenario });
+  const sim = createSim(shared, rules, { seed, scenario, explicit });
   const dist = path.resolve(root, "apps/client/dist");
   const costs = [];
   let viewer = null;
@@ -156,9 +175,9 @@ export async function startServer({ root, port, seed = 1337, scenario, version =
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-  const { values } = parseArgs({ options: { root: { type: "string" }, port: { type: "string", default: "8787" }, seed: { type: "string", default: "1337" }, scenario: { type: "string" }, version: { type: "string", default: "present" }, game: { type: "string" } } });
+  const { values } = parseArgs({ options: { root: { type: "string" }, port: { type: "string", default: "8787" }, seed: { type: "string", default: "1337" }, scenario: { type: "string" }, version: { type: "string", default: "present" }, game: { type: "string" }, explicit: { type: "boolean", default: false } } });
   if (!values.root) { console.error("--root <checkout> required"); process.exit(2); }
-  const s = await startServer({ root: values.root, port: Number(values.port), seed: Number(values.seed), scenario: values.scenario, version: values.version, game: values.game ?? null });
+  const s = await startServer({ root: values.root, port: Number(values.port), seed: Number(values.seed), scenario: values.scenario, explicit: values.explicit, version: values.version, game: values.game ?? null });
   console.log(JSON.stringify({ ready: true, port: s.port, scenario: s.sim.scenario.name, gamePkg: s.gamePkg, game: s.game }));
   const stop = () => s.close().then(() => process.exit(0));
   process.on("SIGTERM", stop);
