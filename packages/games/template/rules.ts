@@ -332,7 +332,7 @@ export const rules: GameRules = {
     let winner: Entity<PlayerData> | null = null;
     for (const p of players) {
       const inp = inputs[p.id];
-      const landed = movePlayer(w, p, inp?.dx ?? 0, inp?.action ?? false);
+      const landed = movePlayer(w, p, inp?.dx ?? 0, (inp?.action ?? false) || (inp?.dy ?? 0) < -0.5);
       collectCoins(w, p);
       if (landed && landed.data.type === "top" && !winner) winner = p;
     }

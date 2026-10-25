@@ -43,6 +43,15 @@ describe("template tower climb", () => {
     expect(held).toBeLessThan(tap);
   });
 
+  it("pressing up (dy < -0.5) jumps like the action button", () => {
+    const up = world();
+    runTick(up, rules, { a: { dx: 0, dy: -1, action: false } });
+    expect(pl(up).y).toBeLessThan(startY);
+    const none = world();
+    runTick(none, rules, { a: { dx: 0, dy: 0, action: false } });
+    expect(pl(none).y).toBe(startY);
+  });
+
   it("cannot jump in mid-air", () => {
     const w = world();
     runTick(w, rules, { a: { dx: 0, dy: 0, action: true } });
