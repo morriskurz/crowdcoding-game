@@ -41,6 +41,37 @@
       ],
       "packagesTree": "5671c721c181e33145a5f4a215ba218e81f96900+772b675028535c5d0b59e612d4a0d0477b84672b",
       "at": "2026-10-25T17:17:59.464Z"
+    },
+    {
+      "verdict": "pass",
+      "score": 3,
+      "playerImpact": true,
+      "visible": true,
+      "criteria": [
+        {
+          "text": "Rise and fall are visibly slower than before, with a smooth arc",
+          "met": true,
+          "evidence": "config.ts gravity 0.7->0.4, jumpSpeed 11->8, maxFall 16->10: peak ~80px vs ~86px, airtime ~40 vs ~31 ticks (about 27% longer, slower rise/fall). Only visible in motion; after/shot-2 shows bots at different heights but no static difference."
+        },
+        {
+          "text": "After landing while moving sideways, a player keeps drifting in that direction for a few ticks that fade out",
+          "met": true,
+          "evidence": "rules.ts separate skid (landingCarry 1.2, decay 0.85) gives ~30px slide; test 'landing while running carries a fading skid' asserts slide 15-60px and skid returns to 0; standing and jump-cancel tests too."
+        },
+        {
+          "text": "Every platform in the tower is still reachable by a jump (tests pass)",
+          "met": true,
+          "evidence": "rules.test.ts 'a standing jump clears the largest gap between consecutive platforms' simulates the config jump and compares to sectionHeight/STEPS_PER_SECTION."
+        },
+        {
+          "text": "The same inputs always give the same result (determinism test green)",
+          "met": true,
+          "evidence": "Existing determinism test kept; skid is pure arithmetic in rules.ts movePlayer."
+        }
+      ],
+      "findings": [],
+      "packagesTree": "a45479d8907996e97859487934bcc6e845cdb79b+772b675028535c5d0b59e612d4a0d0477b84672b",
+      "at": "2026-10-25T17:21:58.624Z"
     }
   ]
 }
