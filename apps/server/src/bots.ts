@@ -35,7 +35,7 @@ export function botLabel(name: string | undefined, n: number): string {
 export const BOT_NAMES_MS = 10 * 60_000;
 
 /** The `CHAT_BOT` service binding (tcg-bot worker): just enough of a Fetcher. */
-export interface NameSource { fetch(input: string): Promise<Response> }
+export interface NameSource { fetch: (input: string) => Promise<Response> }
 
 /** Top chatter names from tcg-bot's `GET /leaderboard`, best first; null when unreachable or malformed. */
 export async function fetchBotNames(src: NameSource | undefined, limit = BOT_FILL): Promise<string[] | null> {
