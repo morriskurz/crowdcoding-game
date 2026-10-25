@@ -250,6 +250,12 @@ function movePlayer(w: World, p: Entity<PlayerData>, dx: number, action: boolean
       p.ground = true;
       d.on = landed.id;
       d.jumpTicks = 0;
+      if (!wasGrounded) {
+        // Landing skid: the run momentum carries on as a kick that decays.
+        const run = Math.max(-1, Math.min(1, dx)) * config.runSpeed;
+        const cap = config.runSpeed * 1.5;
+        d.kick = Math.max(-cap, Math.min(cap, d.kick + run * config.landingCarry));
+      }
     }
   }
   if (p.y < d.best) d.best = p.y;

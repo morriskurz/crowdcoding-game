@@ -103,6 +103,42 @@ describe("template tower climb", () => {
     expect(p.x).toBeCloseTo(x0 + config.movingPlatformSpeed, 5);
   });
 
+  it("landing while running carries a fading skid", () => {
+    const w = world();
+    const p = pl(w);
+    for (const c of bodies(w, "pellet")) delete w.entities[c.id];
+    p.x = 300;
+    p.y = startY - 30;
+    p.ground = false;
+    let t = 0;
+    while (!p.ground && t++ < 100) runTick(w, rules, { a: { dx: 1, dy: 0, action: false } });
+    expect(p.ground).toBe(true);
+    expect(p.data.kick).toBeGreaterThan(0);
+    expect(p.data.kick).toBeLessThanOrEqual(config.runSpeed * 1.5);
+    const x0 = p.x;
+    runTick(w, rules, { a: idle });
+    expect(p.x).toBeGreaterThan(x0);
+    for (let i = 0; i < 30; i++) runTick(w, rules, { a: idle });
+    const x1 = p.x;
+    runTick(w, rules, { a: idle });
+    expect(p.x).toBe(x1);
+    expect(p.data.kick).toBe(0);
+  });
+
+  it("landing while standing still gives no skid", () => {
+    const w = world();
+    const p = pl(w);
+    for (const c of bodies(w, "pellet")) delete w.entities[c.id];
+    p.x = 300;
+    p.y = startY - 30;
+    p.ground = false;
+    const x0 = p.x;
+    for (let t = 0; t < 60; t++) runTick(w, rules, { a: idle });
+    expect(p.ground).toBe(true);
+    expect(p.x).toBe(x0);
+    expect(p.data.kick).toBe(0);
+  });
+
   it("bumping players push each other apart", () => {
     const w = world();
     joinPlayer(w, rules, "b", "bob");
