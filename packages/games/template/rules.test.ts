@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { createWorld, joinPlayer, runTick, bodies, get, spawn } from "@tcg/shared";
-import { blowbackCheck, botEatCheck, botFightCheck, botStep, eatCheck, getShape, magnetCheck, rules, shapeCheck, shapeHuntCheck, spawnPellet, GROWTH_PER_PELLET } from "./rules.js";
+import { createWorld, joinPlayer, runTick, bodies, get, type Entity, type World } from "@tcg/shared";
+import { rules, SECTION_TYPES, COIN_GROW, PLAYER_MAX_R, buildTower, platformTop, type PlatformData, type PlayerData, type RoundData } from "./rules.js";
 import { config } from "./config.js";
+
+const idle = { dx: 0, dy: 0, action: false };
+const startY = config.floorY - config.playerR;
 
 function world(seed = 7) {
   const w = createWorld(seed);
@@ -9,319 +12,287 @@ function world(seed = 7) {
   joinPlayer(w, rules, "a", "alice");
   return w;
 }
+const pl = (w: World, id = "a") => get<PlayerData>(w, id)!;
+const rd = (w: World) => get<RoundData>(w, "round")!.data;
+const platforms = (w: World) => bodies<PlatformData>(w, "platform");
 
-describe("template agar", () => {
-  it("moves player by speed per tick with clamped input", () => {
+describe("template tower climb", () => {
+  it("stands on the ground under gravity", () => {
     const w = world();
+    const p = pl(w);
+    for (const c of bodies(w, "pellet")) delete w.entities[c.id]; // falling through a coin would grow the player
+    p.y = startY - 60;
+    for (let t = 0; t < 60; t++) runTick(w, rules, { a: idle });
+    expect(p.y).toBe(startY);
+    expect(p.ground).toBe(true);
+  });
+
+  it("jumps, and holding the button jumps higher", () => {
+    const peak = (hold: boolean) => {
+      const w = world();
+      let min = Infinity;
+      for (let t = 0; t < 40; t++) {
+        runTick(w, rules, { a: { dx: 0, dy: 0, action: t === 0 || hold } });
+        min = Math.min(min, pl(w).y);
+      }
+      return min;
+    };
+    const tap = peak(false);
+    const held = peak(true);
+    expect(tap).toBeLessThan(startY - 40);
+    expect(held).toBeLessThan(tap);
+  });
+
+  it("pressing up (dy < -0.5) jumps like the action button", () => {
+    const up = world();
+    runTick(up, rules, { a: { dx: 0, dy: -1, action: false } });
+    expect(pl(up).y).toBeLessThan(startY);
+    const none = world();
+    runTick(none, rules, { a: { dx: 0, dy: 0, action: false } });
+    expect(pl(none).y).toBe(startY);
+  });
+
+  it("cannot jump in mid-air", () => {
+    const w = world();
+    runTick(w, rules, { a: { dx: 0, dy: 0, action: true } });
+    runTick(w, rules, { a: idle });
+    const vy = pl(w).vy;
+    runTick(w, rules, { a: { dx: 0, dy: 0, action: true } });
+    expect(pl(w).vy).toBeGreaterThan(vy);
+  });
+
+  it("runs at runSpeed and stays inside the tower", () => {
+    const w = world();
+    const p = pl(w);
+    p.x = 100;
     runTick(w, rules, { a: { dx: 1, dy: 0, action: false } });
-    expect(get(w, "a")!.x).toBe(100 + config.speed);
-    expect(w.tick).toBe(1);
-  });
-
-  it("keeps player inside the arena", () => {
-    const w = world();
-    get(w, "a")!.x = 2;
+    expect(p.x).toBe(100 + config.runSpeed);
+    p.x = 3;
     runTick(w, rules, { a: { dx: -1, dy: 0, action: false } });
-    expect(get(w, "a")!.x).toBe(config.startSize);
+    expect(p.x).toBe(config.playerR);
   });
 
-  it("feature #1: grows 1.0 per pellet", () => {
-    const w = createWorld();
-    joinPlayer(w, rules, "a", "alice");
-    const p = get(w, "a")!;
-    p.x = 10; p.y = 10;
-    spawn(w, { kind: "pellet", x: 10, y: 10, r: 2 });
-    eatCheck(w);
-    expect(bodies(w, "pellet")).toHaveLength(0);
-    expect(p.r).toBeCloseTo(config.startSize + GROWTH_PER_PELLET, 5);
-  });
-
-  it("feature #2: pulls nearby pellets toward player", () => {
-    const w = createWorld();
-    joinPlayer(w, rules, "a", "alice");
-    const pel = spawn(w, { kind: "pellet", x: 150, y: 100, r: 2 });
-    magnetCheck(w);
-    expect(pel.x).toBeLessThan(150);
-  });
-
-  it("restocks pellets to config.pellets", () => {
+  it("falls off the edge of a ledge", () => {
     const w = world();
-    const p = get(w, "a")!;
-    const target = bodies(w, "pellet")[0];
-    p.x = target.x; p.y = target.y;
-    runTick(w, rules, { a: { dx: 0, dy: 0, action: false } });
-    expect(bodies(w, "pellet")).toHaveLength(config.pellets);
+    const led = platforms(w).find((q) => q.data.type !== "ground" && q.data.type !== "moving")!;
+    const p = pl(w);
+    p.x = led.x;
+    p.y = platformTop(led) - config.playerR;
+    p.data.on = led.id;
+    p.ground = true;
+    for (let t = 0; t < 4; t++) runTick(w, rules, { a: idle });
+    expect(p.y).toBe(platformTop(led) - config.playerR);
+    for (let t = 0; t < 120; t++) runTick(w, rules, { a: { dx: 1, dy: 0, action: false } });
+    expect(p.y).toBeGreaterThan(platformTop(led));
   });
 
-  it("bots exist after init", () => {
+  it("moving platforms carry riders", () => {
     const w = world();
-    expect(bodies(w, "bot")).toHaveLength(config.botCount);
+    const mp = platforms(w).find((q) => q.data.type === "moving");
+    if (!mp) return;
+    const p = pl(w);
+    mp.data.dir = 1;
+    mp.x = mp.data.ox;
+    p.x = mp.x;
+    p.y = platformTop(mp) - config.playerR;
+    p.data.on = mp.id;
+    p.ground = true;
+    const x0 = p.x;
+    runTick(w, rules, { a: idle });
+    expect(mp.x).toBeCloseTo(mp.data.ox + config.movingPlatformSpeed, 5);
+    expect(p.x).toBeCloseTo(x0 + config.movingPlatformSpeed, 5);
   });
 
-  it("a bot moves toward its nearest pellet", () => {
-    const w = createWorld();
-    const bot = spawn(w, { kind: "bot", x: 400, y: 400, r: config.startSize });
-    spawn(w, { kind: "pellet", x: 500, y: 400, r: 2 });
-    botStep(w);
-    expect(bot.x).toBeCloseTo(400 + config.botSpeed, 5);
-    expect(bot.y).toBeCloseTo(400, 5);
+  it("bumping players push each other apart", () => {
+    const w = world();
+    joinPlayer(w, rules, "b", "bob");
+    const a = pl(w);
+    const b = pl(w, "b");
+    a.x = 300; b.x = 306;
+    runTick(w, rules, { a: idle, b: idle });
+    expect(b.x - a.x).toBeGreaterThanOrEqual(2 * config.playerR - 0.001);
+    expect(a.data.kick).toBe(-config.bumpPush);
+    expect(b.data.kick).toBe(config.bumpPush);
+    const ax = a.x;
+    const bx = b.x;
+    runTick(w, rules, { a: idle, b: idle });
+    expect(a.x).toBeLessThan(ax);
+    expect(b.x).toBeGreaterThan(bx);
   });
 
-  it("a bot eats a pellet and grows", () => {
-    const w = createWorld();
-    const bot = spawn(w, { kind: "bot", x: 400, y: 400, r: config.startSize });
-    spawn(w, { kind: "pellet", x: 400, y: 400, r: 2 });
-    botEatCheck(w);
-    expect(bodies(w, "pellet")).toHaveLength(0);
-    expect(bot.r).toBeCloseTo(config.startSize + GROWTH_PER_PELLET, 5);
+  it("builds sectionCount sections and a top platform, deterministically", () => {
+    const w = world(11);
+    const ps = platforms(w);
+    expect(new Set(ps.filter((q) => q.data.section !== undefined).map((q) => q.data.section)).size).toBe(config.sectionCount);
+    expect(ps.filter((q) => q.data.type === "ground")).toHaveLength(1);
+    const tops = ps.filter((q) => q.data.type === "top");
+    expect(tops).toHaveLength(1);
+    expect(platformTop(tops[0])).toBe(rd(w).topY);
+    expect(rd(w).topY).toBeLessThan(200);
+    const again = world(11);
+    expect(JSON.stringify(again.entities)).toBe(JSON.stringify(w.entities));
   });
 
-  it("a big player eats a small bot", () => {
-    const w = createWorld();
-    joinPlayer(w, rules, "a", "alice");
-    const p = get(w, "a")!;
-    p.r = 20;
-    const bot = spawn(w, { kind: "bot", x: p.x, y: p.y, r: 10 });
-    botFightCheck(w);
-    expect(p.r).toBeCloseTo(25, 5);
-    expect(bot.r).toBe(config.startSize);
-    expect(bot.x !== p.x || bot.y !== p.y).toBe(true);
-  });
-
-  it("a big bot resets an overlapped small player", () => {
-    const w = createWorld();
-    joinPlayer(w, rules, "a", "alice");
-    const p = get(w, "a")!;
-    p.x = 300; p.y = 300;
-    const bot = spawn(w, { kind: "bot", x: 300, y: 300, r: 30 });
-    botFightCheck(w);
-    expect(p.x).toBe(100);
-    expect(p.r).toBe(config.startSize);
-    expect(bot.r).toBeCloseTo(30 + config.startSize * 0.5, 5);
-    expect(get(w, "a")).toBeDefined();
-  });
-
-  it("pellet types grow by type and are recorded", () => {
-    const w = createWorld();
-    joinPlayer(w, rules, "a", "alice");
-    const p = get(w, "a")!;
-    p.x = 10; p.y = 10;
-    spawn(w, { kind: "pellet", x: 10, y: 10, r: 2, data: { type: "spiked" } });
-    eatCheck(w);
-    expect(p.r).toBeCloseTo(config.startSize + config.spikedGrowth, 5);
-    spawn(w, { kind: "pellet", x: 10, y: 10, r: 2, data: { type: "sweet" } });
-    eatCheck(w);
-    expect(p.r).toBeCloseTo(config.startSize + config.spikedGrowth + config.sweetGrowth, 5);
-    expect((p.data as any).eaten).toEqual({ normal: 0, spiked: 1, sweet: 1 });
-  });
-
-  it("bots grow by pellet type", () => {
-    const w = createWorld();
-    const bot = spawn(w, { kind: "bot", x: 400, y: 400, r: config.startSize });
-    spawn(w, { kind: "pellet", x: 400, y: 400, r: 2, data: { type: "sweet" } });
-    botEatCheck(w);
-    expect(bot.r).toBeCloseTo(config.startSize + config.sweetGrowth, 5);
-  });
-
-  it("specialist bonus applies once a type dominates", () => {
-    const w = createWorld();
-    joinPlayer(w, rules, "a", "alice");
-    const p = get(w, "a")!;
-    p.x = 10; p.y = 10;
-    const grow: number[] = [];
-    for (let i = 0; i < config.specialistMin; i++) {
-      spawn(w, { kind: "pellet", x: 10, y: 10, r: 2, data: { type: "sweet" } });
-      const before = p.r;
-      eatCheck(w);
-      grow.push(p.r - before);
+  it("every section type stays within the tower and is reachable by jumping", () => {
+    expect(SECTION_TYPES.length).toBeGreaterThanOrEqual(4);
+    for (const type of SECTION_TYPES) {
+      for (let seed = 1; seed <= 30; seed++) {
+        const w = createWorld(seed);
+        const specs = type.build(w, config.floorY);
+        let prevTop: number = config.floorY;
+        let prevExt: [number, number] = [0, config.towerWidth];
+        for (const s of specs) {
+          const range = s.type === "moving" ? (s.range ?? 100) : 0;
+          const ext: [number, number] = [s.x - range - s.w / 2, s.x + range + s.w / 2];
+          expect(ext[0]).toBeGreaterThanOrEqual(0);
+          expect(ext[1]).toBeLessThanOrEqual(config.towerWidth);
+          const rise = prevTop - s.y;
+          expect(rise).toBeGreaterThan(0);
+          expect(rise).toBeLessThan(75); // below the plain jump apex (~81)
+          const gap = Math.max(ext[0] - prevExt[1], prevExt[0] - ext[1]);
+          expect(gap).toBeLessThanOrEqual(85);
+          prevTop = s.y;
+          prevExt = ext;
+        }
+        expect(prevTop).toBe(config.floorY - config.sectionHeight);
+      }
     }
-    expect(grow[0]).toBeCloseTo(config.sweetGrowth, 5);
-    expect(grow[config.specialistMin - 1]).toBeCloseTo(config.sweetGrowth * (1 + config.specialistBonus), 5);
   });
 
-  it("spawned pellets carry a valid type", () => {
+  it("buildTower puts all platforms inside the width", () => {
     const w = createWorld(3);
-    for (let i = 0; i < 100; i++) spawnPellet(w);
-    const types = new Set(bodies(w, "pellet").map((q) => (q.data as any).type));
-    for (const t of types) expect(["normal", "spiked", "sweet"]).toContain(t);
-    expect(types.size).toBe(3);
+    buildTower(w);
+    for (const p of platforms(w)) {
+      expect(p.x - p.r).toBeGreaterThanOrEqual(-config.platformH);
+      expect(p.x + p.r).toBeLessThanOrEqual(config.towerWidth + config.platformH);
+    }
   });
 
-  it("blowback: bigger movers shove harder, stationary and distant do nothing", () => {
-    const shove = (r: number, moving: boolean, gap = 0) => {
-      const w = createWorld();
-      const a = spawn(w, { kind: "bot", x: 300, y: 300, r });
-      if (moving) a.vx = 1;
-      const b = spawn(w, { kind: "bot", x: 300 + r + 3 + gap, y: 300, r: 5 });
-      const x0 = b.x;
-      blowbackCheck(w);
-      expect(Number.isFinite(b.x) && Number.isFinite(b.y)).toBe(true);
-      return { dx: b.x - x0, dy: b.y - 300, ax: a.x };
-    };
-    const small = shove(10, true).dx;
-    const big = shove(40, true).dx;
-    expect(small).toBeCloseTo(Math.min(config.blowbackMax, config.blowbackStrength * 10), 5);
-    expect(big).toBeGreaterThan(small);
-    expect(shove(40, false).dx).toBe(0);
-    expect(shove(40, true, 50).dx).toBe(0);
+  it("touching the top ends the round and the toucher wins", () => {
+    const w = world();
+    const p = pl(w);
+    const top = platforms(w).find((q) => q.data.type === "top")!;
+    p.x = top.x;
+    p.y = platformTop(top) - config.playerR - 5;
+    for (let t = 0; t < 5; t++) runTick(w, rules, { a: idle });
+    expect(rd(w).phase).toBe("results");
+    expect(rd(w).winner).toBe("a");
+    expect(p.data.wins).toBe(1);
   });
 
-  it("blowback: zero distance gives finite push and stays in arena", () => {
-    const w = createWorld();
-    const a = spawn(w, { kind: "bot", x: 300, y: 300, r: 20 });
-    a.vy = 2;
-    const b = spawn(w, { kind: "player", x: 300, y: 300, r: 20 });
-    blowbackCheck(w);
-    expect(b.x).toBeGreaterThan(300);
-    expect(Number.isNaN(b.y)).toBe(false);
-    const w2 = createWorld();
-    const c = spawn(w2, { kind: "bot", x: 20, y: 300, r: 20 });
-    c.vx = 1;
-    const e = spawn(w2, { kind: "bot", x: 5, y: 300, r: 5 });
-    blowbackCheck(w2);
-    expect(e.x).toBeGreaterThanOrEqual(5);
-    expect(e.x).toBeLessThanOrEqual(config.bounds - 5);
-  });
-
-  it("shapes: max size respawns small as square or triangle, again when reshaped", () => {
-    const w = createWorld(5);
-    joinPlayer(w, rules, "a", "alice");
-    const p = get(w, "a")!;
-    expect(getShape(p)).toBe("circle");
-    p.x = 400; p.y = 400; p.r = config.maxSize;
-    shapeCheck(w);
-    expect(p.x).toBe(100);
-    expect(p.r).toBe(config.startSize);
-    expect(["square", "triangle"]).toContain(getShape(p));
-    p.r = config.maxSize + 1;
-    shapeCheck(w);
-    expect(p.r).toBe(config.startSize);
-    expect(["square", "triangle"]).toContain(getShape(p));
-  });
-
-  it("shapes: bots at max size become shapes, move by shape speed, lose shape when eaten", () => {
-    const w = createWorld(5);
-    const bot = spawn(w, { kind: "bot", x: 400, y: 400, r: config.maxSize });
-    shapeCheck(w);
-    expect(bot.r).toBe(config.startSize);
-    const shape = getShape(bot);
-    expect(["square", "triangle"]).toContain(shape);
-    spawn(w, { kind: "pellet", x: bot.x + 50, y: bot.y, r: 2 });
-    botStep(w);
-    const mult = shape === "square" ? config.squareSpeedMult : config.triangleSpeedMult;
-    expect(Math.hypot(bot.vx, bot.vy)).toBeCloseTo(Math.min(config.botSpeed * mult, 50), 5);
-    joinPlayer(w, rules, "a", "alice");
-    const p = get(w, "a")!;
-    p.x = bot.x; p.y = bot.y; p.r = bot.r * 2;
-    botFightCheck(w);
-    expect(getShape(bot)).toBe("circle");
-  });
-
-  it("shapes: speed and pellet growth depend on shape", () => {
-    const move = (shape?: string) => {
-      const w = createWorld();
-      joinPlayer(w, rules, "a", "alice");
-      const p = get(w, "a")!;
-      if (shape) (p.data as any).shape = shape;
-      runTick(w, rules, { a: { dx: 1, dy: 0, action: false } });
-      return p.x - 100;
-    };
-    expect(move()).toBeCloseTo(config.speed, 5);
-    expect(move("square")).toBeCloseTo(config.speed * config.squareSpeedMult, 5);
-    expect(move("triangle")).toBeCloseTo(config.speed * config.triangleSpeedMult, 5);
-    const grow = (shape: string) => {
-      const w = createWorld();
-      joinPlayer(w, rules, "a", "alice");
-      const p = get(w, "a")!;
-      (p.data as any).shape = shape;
-      p.x = 10; p.y = 10;
-      spawn(w, { kind: "pellet", x: 10, y: 10, r: 2 });
-      eatCheck(w);
-      return p.r - config.startSize;
-    };
-    expect(grow("square")).toBeCloseTo(GROWTH_PER_PELLET * config.squareGrowthMult, 5);
-    expect(grow("triangle")).toBeCloseTo(GROWTH_PER_PELLET * config.triangleGrowthMult, 5);
-  });
-
-  it("shape hunt: bigger shaped player eats a small circle player", () => {
-    const w = createWorld();
-    joinPlayer(w, rules, "a", "alice");
+  it("times out with the highest player winning", () => {
+    const w = world();
     joinPlayer(w, rules, "b", "bob");
-    const s = get(w, "a")!;
-    const c = get(w, "b")!;
-    (s.data as any).shape = "square";
-    s.x = 300; s.y = 300; s.r = 20;
-    c.x = 300; c.y = 300; c.r = 10;
-    shapeHuntCheck(w);
-    expect(s.r).toBeCloseTo(25, 5);
-    expect(c.x).toBe(100);
-    expect(c.r).toBe(config.startSize);
-    expect(getShape(s)).toBe("square");
+    pl(w).data.best = startY - 100;
+    pl(w, "b").data.best = startY - 400;
+    rd(w).ticksLeft = 1;
+    runTick(w, rules, { a: idle, b: idle });
+    expect(rd(w).phase).toBe("results");
+    expect(rd(w).winner).toBe("b");
+    expect(pl(w, "b").data.wins).toBe(1);
+    expect(pl(w).data.wins).toBe(0);
   });
 
-  it("shape hunt: bigger circle player destroys a small shaped player and gets a bounty", () => {
-    const w = createWorld();
-    joinPlayer(w, rules, "a", "alice");
-    joinPlayer(w, rules, "b", "bob");
-    const s = get(w, "a")!;
-    const c = get(w, "b")!;
-    (s.data as any).shape = "triangle";
-    s.x = 300; s.y = 300; s.r = 10;
-    c.x = 300; c.y = 300; c.r = 20;
-    shapeHuntCheck(w);
-    expect(c.r).toBeCloseTo(20 + 10 * config.shapeBounty, 5);
-    expect(s.x).toBe(100);
-    expect(s.r).toBe(config.startSize);
-    expect(getShape(s)).toBe("circle");
+  it("timeout with nobody progressed has no winner", () => {
+    const w = world();
+    rd(w).ticksLeft = 1;
+    runTick(w, rules, { a: idle });
+    expect(rd(w).phase).toBe("results");
+    expect(rd(w).winner).toBe("");
   });
 
-  it("shape hunt: shaped bot eats a smaller circle player once (no double trigger with botFightCheck)", () => {
-    const w = createWorld();
-    joinPlayer(w, rules, "a", "alice");
-    const p = get(w, "a")!;
-    const bot = spawn(w, { kind: "bot", x: 100, y: 100, r: 20 });
-    (bot.data as any).shape = "square";
-    p.x = 100; p.y = 100; p.r = 10;
-    shapeHuntCheck(w);
-    expect(bot.r).toBeCloseTo(25, 5);
-    expect(p.r).toBe(config.startSize);
-    botFightCheck(w);
-    expect(bot.r).toBeCloseTo(25, 5);
-    expect(getShape(bot)).toBe("square");
+  it("results freeze players, then a new tower and a reset", () => {
+    const w = world();
+    const oldIds = platforms(w).map((q) => q.id).join();
+    const p = pl(w);
+    p.x = 50; p.y = 1000; p.data.best = 1000;
+    const r = get<RoundData>(w, "round")!;
+    r.data.phase = "results";
+    r.data.ticksLeft = 3;
+    runTick(w, rules, { a: { dx: 1, dy: 0, action: true } });
+    expect(p.x).toBe(50);
+    expect(p.y).toBe(1000);
+    runTick(w, rules, { a: idle });
+    runTick(w, rules, { a: idle });
+    expect(rd(w).phase).toBe("play");
+    expect(rd(w).round).toBe(2);
+    expect(rd(w).winner).toBe("");
+    expect(platforms(w).map((q) => q.id).join()).not.toBe(oldIds);
+    expect(platforms(w).filter((q) => q.data.type === "top")).toHaveLength(1);
+    expect(p.y).toBe(startY);
+    expect(p.data.best).toBe(startY);
   });
 
-  it("shape hunt: bigger circle player destroys a shaped bot and gets a bounty", () => {
-    const w = createWorld();
-    joinPlayer(w, rules, "a", "alice");
-    const p = get(w, "a")!;
-    const bot = spawn(w, { kind: "bot", x: 300, y: 300, r: 10 });
-    (bot.data as any).shape = "triangle";
-    p.x = 300; p.y = 300; p.r = 20;
-    shapeHuntCheck(w);
-    expect(p.r).toBeCloseTo(20 + 10 * config.shapeBounty, 5);
-    expect(bot.r).toBe(config.startSize);
-    expect(getShape(bot)).toBe("circle");
-    const r = p.r;
-    botFightCheck(w);
-    expect(p.r).toBe(r);
+  it("a late joiner spawns at the bottom, also during results", () => {
+    const w = world();
+    rd(w).phase = "results";
+    joinPlayer(w, rules, "c", "carol");
+    const c = pl(w, "c") as Entity<PlayerData>;
+    expect(c.y).toBe(startY);
+    expect(c.x).toBeGreaterThanOrEqual(config.playerR);
+    expect(c.x).toBeLessThanOrEqual(config.towerWidth - config.playerR);
   });
 
-  it("is deterministic with bots", () => {
-    const run = () => {
-      const w = world(9);
-      for (let t = 0; t < 200; t++) runTick(w, rules, { a: { dx: 1, dy: t % 20 < 10 ? 1 : -1, action: false } });
-      expect(bodies(w, "bot")).toHaveLength(config.botCount);
-      return JSON.stringify(w);
-    };
-    expect(run()).toBe(run());
+  it("leaving despawns the player", () => {
+    const w = world();
+    rules.leave ? rules.leave(w, "a") : delete w.entities["a"];
+    expect(get(w, "a")).toBeUndefined();
   });
 
   it("is deterministic for the same seed and inputs", () => {
     const run = () => {
       const w = world(42);
-      for (let t = 0; t < 300; t++) runTick(w, rules, { a: { dx: t % 50 < 25 ? 1 : -1, dy: t % 30 < 15 ? 1 : -1, action: false } });
+      joinPlayer(w, rules, "b", "bob");
+      for (let t = 0; t < 400; t++) {
+        runTick(w, rules, {
+          a: { dx: t % 50 < 25 ? 1 : -1, dy: 0, action: t % 17 < 8 },
+          b: { dx: t % 40 < 20 ? -1 : 1, dy: 0, action: t % 11 < 5 },
+        });
+      }
       return JSON.stringify(w);
     };
     expect(run()).toBe(run());
+  });
+
+  it("the tower holds coins (pellets), near the ground and on ledges", () => {
+    const w = world();
+    const coins = bodies(w, "pellet");
+    expect(coins.length).toBeGreaterThan(config.sectionCount);
+    expect(coins.some((c) => c.y > config.floorY - 30)).toBe(true);
+    expect(coins.some((c) => c.y < config.floorY - config.sectionHeight)).toBe(true);
+  });
+
+  it("touching a coin collects it and grows the player up to a cap", () => {
+    const w = world();
+    const p = pl(w);
+    const coin = bodies(w, "pellet")[0];
+    p.x = coin.x;
+    p.y = coin.y;
+    const n = bodies(w, "pellet").length;
+    runTick(w, rules, { a: idle });
+    expect(get(w, coin.id)).toBeUndefined();
+    expect(bodies(w, "pellet").length).toBeLessThan(n);
+    expect(p.r).toBeCloseTo(config.playerR + COIN_GROW, 5);
+    p.r = PLAYER_MAX_R;
+    const c2 = bodies(w, "pellet")[0];
+    p.x = c2.x;
+    p.y = c2.y;
+    runTick(w, rules, { a: idle });
+    expect(p.r).toBe(PLAYER_MAX_R);
+  });
+
+  it("a grown player still lands on the ground and a new round resets size and coins", () => {
+    const w = world();
+    const p = pl(w);
+    p.r = PLAYER_MAX_R;
+    p.y = config.floorY - 20;
+    p.x = 300;
+    for (let t = 0; t < 60; t++) runTick(w, rules, { a: idle });
+    expect(p.y).toBe(config.floorY - PLAYER_MAX_R);
+    rd(w).phase = "results";
+    rd(w).ticksLeft = 1;
+    runTick(w, rules, { a: idle });
+    expect(p.r).toBe(config.playerR);
+    expect(bodies(w, "pellet").length).toBeGreaterThan(config.sectionCount);
   });
 });
