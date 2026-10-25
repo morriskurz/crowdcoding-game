@@ -35,5 +35,26 @@
         "minutes": 1.5
       }
     ]
+  },
+  {
+    "id": "t3",
+    "title": "config: lower gravity 0.4, jumpSpeed 8, landingCarry 1.2, skidDecay 0.85",
+    "tier": "muse",
+    "files": [
+      "packages/games/template/config.ts"
+    ],
+    "estMin": 5,
+    "done": false
+  },
+  {
+    "id": "t4",
+    "title": "rules: separate fading skid + reachability test",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/template/rules.ts",
+      "packages/games/template/rules.test.ts"
+    ],
+    "estMin": 15,
+    "done": false
   }
 ]
