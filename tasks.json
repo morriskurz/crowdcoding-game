@@ -45,5 +45,15 @@
         "minutes": 1
       }
     ]
+  },
+  {
+    "id": "t3",
+    "title": "tests: wide tower stays reachable and falls are long",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/template/rules.test.ts"
+    ],
+    "estMin": 15,
+    "done": false
   }
 ]
