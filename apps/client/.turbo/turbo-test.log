@@ -1,0 +1,16 @@
+
+> @tcg/client@0.1.0 test /home/user/crowdcoding-game/apps/client
+> vitest run
+
+
+ RUN  v2.1.9 /home/user/crowdcoding-game/apps/client
+
+ ✓ src/game/touch.test.ts (6 tests) 40ms
+ ✓ src/game/bridge.test.ts (7 tests) 23ms
+ ✓ src/game/director.test.ts (4 tests) 182ms
+
+ Test Files  3 passed (3)
+      Tests  17 passed (17)
+   Start at  18:03:49
+   Duration  2.52s (transform 1.08s, setup 0ms, collect 1.33s, tests 245ms, environment 4ms, prepare 1.14s)
+
