@@ -7,6 +7,30 @@
       "packages/games/template/config.ts"
     ],
     "estMin": 5,
+    "done": false,
+    "error": "gates: test: /home/user/crowdcoding-game/packages/games/template: |  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @tcg/game-template@0.1.0 test: `vitest run` | Exit status 1",
+    "attempts": [
+      {
+        "tier": "muse",
+        "ok": false,
+        "minutes": 0.7
+      },
+      {
+        "tier": "muse",
+        "ok": false,
+        "minutes": 0.1
+      }
+    ]
+  },
+  {
+    "id": "t2",
+    "title": "rules: bots standing on the ground restart from the first platform + test",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/template/rules.ts",
+      "packages/games/template/rules.test.ts"
+    ],
+    "estMin": 15,
     "done": false
   }
 ]
