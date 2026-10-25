@@ -26,7 +26,20 @@
       "packages/games/template/rules.test.ts"
     ],
     "estMin": 20,
-    "done": false
+    "done": false,
+    "error": "gates: smoke: smoke failed: >10% bots dead or no input effect | [gates] local compatibility-date override 2026-07-29 | reasons: 0:oob-player 1:oob-player 2:oob-player 3:oob-player 4:oob-player 5:oob-player 6:oob-player 7:oob-player 8:oob-player 10:oob-player",
+    "attempts": [
+      {
+        "tier": "sonnet",
+        "ok": false,
+        "minutes": 3.6
+      },
+      {
+        "tier": "sonnet",
+        "ok": false,
+        "minutes": 3.2
+      }
+    ]
   },
   {
     "id": "t3",
@@ -36,6 +49,16 @@
       "packages/games/template/assets.ts"
     ],
     "estMin": 15,
+    "done": false
+  },
+  {
+    "id": "t4",
+    "title": "config: fit tower in 2000px (smoke bounds)",
+    "tier": "muse",
+    "files": [
+      "packages/games/template/config.ts"
+    ],
+    "estMin": 3,
     "done": false
   }
 ]
