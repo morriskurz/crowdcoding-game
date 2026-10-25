@@ -6,5 +6,41 @@
     "Every platform in the tower is still reachable by a jump (tests pass)",
     "The same inputs always give the same result (determinism test green)"
   ],
-  "rounds": []
+  "rounds": [
+    {
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": false,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "Rise and fall are visibly slower than before, with a smooth arc",
+          "met": false,
+          "evidence": "config.ts gravity 0.7->0.55 but jumpSpeed lowered 11->9.6 and maxFall 16->13, so jump height is nearly unchanged (~84 vs ~86 px peak) and airtime only ~10% longer; after/shot-2 vs before/shot-2 show no discernible difference."
+        },
+        {
+          "text": "After landing while moving sideways, a player keeps drifting in that direction for a few ticks that fade out",
+          "met": true,
+          "evidence": "rules.ts landing kick (landingCarry 0.6) plus test 'landing while running carries a fading skid'. But total drift is ~2.4*(1/(1-0.6)) ~ 3-6 px, imperceptible."
+        },
+        {
+          "text": "Every platform in the tower is still reachable by a jump (tests pass)",
+          "met": false,
+          "evidence": "No test asserts reachability against the new jump values; only the diff of constants, peak height barely changed so likely fine but unproven."
+        },
+        {
+          "text": "The same inputs always give the same result (determinism test green)",
+          "met": true,
+          "evidence": "Existing determinism test unchanged; skid is deterministic arithmetic in rules.ts."
+        }
+      ],
+      "findings": [
+        "Jump feels the same: in config.ts keep jumpSpeed/jumpHoldBoost/maxFall proportional so gravity change is felt, e.g. gravity 0.4 with jumpSpeed ~8 for a clearly floaty, longer arc, while keeping peak height reachable by platform gaps.",
+        "Landing skid is only a few pixels: in config.ts raise landingCarry (and the cap in rules.ts) so the skid slides roughly 30-60 px, noticeable on a phone.",
+        "Add a rules.test.ts test that the max jump height (using config values) exceeds the largest vertical platform gap, to prove reachability."
+      ],
+      "packagesTree": "5671c721c181e33145a5f4a215ba218e81f96900+772b675028535c5d0b59e612d4a0d0477b84672b",
+      "at": "2026-10-25T17:17:59.464Z"
+    }
+  ]
 }
