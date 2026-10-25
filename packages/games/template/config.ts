@@ -45,6 +45,11 @@ export const config = {
   playerR: 10,
   bumpPush: 4,
 
+  blastOdds: 30, // a jump has a 1 in this many chance to explode
+  blastRadius: 70, // px
+  blastTicks: 8, // how long the explosion entity lives, in ticks
+  blastKick: 14, // horizontal knock speed away from the centre
+  blastSlam: 20, // downward vy given to players caught in it
   roundSeconds: 180,
   resultsSeconds: 5,
   fallShownPx: 200, // a drop of at least this much counts as a fall (sound, spectator cut)

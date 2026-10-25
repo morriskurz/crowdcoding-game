@@ -1,54 +1,12 @@
 {
-  "intent": "The top-down arena becomes a side-view race up one shared tower of 12 stacked sections (ledges, moving platforms, gap jumps, narrow beams). Players run and jump, can bump each other off ledges, and fall back down with no checkpoints; the first to the top or the highest after 180 s wins, then a new tower is built.",
+  "intent": "Each jump has a 1-in-30 chance to set off a short-lived explosion where the jumper took off. Anyone caught in its small radius (jumper included) is blasted away and slammed downward, losing height; a visible fireball and shake make it readable.",
   "accept": [
-    "Players run left/right and jump (hold for a slightly higher jump) under gravity, landing on platforms and falling when they miss",
-    "A tower of 12 random sections from four types is built each round; every player sees the same tower and starts on the ground floor",
-    "Touching the top platform or the 180 s timer ends the round, shows a short results phase with the winner and wins count, then builds a new tower",
-    "Players push each other, so a bump can knock someone off a ledge",
-    "The view is side-on following the player, with a height bar showing climb progress and each player's height"
+    "Some jumps (roughly 1 in 30) produce a visible explosion at the take-off point; most do not",
+    "A player inside the blast radius is thrown sideways and downward, and a player outside is unaffected",
+    "The explosion looks the same regardless of who jumped",
+    "A test forces the chance roll and checks the blast hits only players in range"
   ],
   "rounds": [
-    {
-      "verdict": "fix",
-      "score": 2,
-      "playerImpact": true,
-      "visible": false,
-      "criteria": [
-        {
-          "text": "Players run left/right and jump (hold for a slightly higher jump) under gravity, landing on platforms and falling when they miss",
-          "met": false,
-          "evidence": "after/shot-1..3: no player is visible in any shot; the 3 shots are pixel-identical apart from the timer (2:58, 2:54, 2:50), nothing moves. Physics exist in rules.ts/tests but the clip does not show them."
-        },
-        {
-          "text": "A tower of 12 random sections from four types is built each round; every player sees the same tower and starts on the ground floor",
-          "met": false,
-          "evidence": "after/shot-1..3: only the top platforms (145m-190m) with the flag are shown; the height bar marker sits at the bottom, so players are on the ground, off-screen. Ledge and coin types are seen, moving and beam types are not."
-        },
-        {
-          "text": "Touching the top platform or the 180 s timer ends the round, shows a short results phase with the winner and wins count, then builds a new tower",
-          "met": false,
-          "evidence": "after shots show only Round 1 at 2:58 to 2:50 and every star count is 0; no results phase or new tower is captured. The diff has a results phase but no visual proof."
-        },
-        {
-          "text": "Players push each other, so a bump can knock someone off a ledge",
-          "met": false,
-          "evidence": "No players on screen in any after shot, so no push is visible. Only the rules.ts diff supports it."
-        },
-        {
-          "text": "The view is side-on following the player, with a height bar showing climb progress and each player's height",
-          "met": false,
-          "evidence": "Side-on view and the right-hand height bar with a TOP label are present. But the camera stays parked at the tower top (190m) while the bot marker is at the bottom of the bar, so the camera does not follow anyone. The leaderboard also overlaps the '190m' label in the top-left."
-        }
-      ],
-      "findings": [
-        "Spectator or preview camera never follows players: in the camera code (packages/games/template/assets.ts, scene/zoom plus whatever drives fx.camera; check what happens when fx.me has no entity), follow the leading or average bot player so the watched clip shows players climbing, not the empty tower top.",
-        "All three after shots are identical apart from the timer and show no players at all. Make sure players are drawn and in frame by 20%, 50% and 90% of the scenario: drawEntity in assets.ts must render the player bodies, and the camera must clamp to a range containing them. Confirm bots actually jump and climb, so the height changes between shots.",
-        "Top-left leaderboard overlay overlaps the '190m' height label (drawBackground labels at x=14 in assets.ts and drawOverlay leaderboard). Move the labels to the right edge of the tower, or offset the leaderboard, so the text is legible (this explains the ocr failure).",
-        "Bot players in the preview score 0 stars and never move; check that bots in rules.ts apply jump and run input so a viewer sees climbing and pushing within the first 30 s."
-      ],
-      "packagesTree": "37db26c5338b77b256c1641344ae1a94d340457e+772b675028535c5d0b59e612d4a0d0477b84672b",
-      "at": "2026-10-25T16:51:53.319Z"
-    },
     {
       "verdict": "pass",
       "score": 3,
@@ -56,37 +14,31 @@
       "visible": true,
       "criteria": [
         {
-          "text": "Players run left/right and jump (hold for a slightly higher jump) under gravity, landing on platforms and falling when they miss",
+          "text": "Some jumps (roughly 1 in 30) produce a visible explosion at the take-off point; most do not",
           "met": true,
-          "evidence": "rules.test.ts: 'stands on the ground under gravity', 'jumps, and holding the button jumps higher', 'pressing up (dy < -0.5) jumps', 'falls off the edge of a ledge'. after/shot-1..3: players visible on the ground and sliding sideways; no jump captured in the clip because the chase scenario sends only"
+          "evidence": "rules.ts movePlayer spawns a blast on randomInt(blastOdds)===0 at p.x,p.y; test 'about 1 in blastOdds jumps explodes' checks the rate; assets.ts drawBlast draws a 70px orange fireball + ring + particles. Not seen in after shots (all 3 identical to before; random and rare)."
         },
         {
-          "text": "A tower of 12 random sections from four types is built each round; every player sees the same tower and starts on the ground floor",
+          "text": "A player inside the blast radius is thrown sideways and downward, and a player outside is unaffected",
           "met": true,
-          "evidence": "after/shot-1..3: ledges and coins of the shared tower with all bots on the ground floor; tests 'builds sectionCount sections and a top platform, deterministically' and 'every section type stays within the tower and is reachable by jumping'."
+          "evidence": "applyBlasts sets kick and vy=blastSlam for players within r; test asserts jumper and close player slammed/kicked, far player vy 0, kick 0, still on ground."
         },
         {
-          "text": "Touching the top platform or the 180 s timer ends the round, shows a short results phase with the winner and wins count, then builds a new tower",
+          "text": "The explosion looks the same regardless of who jumped",
           "met": true,
-          "evidence": "tests 'touching the top ends the round and the toucher wins', 'times out with the highest player winning', 'results freeze players, then a new tower and a reset'. Timer 2:58 to 2:50 visible in after shots; the results phase itself is not in the clip."
+          "evidence": "drawBlast ignores the owner; blast entity carries no player data, only ticksLeft/fresh."
         },
         {
-          "text": "Players push each other, so a bump can knock someone off a ledge",
+          "text": "A test forces the chance roll and checks the blast hits only players in range",
           "met": true,
-          "evidence": "test 'bumping players push each other apart'; after/shot-2..3 show bots bunched and overlapping at the ground, not a clear shove."
-        },
-        {
-          "text": "The view is side-on following the player, with a height bar showing climb progress and each player's height",
-          "met": true,
-          "evidence": "after/shot-1..3: side-on tower, camera now at the bottom where the players are, right-hand height bar with marker, 10m/25m labels on the right and no longer under the leaderboard."
+          "evidence": "rules.test.ts 'jump blasts' uses hitSeed() to find a seed with a blast, then checks near vs far players."
         }
       ],
       "findings": [
-        "Optional: the preview clip shows bots only sliding along the ground, with no jumping or climbing across the three shots. In rules.ts, make the idle bot or chase input make players jump (for example when dy<-0.5 is not sent, hop periodically) so the clip shows climbing.",
-        "Optional: player name labels overlap into an unreadable bunch (bot6bot7bot2...) because players stack at the same spot. In rules.ts spread the spawn x positions or lower the push overlap, so players do not start piled on top of each other."
+        "Caveat: the preview clip (after shot-1..3) shows no blast, so a viewer comparing clips may see no difference. This is inherent to the 1-in-30 spec; consider only that the effect is large when it fires. Optionally make the preview scenario show jumping players."
       ],
-      "packagesTree": "3abf075523bfce4380a2947a41fbe77c9ccf95f7+772b675028535c5d0b59e612d4a0d0477b84672b",
-      "at": "2026-10-25T16:55:48.255Z"
+      "packagesTree": "087a9f8ae81e2659eafbe006701726d71cef6970+34577ea47ea00a8c0ec2624f08646beae1708f9d",
+      "at": "2026-10-25T18:10:46.980Z"
     }
   ]
 }

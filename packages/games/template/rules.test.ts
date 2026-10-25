@@ -357,6 +357,58 @@ describe("tower climb: rounds", () => {
   });
 });
 
+describe("tower climb: jump blasts", () => {
+  const blasts = (w: World) => bodies(w, "blast");
+
+  /** A flat world with players a (300), b (260, close), c (500, far); one jump tick by a. */
+  function jumpTick(seed: number) {
+    const w = flat(seed);
+    joinPlayer(w, rules, "b", "bob");
+    joinPlayer(w, rules, "c", "carol");
+    pl(w).x = 300;
+    pl(w, "b").x = 260;
+    pl(w, "c").x = 500;
+    runTick(w, rules, { a: jump, b: idle, c: idle });
+    return w;
+  }
+
+  function hitSeed(): number {
+    for (let seed = 1; seed < 2000; seed++) if (blasts(jumpTick(seed)).length > 0) return seed;
+    throw new Error("no seed with a blast");
+  }
+
+  it("about 1 in blastOdds jumps explodes", () => {
+    let hits = 0;
+    const n = 600;
+    for (let seed = 1; seed <= n; seed++) if (blasts(jumpTick(seed)).length > 0) hits++;
+    const expected = n / config.blastOdds;
+    expect(hits).toBeGreaterThan(expected / 3);
+    expect(hits).toBeLessThan(expected * 3);
+  });
+
+  it("a blast slams and knocks away everyone in range, the jumper included, and spares the far player", () => {
+    const w = jumpTick(hitSeed());
+    const [b] = blasts(w);
+    expect(b.r).toBe(config.blastRadius);
+    expect(pl(w).vy).toBe(config.blastSlam);
+    expect(pl(w).data.kick).toBe(config.blastKick);
+    expect(pl(w, "b").vy).toBe(config.blastSlam);
+    expect(pl(w, "b").data.kick).toBe(-config.blastKick);
+    expect(pl(w, "b").ground).toBe(false);
+    expect(pl(w, "c").vy).toBe(0);
+    expect(pl(w, "c").data.kick).toBe(0);
+    expect(pl(w, "c").ground).toBe(true);
+  });
+
+  it("the blast entity disappears after blastTicks", () => {
+    const w = jumpTick(hitSeed());
+    for (let t = 1; t < config.blastTicks; t++) runTick(w, rules, { a: idle, b: idle, c: idle });
+    expect(blasts(w)).toHaveLength(1);
+    runTick(w, rules, { a: idle, b: idle, c: idle });
+    expect(blasts(w)).toHaveLength(0);
+  });
+});
+
 describe("tower climb: bots", () => {
   it("bots climb: within a minute they get several sections up, and sometimes fall", () => {
     const w = createWorld(3);
