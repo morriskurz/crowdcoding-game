@@ -64,6 +64,35 @@
       ],
       "packagesTree": "7b6d9d7532b6fbee41e89afd52e206a7149fda08+b683f8aebd48564d0ebc736bb9dff3496a82aa70",
       "at": "2026-10-25T18:27:12.405Z"
+    },
+    {
+      "verdict": "fix",
+      "score": 3,
+      "playerImpact": true,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "The tower is at least 3x wider than before",
+          "met": true,
+          "evidence": "config.ts towerWidth 600->2400 (4x). after/shot-1..3: the two wall bars at x~335 and x~945 that are in before/shot-1..3 are gone, but no platforms or players are in any shot, so the width itself is not shown."
+        },
+        {
+          "text": "Falling off a platform usually means a long drop past many levels instead of landing on the next ledge",
+          "met": true,
+          "evidence": "rules.test.ts 'falls are long: the median drop from a platform edge is at least 2x the typical rise'. Not visible in any after shot (empty space, no drop lines or platforms)."
+        },
+        {
+          "text": "Every platform is still reachable and the top can still be reached",
+          "met": true,
+          "evidence": "rules.test.ts 'the chain of nextTarget from the lowest platform reaches the top, and safe platforms fit 0..towerWidth' plus the bot floor-fix test; rules.ts botInput now ignores a stale last platform when on the floor. Not shown in the clip."
+        }
+      ],
+      "findings": [
+        "Clip shows no difference a viewer can read: all three after shots are empty dark space with the same HUD, and the only change versus before is that the side walls left the frame. The camera framing is a preview quirk, but the feature is invisible in the vote clip as it stands. In apps/client/src/game or the preview scenario this cannot be fixed by game files alone; within packages/games/template/a",
+        "Camera/scenario issue: if the preview camera cannot be framed on players in the template game files, the orchestrator should accept that the reviewer cannot see the feature and decide by votes; criteria are met by tests only."
+      ],
+      "packagesTree": "dbde7a738d4e9254fa18aa66d4ed1808345f1606+b683f8aebd48564d0ebc736bb9dff3496a82aa70",
+      "at": "2026-10-25T18:28:51.812Z"
     }
   ]
 }
