@@ -43,8 +43,8 @@ describe("TouchPad", () => {
 
   it("toggle button works in both modes; spectating ignores stick and action", () => {
     const t = new TouchPad(true);
-    expect(t.down(1, toggle.x, toggle.y, W, H, false)).toBe("toggle");
-    expect(t.down(2, toggle.x, toggle.y, W, H, true)).toBe("toggle");
+    expect(t.down(1, toggle.x + toggle.w / 2, toggle.y + toggle.h / 2, W, H, false)).toBe("toggle");
+    expect(t.down(2, toggle.x + toggle.w / 2, toggle.y + toggle.h / 2, W, H, true)).toBe("toggle");
     expect(t.down(3, action.x, action.y, W, H, true)).toBe(null);
     expect(t.down(4, 100, 600, W, H, true)).toBe(null);
     expect(t.read()).toEqual({ dx: 0, dy: 0, action: false });
