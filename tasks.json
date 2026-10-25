@@ -63,5 +63,15 @@
         "minutes": 1.6
       }
     ]
+  },
+  {
+    "id": "t4",
+    "title": "assets: faint drop line under each platform so long falls read",
+    "tier": "muse",
+    "files": [
+      "packages/games/template/assets.ts"
+    ],
+    "estMin": 10,
+    "done": false
   }
 ]
