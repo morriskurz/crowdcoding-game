@@ -1,5 +1,5 @@
-html, body { margin: 0; height: 100%; background: #0b0e14; overflow: hidden; }
-#game { display: block; width: 100vw; height: 100vh; border: 0; }
+html, body { margin: 0; height: 100%; background: #0b0e14; overflow: hidden; overscroll-behavior: none; touch-action: none; }
+#game { display: block; width: 100vw; height: 100vh; height: 100dvh; border: 0; }
 #banner { display: none; }
 #archived {
   position: fixed; top: 8px; right: 8px; z-index: 1; padding: 4px 10px; border-radius: 6px;
