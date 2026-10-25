@@ -26,8 +26,8 @@
       "packages/games/template/rules.test.ts"
     ],
     "estMin": 20,
-    "done": false,
-    "error": "gates: smoke: smoke failed: >10% bots dead or no input effect | [gates] local compatibility-date override 2026-07-29 | reasons: 0:oob-player 1:oob-player 2:oob-player 3:oob-player 4:oob-player 5:oob-player 6:oob-player 7:oob-player 8:oob-player 10:oob-player",
+    "actualMin": 7.2,
+    "done": true,
     "attempts": [
       {
         "tier": "sonnet",
@@ -38,6 +38,11 @@
         "tier": "sonnet",
         "ok": false,
         "minutes": 3.2
+      },
+      {
+        "tier": "opus",
+        "ok": true,
+        "minutes": 0.4
       }
     ]
   },
