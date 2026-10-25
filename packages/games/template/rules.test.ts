@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createWorld, joinPlayer, runTick, bodies, get, type Entity, type World } from "@tcg/shared";
-import { rules, SECTION_TYPES, COIN_GROW, PLAYER_MAX_R, buildTower, platformTop, type PlatformData, type PlayerData, type RoundData } from "./rules.js";
+import { rules, SECTION_TYPES, STEPS_PER_SECTION, COIN_GROW, PLAYER_MAX_R, buildTower, platformTop, type PlatformData, type PlayerData, type RoundData } from "./rules.js";
 import { config } from "./config.js";
 
 const idle = { dx: 0, dy: 0, action: false };
@@ -113,16 +113,42 @@ describe("template tower climb", () => {
     let t = 0;
     while (!p.ground && t++ < 100) runTick(w, rules, { a: { dx: 1, dy: 0, action: false } });
     expect(p.ground).toBe(true);
-    expect(p.data.kick).toBeGreaterThan(0);
-    expect(p.data.kick).toBeLessThanOrEqual(config.runSpeed * 1.5);
-    const x0 = p.x;
+    expect(p.data.skid).toBeGreaterThan(0);
+    expect(p.data.skid).toBeLessThanOrEqual(config.runSpeed * 1.5);
+    const xLand = p.x;
     runTick(w, rules, { a: idle });
-    expect(p.x).toBeGreaterThan(x0);
-    for (let i = 0; i < 30; i++) runTick(w, rules, { a: idle });
+    expect(p.x).toBeGreaterThan(xLand);
+    for (let i = 0; i < 100; i++) runTick(w, rules, { a: idle });
     const x1 = p.x;
     runTick(w, rules, { a: idle });
     expect(p.x).toBe(x1);
-    expect(p.data.kick).toBe(0);
+    expect(p.data.skid).toBe(0);
+    const slide = x1 - xLand;
+    expect(slide).toBeGreaterThan(15);
+    expect(slide).toBeLessThan(60);
+  });
+
+  it("jumping cancels the landing skid", () => {
+    const w = world();
+    const p = pl(w);
+    p.data.skid = 5;
+    runTick(w, rules, { a: { dx: 0, dy: 0, action: true } });
+    expect(p.data.skid).toBe(0);
+  });
+
+  it("a standing jump clears the largest gap between consecutive platforms", () => {
+    let vy = -config.jumpSpeed;
+    let y = 0;
+    let min = 0;
+    let ticks = config.jumpHoldTicks;
+    for (let t = 0; t < 200; t++) {
+      if (ticks > 0 && vy < 0) { vy -= config.jumpHoldBoost / config.jumpHoldTicks; ticks--; }
+      vy = Math.min(vy + config.gravity, config.maxFall);
+      y += vy;
+      min = Math.min(min, y);
+      if (y > 0) break;
+    }
+    expect(-min).toBeGreaterThan(config.sectionHeight / STEPS_PER_SECTION);
   });
 
   it("landing while standing still gives no skid", () => {
@@ -136,7 +162,7 @@ describe("template tower climb", () => {
     for (let t = 0; t < 60; t++) runTick(w, rules, { a: idle });
     expect(p.ground).toBe(true);
     expect(p.x).toBe(x0);
-    expect(p.data.kick).toBe(0);
+    expect(p.data.skid).toBe(0);
   });
 
   it("bumping players push each other apart", () => {

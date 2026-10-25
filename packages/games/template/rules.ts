@@ -22,6 +22,7 @@ export interface PlayerData {
   wins: number;
   jumpTicks: number; // ticks of jump-hold boost still available
   kick: number; // horizontal bump velocity, decays
+  skid: number; // landing slide velocity, decays by config.skidDecay
   on: string; // id of the platform stood on, or ""
 }
 
@@ -193,6 +194,7 @@ function resetPlayer(w: World, p: Entity<PlayerData>): void {
   p.data.best = p.y;
   p.data.jumpTicks = 0;
   p.data.kick = 0;
+  p.data.skid = 0;
   p.data.on = "";
 }
 
@@ -219,6 +221,7 @@ function movePlayer(w: World, p: Entity<PlayerData>, dx: number, action: boolean
   if (wasGrounded && action) {
     p.vy = -config.jumpSpeed;
     d.jumpTicks = config.jumpHoldTicks;
+    d.skid = 0;
   } else if (d.jumpTicks > 0) {
     if (action && p.vy < 0) {
       p.vy -= config.jumpHoldBoost / config.jumpHoldTicks;
@@ -227,8 +230,9 @@ function movePlayer(w: World, p: Entity<PlayerData>, dx: number, action: boolean
   }
 
   p.vy = Math.min(p.vy + config.gravity, config.maxFall);
-  p.vx = Math.max(-1, Math.min(1, dx)) * config.runSpeed + d.kick;
+  p.vx = Math.max(-1, Math.min(1, dx)) * config.runSpeed + d.kick + d.skid;
   d.kick = Math.abs(d.kick) < 0.1 ? 0 : d.kick * 0.6;
+  d.skid = Math.abs(d.skid) < 0.1 ? 0 : d.skid * config.skidDecay;
   p.x = Math.min(Math.max(p.x + p.vx, R), config.towerWidth - R);
 
   const prevBottom = p.y + R;
@@ -251,10 +255,10 @@ function movePlayer(w: World, p: Entity<PlayerData>, dx: number, action: boolean
       d.on = landed.id;
       d.jumpTicks = 0;
       if (!wasGrounded) {
-        // Landing skid: the run momentum carries on as a kick that decays.
+        // Landing skid: the run momentum carries on as a separate, slowly decaying velocity.
         const run = Math.max(-1, Math.min(1, dx)) * config.runSpeed;
         const cap = config.runSpeed * 1.5;
-        d.kick = Math.max(-cap, Math.min(cap, d.kick + run * config.landingCarry));
+        d.skid = Math.max(-cap, Math.min(cap, run * config.landingCarry));
       }
     }
   }
@@ -322,7 +326,7 @@ export const rules: GameRules = {
       id: playerId,
       kind: "player",
       r: config.playerR,
-      data: { best: 0, wins: 0, jumpTicks: 0, kick: 0, on: "" },
+      data: { best: 0, wins: 0, jumpTicks: 0, kick: 0, skid: 0, on: "" },
     });
     resetPlayer(w, p);
   },
