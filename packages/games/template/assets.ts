@@ -119,6 +119,21 @@ function drawPlatform(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
   ctx.fill();
   ctx.fillStyle = "rgba(255,255,255,0.35)";
   ctx.fillRect(x + 3, y + 1, Math.max(0, w - 6), 2);
+  if (type !== "ground") {
+    const c = platformColor(type);
+    const g = ctx.createLinearGradient(0, e.y + h / 2, 0, e.y + h / 2 + 160);
+    g.addColorStop(0, c);
+    g.addColorStop(1, c + "00");
+    ctx.save();
+    ctx.globalAlpha = 0.08;
+    ctx.strokeStyle = g;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(e.x, e.y + h / 2);
+    ctx.lineTo(e.x, e.y + h / 2 + 160);
+    ctx.stroke();
+    ctx.restore();
+  }
   if (type === "top") {
     const px = e.x + w / 2 - 8;
     const poleTop = y - 40;
