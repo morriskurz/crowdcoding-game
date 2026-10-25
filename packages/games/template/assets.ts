@@ -57,7 +57,7 @@ export function drawBackground(ctx: CanvasRenderingContext2D, _fx: Fx): void {
   ctx.strokeStyle = "rgba(255,255,255,0.08)";
   ctx.lineWidth = 1;
   ctx.font = "18px system-ui, sans-serif";
-  ctx.textAlign = "left";
+  ctx.textAlign = "right";
   ctx.textBaseline = "alphabetic";
   for (let y = 0; y <= scene.height; y += 150) {
     ctx.beginPath();
@@ -66,7 +66,7 @@ export function drawBackground(ctx: CanvasRenderingContext2D, _fx: Fx): void {
     ctx.stroke();
     const m = Math.round((config.floorY - y) / 10);
     ctx.fillStyle = "rgba(255,255,255,0.65)";
-    ctx.fillText(`${m}m`, 14, clamp(y - 6, 20, scene.height - 6));
+    ctx.fillText(`${m}m`, scene.width - 14, clamp(y - 6, 20, scene.height - 6));
   }
   ctx.fillStyle = "#334155";
   ctx.fillRect(0, 0, 8, scene.height);
@@ -175,6 +175,14 @@ export function onSnapshot(
   fx: Fx,
 ): void {
   latest = next as Record<string, Entity>;
+  if (!fx.me || (next as Record<string, Entity>)[fx.me] === undefined) {
+    const players = Object.values(next).filter((e) => e.kind === "player");
+    if (players.length > 0) {
+      let top = players[0];
+      for (const p of players) if (p.y < top.y) top = p;
+      fx.camera.follow(top.x, top.y + 120, !prev);
+    }
+  }
   if (!prev) return;
   const prevList = Object.values(prev);
   const nextList = Object.values(next);
