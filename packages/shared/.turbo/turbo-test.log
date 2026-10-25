@@ -1,0 +1,18 @@
+
+> @tcg/shared@0.1.0 test /home/user/crowdcoding-game/packages/shared
+> vitest run
+
+
+ RUN  v2.1.9 /home/user/crowdcoding-game/packages/shared
+
+ ✓ src/sim/world.test.ts (4 tests) 49ms
+ ✓ src/sim/physics.test.ts (14 tests) 702ms
+   ✓ determinism > same seed + inputs => identical state after N ticks 397ms
+ ✓ src/sim/predict.test.ts (5 tests) 1403ms
+   ✓ prediction > is exact under constant latency: every predicted tick equals the server's state 1113ms
+
+ Test Files  3 passed (3)
+      Tests  23 passed (23)
+   Start at  18:00:49
+   Duration  3.21s (transform 877ms, setup 0ms, collect 2.22s, tests 2.15s, environment 1ms, prepare 1.14s)
+

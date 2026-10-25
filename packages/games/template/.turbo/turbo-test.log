@@ -1,0 +1,14 @@
+
+> @tcg/game-template@0.1.0 test /home/user/crowdcoding-game/packages/games/template
+> vitest run
+
+
+ RUN  v2.1.9 /home/user/crowdcoding-game/packages/games/template
+
+ ✓ rules.test.ts (21 tests) 572ms
+
+ Test Files  1 passed (1)
+      Tests  21 passed (21)
+   Start at  18:00:56
+   Duration  3.61s (transform 1.11s, setup 0ms, collect 1.32s, tests 572ms, environment 0ms, prepare 618ms)
+

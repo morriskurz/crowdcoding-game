@@ -1,0 +1,14 @@
+
+> @tcg/kit@0.1.0 test /home/user/crowdcoding-game/packages/kit
+> vitest run
+
+
+ RUN  v2.1.9 /home/user/crowdcoding-game/packages/kit
+
+ ✓ src/kit.test.ts (16 tests) 58ms
+
+ Test Files  1 passed (1)
+      Tests  16 passed (16)
+   Start at  18:00:50
+   Duration  2.00s (transform 700ms, setup 0ms, collect 700ms, tests 58ms, environment 13ms, prepare 380ms)
+

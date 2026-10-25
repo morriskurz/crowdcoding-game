@@ -3,7 +3,7 @@ import { InputAcks, InputSchema, createWorld, joinPlayer, leavePlayer, packInput
 import { CURRENT_SLUG, GAMES, gameForRoom, type Game } from "@tcg/games";
 import { RateLimit } from "./ratelimit.js";
 import { TickGuard } from "./tick.js";
-import { Bots, botTarget, isBotId } from "./bots.js";
+import { BOT_NAMES_MS, Bots, botTarget, fetchBotNames, isBotId } from "./bots.js";
 import { gameplay } from "./gameplay.js";
 
 // One Durable Object = one room. Authoritative 15Hz on setInterval, never alarms (spec §3, §13 cost).
@@ -16,7 +16,7 @@ import { gameplay } from "./gameplay.js";
 // game; a room named after an older game's slug runs that game as an archive (still playable,
 // flagged `archived` in hello, snapshots and /health). A room with anyone connected is filled up with
 // server-side bots (bots.ts: many for an archive, a few for the current game), removed again when the
-// last connection leaves.
+// last connection leaves. Bots carry the names of the chat's top suggesters (CHAT_BOT service binding).
 // The world is saved to DO storage every SAVE_EVERY_TICKS and restored on start when the build is the
 // same, so an evicted or restarted object does not wipe the game (a deploy still starts fresh).
 const MAX_PLAYERS = 100;
@@ -41,6 +41,7 @@ export class Room extends Server {
   archived = false;
   bots = new Bots();
   spectators = new Set<string>();
+  namesAt = -Infinity;
 
   async onStart() {
     this.buildVersion = (this.env as any)?.BUILD_VERSION ?? "v1";
@@ -48,6 +49,7 @@ export class Room extends Server {
     this.game = GAMES[g.slug];
     this.archived = g.archived;
     if (!(await this.restore())) this.game.rules.init?.(this.world);
+    await this.refreshBotNames();
     // No tick yet: the first connect starts it (a /health probe must not keep an empty room busy).
   }
 
@@ -64,6 +66,15 @@ export class Room extends Server {
     this.ctx.storage.put(SAVE_KEY, { version: this.buildVersion, slug: this.game.slug, world: this.world }).catch(() => {});
   }
 
+  /** Bots are named after the chat's top suggesters (tcg-bot via the CHAT_BOT service binding), at most every BOT_NAMES_MS. */
+  async refreshBotNames(): Promise<void> {
+    const now = Date.now();
+    if (now - this.namesAt < BOT_NAMES_MS) return;
+    this.namesAt = now;
+    const names = await fetchBotNames((this.env as any)?.CHAT_BOT);
+    if (names) this.bots.rename(this.world, names);
+  }
+
   /** Real (WebSocket) players that joined; bots are not counted. */
   humans(): number {
     return Object.keys(this.inputs).length;
@@ -74,6 +85,7 @@ export class Room extends Server {
     const humans = this.humans();
     const connected = humans + this.spectators.size;
     this.bots.sync(this.world, this.game.rules, botTarget(this.archived, humans, this.spectators.size));
+    if (connected > 0) void this.refreshBotNames();
     if (connected > 0 && !this.tickTimer) {
       this.tickTimer = setInterval(() => this.tickGuard.run(() => this.onTick()), TICK_MS);
     } else if (connected === 0 && this.tickTimer) {
@@ -146,7 +158,7 @@ export class Room extends Server {
     const all = this.bots.ids.length ? { ...this.inputs, ...this.bots.inputs(this.world, this.draining) } : this.inputs;
     runTick(this.world, this.game.rules, all);
     this.acks.ticked(Object.keys(this.inputs));
-    if (this.world.tick % SAVE_EVERY_TICKS === 0) this.save();
+    if (this.world.tick % SAVE_EVERY_TICKS === 0) { this.save(); void this.refreshBotNames(); }
     const inputs: Record<string, PackedInput> = {};
     for (const id in all) inputs[id] = packInput(all[id]);
     this.broadcast(JSON.stringify(snapMessage(this.world, this.buildVersion, this.draining, { acks: this.acks.acks, inputs, ...this.archiveFlag() })));

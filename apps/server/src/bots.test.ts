@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createWorld, runTick } from "@tcg/shared";
 import { GAMES, CURRENT_SLUG } from "@tcg/games";
-import { BOT_FILL, Bots, CURRENT_FILL, botInput, botTarget, isBotId } from "./bots.js";
+import { BOT_FILL, Bots, CURRENT_FILL, botInput, botLabel, botTarget, fetchBotNames, isBotId } from "./bots.js";
 
 const rules = GAMES[CURRENT_SLUG].rules;
 
@@ -73,5 +73,30 @@ describe("bots", () => {
     const seen = new Set<string>();
     for (let t = 0; t < 120; t++) { empty.tick = t; seen.add(JSON.stringify(botInput(empty, "bot:1", 1))); }
     expect(seen.size).toBeGreaterThan(1);
+  });
+
+  it("are named after the chat's top suggesters, marked as bots", async () => {
+    expect(botLabel("thebiggecko", 1)).toBe("thebiggecko bot");
+    expect(botLabel("a_very_long_login_name", 2)).toBe("a_very_long_ bot");
+    expect(botLabel("<b>x</b>", 3)).toBe("bxb bot");
+    expect(botLabel(undefined, 4)).toBe("bot 4");
+    const w = world();
+    const b = new Bots();
+    b.sync(w, rules, 3);
+    expect(Object.values(w.names)).toEqual(["bot 1", "bot 2", "bot 3"]);
+    b.rename(w, ["alice", "bob"]);
+    expect(Object.values(w.names)).toEqual(["alice bot", "bob bot", "bot 3"]);
+    b.sync(w, rules, 0);
+    b.sync(w, rules, 2);
+    expect(Object.values(w.names)).toEqual(["alice bot", "bob bot"]);
+  });
+
+  it("fetch names from the chat bot's leaderboard, null when it is unreachable", async () => {
+    const src = (body: unknown, ok = true) => ({ fetch: async (u: string) => (expect(u).toContain("/leaderboard?limit="), new Response(JSON.stringify(body), { status: ok ? 200 : 500 })) });
+    expect(await fetchBotNames(src([{ name: "alice", upvotes: 3, ships: 1 }, { name: 7 }, { name: "bob" }]))).toEqual(["alice", "bob"]);
+    expect(await fetchBotNames(src({ nope: 1 }))).toBeNull();
+    expect(await fetchBotNames(src([], false))).toBeNull();
+    expect(await fetchBotNames({ fetch: async () => { throw new Error("down"); } })).toBeNull();
+    expect(await fetchBotNames(undefined)).toBeNull();
   });
 });
