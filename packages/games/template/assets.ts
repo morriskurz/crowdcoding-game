@@ -125,7 +125,7 @@ function drawPlatform(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
     g.addColorStop(0, c);
     g.addColorStop(1, c + "00");
     ctx.save();
-    ctx.globalAlpha = 0.08;
+    ctx.globalAlpha = 0.25;
     ctx.strokeStyle = g;
     ctx.lineWidth = 1;
     ctx.beginPath();
