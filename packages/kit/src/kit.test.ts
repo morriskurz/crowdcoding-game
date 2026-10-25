@@ -1,9 +1,23 @@
 import { describe, it, expect } from "vitest";
-import { Camera, FixedStep, Particles, SnapshotBuffer, Sfx, SOUND_NAMES, Trail, Tween, damp, ease, lerpBodies, tween } from "./index.js";
+import { Camera, FixedStep, Particles, SnapshotBuffer, Sfx, SOUND_NAMES, Trail, Tween, arcY, damp, ease, lerpBodies, tween } from "./index.js";
 
 const TICK = 1000 / 15;
 type B = { id: string; x: number; y: number; r: number };
 const snap = (x: number, r = 8): Record<string, B> => ({ p: { id: "p", x, y: 0, r } });
+
+describe("arcY", () => {
+  it("follows the parabola of a jump between ticks, linear otherwise", () => {
+    // vy -10 -> -8 (gravity 2), y moved by the new vy: mid-tick the arc is above the straight line.
+    const a = { id: "p", x: 0, y: 100, vy: -10 }, b = { id: "p", x: 0, y: 92, vy: -8 };
+    expect(arcY(a, b, 0)).toBeCloseTo(100, 9);
+    expect(arcY(a, b, 1)).toBeCloseTo(92, 9);
+    expect(arcY(a, b, 0.5)).toBeCloseTo(100 + (-8 - 1) * 0.5 + 0.25, 9); // 95.75, line would be 96
+    // landing (vy reset, y snapped) and bodies without velocity blend linearly
+    expect(arcY({ id: "p", x: 0, y: 0, vy: 12 }, { id: "p", x: 0, y: 5, vy: 0 }, 0.5)).toBeCloseTo(2.5, 9);
+    expect(arcY({ id: "p", x: 0, y: 0 }, { id: "p", x: 0, y: 10 }, 0.3)).toBeCloseTo(3, 9);
+    expect(lerpBodies({ p: a }, { p: b }, 0.5)[0].y).toBeCloseTo(95.75, 9);
+  });
+});
 
 describe("SnapshotBuffer", () => {
   it("renders `delay` ticks behind and blends between neighbours", () => {

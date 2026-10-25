@@ -5,10 +5,12 @@
 
  RUN  v2.1.9 /home/user/crowdcoding-game/packages/games/template
 
- ✓ rules.test.ts (21 tests) 572ms
+ ✓ rules.test.ts (27 tests) 1379ms
+   ✓ tower climb: the tower > every next safe platform is within jump reach, and the tower fits the world 560ms
+   ✓ tower climb: bots > bots climb: within a minute they get several sections up, and sometimes fall 414ms
 
  Test Files  1 passed (1)
-      Tests  21 passed (21)
-   Start at  18:00:56
-   Duration  3.61s (transform 1.11s, setup 0ms, collect 1.32s, tests 572ms, environment 0ms, prepare 618ms)
+      Tests  27 passed (27)
+   Start at  18:03:48
+   Duration  4.33s (transform 1.15s, setup 0ms, collect 1.29s, tests 1.38s, environment 0ms, prepare 542ms)
 

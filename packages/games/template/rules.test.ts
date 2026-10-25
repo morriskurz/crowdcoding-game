@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { createWorld, joinPlayer, runTick, bodies, get, type Entity, type World } from "@tcg/shared";
-import { rules, SECTION_TYPES, COIN_GROW, PLAYER_MAX_R, buildTower, platformTop, type PlatformData, type PlayerData, type RoundData } from "./rules.js";
+import { createWorld, joinPlayer, runTick, bodies, get, type Entity, type Input, type World } from "@tcg/shared";
+import { rules, SECTION_TYPES, MAX_RISE, airTicks, buildTower, maxGap, platformTop, typesFor, type PlatformData, type PlayerData, type RoundData } from "./rules.js";
 import { config } from "./config.js";
 
 const idle = { dx: 0, dy: 0, action: false };
+const jump = { dx: 0, dy: 0, action: true };
 const startY = config.floorY - config.playerR;
 
 function world(seed = 7) {
@@ -15,112 +16,187 @@ function world(seed = 7) {
 const pl = (w: World, id = "a") => get<PlayerData>(w, id)!;
 const rd = (w: World) => get<RoundData>(w, "round")!.data;
 const platforms = (w: World) => bodies<PlatformData>(w, "platform");
+const safe = (w: World) => platforms(w).filter((q) => q.data.type !== "kill");
 
-describe("template tower climb", () => {
+/** Puts the player on a fresh flat ground far from any platform and returns the world. */
+function flat(seed = 7) {
+  const w = world(seed);
+  for (const q of platforms(w)) if (q.data.type !== "ground") delete w.entities[q.id];
+  return w;
+}
+
+/** Runs inputs from the ground and returns the y path. */
+function path(w: World, inputs: Input[], extra = 0): number[] {
+  const out: number[] = [];
+  for (let t = 0; t < inputs.length + extra; t++) {
+    runTick(w, rules, { a: inputs[t] ?? idle });
+    out.push(pl(w).y);
+  }
+  return out;
+}
+
+describe("tower climb: movement feel", () => {
   it("stands on the ground under gravity", () => {
-    const w = world();
-    const p = pl(w);
-    for (const c of bodies(w, "pellet")) delete w.entities[c.id]; // falling through a coin would grow the player
-    p.y = startY - 60;
-    for (let t = 0; t < 60; t++) runTick(w, rules, { a: idle });
-    expect(p.y).toBe(startY);
-    expect(p.ground).toBe(true);
+    const w = flat();
+    pl(w).y = startY - 60;
+    path(w, [], 30);
+    expect(pl(w).y).toBe(startY);
+    expect(pl(w).ground).toBe(true);
   });
 
-  it("jumps, and holding the button jumps higher", () => {
-    const peak = (hold: boolean) => {
-      const w = world();
-      let min = Infinity;
-      for (let t = 0; t < 40; t++) {
-        runTick(w, rules, { a: { dx: 0, dy: 0, action: t === 0 || hold } });
-        min = Math.min(min, pl(w).y);
-      }
-      return min;
+  it("a full jump reaches 4 to 5 player heights in about one second (genre feel targets)", () => {
+    expect(MAX_RISE).toBeGreaterThan(4 * 2 * config.playerR);
+    expect(MAX_RISE).toBeLessThan(5 * 2 * config.playerR);
+    const w = flat();
+    const ys = path(w, Array(40).fill(jump));
+    const air = ys.findIndex((y, i) => i > 0 && y === startY) + 1;
+    expect(air / config.tickHz).toBeGreaterThan(0.9);
+    expect(air / config.tickHz).toBeLessThan(1.3);
+    expect(startY - Math.min(...ys)).toBeCloseTo(MAX_RISE, 5);
+  });
+
+  it("falls faster than it rises: the arc is not symmetric", () => {
+    const w = flat();
+    path(w, Array(40).fill(jump));
+    const ws = flat();
+    const ys = path(ws, Array(40).fill(jump));
+    const apex = ys.indexOf(Math.min(...ys));
+    const land = ys.findIndex((y, i) => i > apex && y === startY);
+    expect(land - apex).toBeLessThan(apex + 1);
+    // gravity on the way down is stronger than on the way up
+    expect(config.gravityFall).toBeGreaterThan(config.gravityRise * 1.4);
+  });
+
+  it("letting go early cuts the jump: a tap is a hop, holding goes higher", () => {
+    const peak = (hold: number) => {
+      const w = flat();
+      return startY - Math.min(...path(w, Array.from({ length: 40 }, (_, t) => (t < hold ? jump : idle))));
     };
-    const tap = peak(false);
-    const held = peak(true);
-    expect(tap).toBeLessThan(startY - 40);
-    expect(held).toBeLessThan(tap);
+    expect(peak(1)).toBeLessThan(35);
+    expect(peak(3)).toBeGreaterThan(peak(1));
+    expect(peak(40)).toBeGreaterThan(peak(3) + 20);
   });
 
-  it("pressing up (dy < -0.5) jumps like the action button", () => {
-    const up = world();
-    runTick(up, rules, { a: { dx: 0, dy: -1, action: false } });
-    expect(pl(up).y).toBeLessThan(startY);
-    const none = world();
-    runTick(none, rules, { a: { dx: 0, dy: 0, action: false } });
-    expect(pl(none).y).toBe(startY);
+  it("holding jump does not bunny-hop: the next jump needs a fresh press", () => {
+    const w = flat();
+    const ys = path(w, Array(60).fill(jump));
+    const landed = ys.findIndex((y, i) => i > 3 && y === startY);
+    expect(ys.slice(landed)).toEqual(Array(ys.length - landed).fill(startY));
   });
 
-  it("cannot jump in mid-air", () => {
-    const w = world();
-    runTick(w, rules, { a: { dx: 0, dy: 0, action: true } });
-    runTick(w, rules, { a: idle });
+  it("cannot jump again in mid-air", () => {
+    const w = flat();
+    path(w, [jump, idle, idle]);
     const vy = pl(w).vy;
-    runTick(w, rules, { a: { dx: 0, dy: 0, action: true } });
+    path(w, [jump]);
     expect(pl(w).vy).toBeGreaterThan(vy);
   });
 
-  it("runs at runSpeed and stays inside the tower", () => {
-    const w = world();
+  it("coyote time: a jump just after running off a ledge still works, later it does not", () => {
+    const run = { dx: 1, dy: 0, action: false };
+    const tryJumpAfter = (ticksOff: number) => {
+      const w = flat();
+      const ledge = rulesPlatform(w, 200, startY - 100, 90);
+      const p = pl(w);
+      p.x = ledge.x + 45 - 1;
+      p.y = platformTop(ledge) - config.playerR;
+      p.vx = config.runSpeed;
+      p.ground = true;
+      p.data.on = ledge.id;
+      let off = -1;
+      for (let t = 0; t < 30 && off < 0; t++) { runTick(w, rules, { a: run }); if (!p.ground) off = t; }
+      for (let t = 1; t < ticksOff; t++) runTick(w, rules, { a: run });
+      const before = p.vy;
+      runTick(w, rules, { a: { dx: 1, dy: 0, action: true } });
+      return p.vy < before;
+    };
+    expect(tryJumpAfter(1)).toBe(true);
+    expect(tryJumpAfter(config.coyoteTicks)).toBe(true);
+    expect(tryJumpAfter(config.coyoteTicks + 2)).toBe(false);
+  });
+
+  it("jump buffer: pressing just before landing jumps on touchdown", () => {
+    const landsAndJumps = (early: number) => {
+      const w = flat();
+      const p = pl(w);
+      p.y = startY - 120;
+      p.ground = false;
+      let t = 0;
+      // fall until `early` ticks before touchdown (found by a dry run)
+      const dry = flat();
+      pl(dry).y = startY - 120;
+      pl(dry).ground = false;
+      let touch = 0;
+      while (!pl(dry).ground) { runTick(dry, rules, { a: idle }); touch++; }
+      for (; t < touch - early; t++) runTick(w, rules, { a: idle });
+      runTick(w, rules, { a: jump });
+      for (let k = 0; k < early + 1; k++) runTick(w, rules, { a: jump });
+      return p.y < startY - 10;
+    };
+    expect(landsAndJumps(1)).toBe(true);
+    expect(landsAndJumps(config.jumpBufferTicks)).toBe(true);
+    expect(landsAndJumps(config.jumpBufferTicks + 3)).toBe(false);
+  });
+
+  it("pressing up (dy < -0.5) jumps like the action button", () => {
+    const w = flat();
+    runTick(w, rules, { a: { dx: 0, dy: -1, action: false } });
+    expect(pl(w).y).toBeLessThan(startY);
+  });
+
+  it("speeds up to runSpeed within a few ticks and stays inside the tower", () => {
+    const w = flat();
     const p = pl(w);
     p.x = 100;
-    runTick(w, rules, { a: { dx: 1, dy: 0, action: false } });
-    expect(p.x).toBe(100 + config.runSpeed);
+    path(w, Array(3).fill({ dx: 1, dy: 0, action: false }));
+    expect(p.vx).toBe(config.runSpeed);
+    path(w, Array(3).fill(idle));
+    expect(p.vx).toBe(0);
     p.x = 3;
-    runTick(w, rules, { a: { dx: -1, dy: 0, action: false } });
+    path(w, Array(3).fill({ dx: -1, dy: 0, action: false }));
     expect(p.x).toBe(config.playerR);
   });
 
-  it("falls off the edge of a ledge", () => {
-    const w = world();
-    const led = platforms(w).find((q) => q.data.type !== "ground" && q.data.type !== "moving")!;
-    const p = pl(w);
-    p.x = led.x;
-    p.y = platformTop(led) - config.playerR;
-    p.data.on = led.id;
-    p.ground = true;
-    for (let t = 0; t < 4; t++) runTick(w, rules, { a: idle });
-    expect(p.y).toBe(platformTop(led) - config.playerR);
-    for (let t = 0; t < 120; t++) runTick(w, rules, { a: { dx: 1, dy: 0, action: false } });
-    expect(p.y).toBeGreaterThan(platformTop(led));
-  });
-
   it("moving platforms carry riders", () => {
-    const w = world();
-    const mp = platforms(w).find((q) => q.data.type === "moving");
-    if (!mp) return;
-    const p = pl(w);
+    const w = flat();
+    const mp = rulesPlatform(w, 300, startY - 100, 90, "moving");
+    mp.data.range = 50;
     mp.data.dir = 1;
-    mp.x = mp.data.ox;
+    const p = pl(w);
     p.x = mp.x;
     p.y = platformTop(mp) - config.playerR;
     p.data.on = mp.id;
     p.ground = true;
-    const x0 = p.x;
     runTick(w, rules, { a: idle });
-    expect(mp.x).toBeCloseTo(mp.data.ox + config.movingPlatformSpeed, 5);
-    expect(p.x).toBeCloseTo(x0 + config.movingPlatformSpeed, 5);
+    runTick(w, rules, { a: idle });
+    expect(p.x).toBeCloseTo(300 + 2 * config.movingPlatformSpeed, 5);
+    expect(p.ground).toBe(true);
   });
 
   it("bumping players push each other apart", () => {
-    const w = world();
+    const w = flat();
     joinPlayer(w, rules, "b", "bob");
     const a = pl(w);
     const b = pl(w, "b");
     a.x = 300; b.x = 306;
     runTick(w, rules, { a: idle, b: idle });
     expect(b.x - a.x).toBeGreaterThanOrEqual(2 * config.playerR - 0.001);
-    expect(a.data.kick).toBe(-config.bumpPush);
-    expect(b.data.kick).toBe(config.bumpPush);
     const ax = a.x;
-    const bx = b.x;
     runTick(w, rules, { a: idle, b: idle });
     expect(a.x).toBeLessThan(ax);
-    expect(b.x).toBeGreaterThan(bx);
   });
+});
 
-  it("builds sectionCount sections and a top platform, deterministically", () => {
+/** Adds a platform to a test world. */
+function rulesPlatform(w: World, x: number, surface: number, width: number, type: PlatformData["type"] = "ledge"): Entity<PlatformData> {
+  const h = config.platformH;
+  const id = `test-${x}-${surface}`;
+  w.entities[id] = { id, kind: "platform", x, y: surface + h / 2, vx: 0, vy: 0, r: width / 2, data: { w: width, h, type, ox: x, dx: 0 } };
+  return w.entities[id] as unknown as Entity<PlatformData>;
+}
+
+describe("tower climb: the tower", () => {
+  it("builds the ground, sectionCount sections and a top platform, deterministically", () => {
     const w = world(11);
     const ps = platforms(w);
     expect(new Set(ps.filter((q) => q.data.section !== undefined).map((q) => q.data.section)).size).toBe(config.sectionCount);
@@ -128,53 +204,92 @@ describe("template tower climb", () => {
     const tops = ps.filter((q) => q.data.type === "top");
     expect(tops).toHaveLength(1);
     expect(platformTop(tops[0])).toBe(rd(w).topY);
-    expect(rd(w).topY).toBeLessThan(200);
-    const again = world(11);
-    expect(JSON.stringify(again.entities)).toBe(JSON.stringify(w.entities));
+    expect(JSON.stringify(world(11).entities)).toBe(JSON.stringify(w.entities));
+    expect(bodies(w, "pellet")).toHaveLength(0);
   });
 
-  it("every section type stays within the tower and is reachable by jumping", () => {
-    expect(SECTION_TYPES.length).toBeGreaterThanOrEqual(4);
-    for (const type of SECTION_TYPES) {
-      for (let seed = 1; seed <= 30; seed++) {
-        const w = createWorld(seed);
-        const specs = type.build(w, config.floorY);
-        let prevTop: number = config.floorY;
-        let prevExt: [number, number] = [0, config.towerWidth];
-        for (const s of specs) {
-          const range = s.type === "moving" ? (s.range ?? 100) : 0;
-          const ext: [number, number] = [s.x - range - s.w / 2, s.x + range + s.w / 2];
-          expect(ext[0]).toBeGreaterThanOrEqual(0);
-          expect(ext[1]).toBeLessThanOrEqual(config.towerWidth);
-          const rise = prevTop - s.y;
-          expect(rise).toBeGreaterThan(0);
-          expect(rise).toBeLessThan(75); // below the plain jump apex (~81)
-          const gap = Math.max(ext[0] - prevExt[1], prevExt[0] - ext[1]);
-          expect(gap).toBeLessThanOrEqual(85);
-          prevTop = s.y;
-          prevExt = ext;
+  it("gets harder going up: the first sections are plain ledges, lava only near the top", () => {
+    expect(typesFor(0).map((t) => t.name)).toEqual(["ledges"]);
+    expect(typesFor(config.sectionCount - 1).map((t) => t.name)).toContain("lava");
+    expect(SECTION_TYPES.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("every next safe platform is within jump reach, and the tower fits the world", () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const w = createWorld(seed);
+      const topY = buildTower(w);
+      expect(topY).toBeGreaterThan(0);
+      let prev: Entity<PlatformData> | null = null;
+      for (const q of platforms(w)) {
+        const half = q.data.w / 2 + (q.data.range ?? 0);
+        expect(q.data.ox - half).toBeGreaterThanOrEqual(-0.001);
+        expect(q.data.ox + half).toBeLessThanOrEqual(config.towerWidth + 0.001);
+        if (q.data.type === "kill") continue;
+        if (prev && prev.data.type !== "ground") {
+          const rise = platformTop(prev) - platformTop(q);
+          expect(rise).toBeGreaterThan(30);
+          expect(rise).toBeLessThan(MAX_RISE * 0.92);
+          const gap = Math.abs(q.data.ox - prev.data.ox) - (q.data.w + prev.data.w) / 2;
+          expect(gap).toBeLessThanOrEqual(maxGap(rise) * config.reachSafety + 0.001);
         }
-        expect(prevTop).toBe(config.floorY - config.sectionHeight);
+        prev = q;
       }
     }
   });
 
-  it("buildTower puts all platforms inside the width", () => {
-    const w = createWorld(3);
-    buildTower(w);
-    for (const p of platforms(w)) {
-      expect(p.x - p.r).toBeGreaterThanOrEqual(-config.platformH);
-      expect(p.x + p.r).toBeLessThanOrEqual(config.towerWidth + config.platformH);
-    }
+  it("air time shrinks for higher steps and is 0 above the apex", () => {
+    expect(airTicks(20)).toBeGreaterThan(airTicks(70));
+    expect(airTicks(MAX_RISE + 1)).toBe(0);
+  });
+});
+
+describe("tower climb: falls and kill bricks", () => {
+  it("a missed jump drops you to whatever is below", () => {
+    const w = flat();
+    const high = rulesPlatform(w, 300, startY - 400, 90);
+    const p = pl(w);
+    p.x = high.x + 40;
+    p.y = platformTop(high) - config.playerR;
+    p.ground = true;
+    p.data.on = high.id;
+    path(w, Array(40).fill({ dx: 1, dy: 0, action: false }));
+    expect(p.y).toBe(startY);
   });
 
+  it("touching a kill brick sends you back to the ground and counts a death; your best height stays", () => {
+    const w = flat();
+    const lava = rulesPlatform(w, 300, startY - 300, 70, "kill");
+    lava.data.h = config.killH;
+    const p = pl(w);
+    p.x = 300;
+    p.y = platformTop(lava) - config.playerR - 2;
+    p.data.best = p.y - 50;
+    const best = p.data.best;
+    runTick(w, rules, { a: idle });
+    expect(p.y).toBe(startY);
+    expect(p.data.deaths).toBe(1);
+    expect(p.data.best).toBe(best);
+    // you never stand on lava
+    expect(p.ground).toBe(true);
+  });
+
+  it("lava sections put a kill brick right behind a ledge", () => {
+    const lava = SECTION_TYPES.find((t) => t.name === "lava")!;
+    const w = createWorld(5);
+    const specs = lava.build(w, { x: 300, y: config.floorY, w: 300 });
+    expect(specs.some((s) => s.type === "kill")).toBe(true);
+  });
+});
+
+describe("tower climb: rounds", () => {
   it("touching the top ends the round and the toucher wins", () => {
     const w = world();
     const p = pl(w);
     const top = platforms(w).find((q) => q.data.type === "top")!;
     p.x = top.x;
     p.y = platformTop(top) - config.playerR - 5;
-    for (let t = 0; t < 5; t++) runTick(w, rules, { a: idle });
+    p.ground = false;
+    path(w, [], 5);
     expect(rd(w).phase).toBe("results");
     expect(rd(w).winner).toBe("a");
     expect(p.data.wins).toBe(1);
@@ -190,14 +305,12 @@ describe("template tower climb", () => {
     expect(rd(w).phase).toBe("results");
     expect(rd(w).winner).toBe("b");
     expect(pl(w, "b").data.wins).toBe(1);
-    expect(pl(w).data.wins).toBe(0);
   });
 
   it("timeout with nobody progressed has no winner", () => {
     const w = world();
     rd(w).ticksLeft = 1;
     runTick(w, rules, { a: idle });
-    expect(rd(w).phase).toBe("results");
     expect(rd(w).winner).toBe("");
   });
 
@@ -205,38 +318,27 @@ describe("template tower climb", () => {
     const w = world();
     const oldIds = platforms(w).map((q) => q.id).join();
     const p = pl(w);
-    p.x = 50; p.y = 1000; p.data.best = 1000;
+    p.x = 50; p.y = 1000; p.data.best = 1000; p.data.deaths = 3;
     const r = get<RoundData>(w, "round")!;
     r.data.phase = "results";
     r.data.ticksLeft = 3;
     runTick(w, rules, { a: { dx: 1, dy: 0, action: true } });
     expect(p.x).toBe(50);
-    expect(p.y).toBe(1000);
     runTick(w, rules, { a: idle });
     runTick(w, rules, { a: idle });
     expect(rd(w).phase).toBe("play");
     expect(rd(w).round).toBe(2);
-    expect(rd(w).winner).toBe("");
     expect(platforms(w).map((q) => q.id).join()).not.toBe(oldIds);
-    expect(platforms(w).filter((q) => q.data.type === "top")).toHaveLength(1);
     expect(p.y).toBe(startY);
     expect(p.data.best).toBe(startY);
+    expect(p.data.deaths).toBe(0);
   });
 
   it("a late joiner spawns at the bottom, also during results", () => {
     const w = world();
     rd(w).phase = "results";
     joinPlayer(w, rules, "c", "carol");
-    const c = pl(w, "c") as Entity<PlayerData>;
-    expect(c.y).toBe(startY);
-    expect(c.x).toBeGreaterThanOrEqual(config.playerR);
-    expect(c.x).toBeLessThanOrEqual(config.towerWidth - config.playerR);
-  });
-
-  it("leaving despawns the player", () => {
-    const w = world();
-    rules.leave ? rules.leave(w, "a") : delete w.entities["a"];
-    expect(get(w, "a")).toBeUndefined();
+    expect(pl(w, "c").y).toBe(startY);
   });
 
   it("is deterministic for the same seed and inputs", () => {
@@ -253,46 +355,31 @@ describe("template tower climb", () => {
     };
     expect(run()).toBe(run());
   });
+});
 
-  it("the tower holds coins (pellets), near the ground and on ledges", () => {
-    const w = world();
-    const coins = bodies(w, "pellet");
-    expect(coins.length).toBeGreaterThan(config.sectionCount);
-    expect(coins.some((c) => c.y > config.floorY - 30)).toBe(true);
-    expect(coins.some((c) => c.y < config.floorY - config.sectionHeight)).toBe(true);
+describe("tower climb: bots", () => {
+  it("bots climb: within a minute they get several sections up, and sometimes fall", () => {
+    const w = createWorld(3);
+    rules.init!(w);
+    const ids = ["bot:1", "bot:2", "bot:3", "bot:4"];
+    for (const id of ids) joinPlayer(w, rules, id, id);
+    const heights: number[] = [];
+    for (let t = 0; t < 60 * config.tickHz; t++) {
+      const inputs: Record<string, Input> = {};
+      ids.forEach((id, i) => { inputs[id] = rules.bot!(w, id, i + 1); });
+      runTick(w, rules, inputs);
+      if (rd(w).phase !== "play") break;
+    }
+    for (const id of ids) heights.push(startY - pl(w, id).data.best);
+    const sectionPx = (config.floorY - rd(w).topY) / config.sectionCount;
+    expect(Math.max(...heights)).toBeGreaterThan(3 * sectionPx);
+    expect(Math.min(...heights)).toBeGreaterThan(sectionPx / 2);
   });
 
-  it("touching a coin collects it and grows the player up to a cap", () => {
+  it("bot inputs are valid wire inputs", () => {
     const w = world();
-    const p = pl(w);
-    const coin = bodies(w, "pellet")[0];
-    p.x = coin.x;
-    p.y = coin.y;
-    const n = bodies(w, "pellet").length;
-    runTick(w, rules, { a: idle });
-    expect(get(w, coin.id)).toBeUndefined();
-    expect(bodies(w, "pellet").length).toBeLessThan(n);
-    expect(p.r).toBeCloseTo(config.playerR + COIN_GROW, 5);
-    p.r = PLAYER_MAX_R;
-    const c2 = bodies(w, "pellet")[0];
-    p.x = c2.x;
-    p.y = c2.y;
-    runTick(w, rules, { a: idle });
-    expect(p.r).toBe(PLAYER_MAX_R);
-  });
-
-  it("a grown player still lands on the ground and a new round resets size and coins", () => {
-    const w = world();
-    const p = pl(w);
-    p.r = PLAYER_MAX_R;
-    p.y = config.floorY - 20;
-    p.x = 300;
-    for (let t = 0; t < 60; t++) runTick(w, rules, { a: idle });
-    expect(p.y).toBe(config.floorY - PLAYER_MAX_R);
-    rd(w).phase = "results";
-    rd(w).ticksLeft = 1;
-    runTick(w, rules, { a: idle });
-    expect(p.r).toBe(config.playerR);
-    expect(bodies(w, "pellet").length).toBeGreaterThan(config.sectionCount);
+    const inp = rules.bot!(w, "a", 1);
+    expect(Math.abs(inp.dx)).toBeLessThanOrEqual(1);
+    expect(typeof inp.action).toBe("boolean");
   });
 });

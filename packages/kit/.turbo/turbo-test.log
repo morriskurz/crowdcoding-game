@@ -5,10 +5,10 @@
 
  RUN  v2.1.9 /home/user/crowdcoding-game/packages/kit
 
- ✓ src/kit.test.ts (16 tests) 58ms
+ ✓ src/kit.test.ts (17 tests) 54ms
 
  Test Files  1 passed (1)
-      Tests  16 passed (16)
-   Start at  18:00:50
-   Duration  2.00s (transform 700ms, setup 0ms, collect 700ms, tests 58ms, environment 13ms, prepare 380ms)
+      Tests  17 passed (17)
+   Start at  18:03:42
+   Duration  1.91s (transform 857ms, setup 0ms, collect 866ms, tests 54ms, environment 0ms, prepare 301ms)
 
