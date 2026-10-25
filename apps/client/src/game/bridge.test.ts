@@ -43,6 +43,15 @@ describe("InputSender", () => {
     expect(s.tick(still, 566, 2)).toEqual({ ...still, seq: 3 }); // lost? resend same seq
   });
 
+  it("sends a jump press and its release at once, so a short tap reaches the server", () => {
+    const s = new InputSender(100, 300);
+    const run = { dx: 1, dy: 0, action: false }, jump = { dx: 1, dy: 0, action: true };
+    expect(s.tick(run, 0, 0)).toEqual({ ...run, seq: 1 });
+    expect(s.tick(jump, 66, 0)).toEqual({ ...jump, seq: 2 }); // inside the gap, but the button changed
+    expect(s.tick(run, 133, 0)).toEqual({ ...run, seq: 3 });
+    expect(s.tick({ dx: 0, dy: 0, action: false }, 150, 0)).toBeNull(); // a stick change still waits for the gap
+  });
+
   it("maps WASD/arrows/space", () => {
     expect(readKeys(new Set(["w", "arrowright", " "]))).toEqual({ dx: 1, dy: -1, action: true });
   });

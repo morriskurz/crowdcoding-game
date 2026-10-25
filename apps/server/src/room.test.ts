@@ -210,7 +210,7 @@ describe("world persistence", () => {
     expect(Object.keys(r2.world.names)).toEqual([]);
     expect(r2.world.entities.a).toBeUndefined();
     expect(r2.world.tick % SAVE_EVERY_TICKS).toBe(0);
-    expect(Object.values(r2.world.entities).some((e) => e.kind === "pellet")).toBe(true);
+    expect(Object.values(r2.world.entities).some((e) => e.kind !== "player")).toBe(true); // the level came back
   });
 
   it("a new build starts a fresh world", async () => {
@@ -231,7 +231,8 @@ describe("gameplay health", () => {
     const r = await room("main");
     const h = await health(r);
     expect(h.gameplay.arena).toBeTruthy();
-    expect(h.gameplay.kinds.pellet.n).toBeGreaterThan(0);
+    const level = Object.values(r.world.entities).find((e) => e.kind !== "player")!.kind;
+    expect(h.gameplay.kinds[level].n).toBeGreaterThan(0);
     expect(h.gameplay.issues).toEqual([]);
     const any = Object.values(r.world.entities)[0];
     any.r = h.gameplay.arena.w;

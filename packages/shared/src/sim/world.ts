@@ -48,6 +48,9 @@ export interface GameRules {
   leave?(w: World, playerId: string): void;
   // One 15Hz tick. inputs has an entry for every connected player.
   step(w: World, inputs: Readonly<Record<string, Input>>): void;
+  // Optional: input for server bot `playerId` (bot number n, 1-based) this tick. Pure function of the
+  // world, like a client reading the screen. Without it the server's generic bot plays.
+  bot?(w: World, playerId: string, n: number): Input;
   // Playable area in world units. The server reports entities outside it or too big for it on /health,
   // so a feature that breaks the game shows up and the next feature can fix it.
   arena?: { w: number; h: number };

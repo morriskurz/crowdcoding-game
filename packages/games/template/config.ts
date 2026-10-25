@@ -1,60 +1,51 @@
 // Agent-editable. Numbers only. No imports outside @tcg/shared.
+// Units: px and ticks (15 ticks = 1 s). The player is 20 px wide (playerR 10).
 export const config = {
-  speed: 3,
-  bounds: 800,
   tickHz: 15,
   drainSeconds: 60, // per-game drain window, Q19
-  pellets: 40,
-  startSize: 8,
-  pelletGlowRadius: 16,
-  pelletGlowAlpha: 0.8,
-  collisionShakeIntensity: 5,
-  collisionShakeDuration: 0.2,
-  blowbackStrength: 0.15,
-  blowbackMax: 12,
-  botCount: 4,
-  botSpeed: 2,
-  spikedChance: 0.2,
-  sweetChance: 0.2,
-  spikedGrowth: 0.3,
-  sweetGrowth: 2,
-  specialistBonus: 0.5,
-  specialistMin: 3,
-  maxSize: 16,
-  squareSpeedMult: 0.7,
-  triangleSpeedMult: 1.5,
-  squareGrowthMult: 1.5,
-  triangleGrowthMult: 0.6,
-  shapeBounty: 0.5,
-  shapeHuntMargin: 1.2,
-  minimapSize: 220,
-  minimapMargin: 12,
-  minimapDotMin: 4,
-  minimapDotMax: 12,
-  minimapAlpha: 0.7,
-  cameraZoom: 1.8,
-  // tower climb
+
+  // Tower. y grows downward; the ground surface is at floorY.
   towerWidth: 600,
-  sectionCount: 12,
-  sectionHeight: 150,
+  towerHeight: 3700,
+  floorY: 3600,
   groundH: 40,
   topH: 20,
-  floorY: 1900,
-  towerHeight: 2000,
-  gravity: 0.7,
-  runSpeed: 4,
-  jumpSpeed: 11,
-  jumpHoldBoost: 3,
-  jumpHoldTicks: 6,
-  maxFall: 16,
+  topW: 160,
+  sectionCount: 12,
+  stepsPerSection: 4,
+  platformH: 12,
+  ledgeW: 90,
+  gapW: 56,
+  beamW: 34,
+  killW: 70,
+  killH: 14,
+  wallMargin: 40,
+  movingPlatformSpeed: 2.5,
+  movingRange: 90,
+  reachSafety: 0.8, // generated jumps use at most this share of the longest possible jump
+
+  // Run: fast ground acceleration, less in the air (responsive, but a jump is a commitment).
+  runSpeed: 8,
+  groundAccel: 4,
+  groundDecel: 5,
+  airAccel: 2,
+  airDecel: 0.6,
+
+  // Jump: fast rise, short hang at the apex while held, faster fall; letting go cuts the jump short.
+  jumpSpeed: 22,
+  gravityRise: 2.5,
+  gravityFall: 4.2,
+  apexSpeed: 4, // |vy| below this counts as the apex
+  apexGravityMult: 0.6, // gravity at the apex while jump is held
+  jumpCutSpeed: 6, // releasing jump while rising faster than this caps the rise to it
+  maxFall: 26,
+  coyoteTicks: 2, // can still jump this many ticks after walking off a ledge
+  jumpBufferTicks: 2, // a jump pressed this many ticks before landing still fires
+
   playerR: 10,
-  bumpPush: 5,
+  bumpPush: 4,
+
   roundSeconds: 180,
   resultsSeconds: 5,
-  movingPlatformSpeed: 1.5,
-  platformH: 12,
-  beamW: 50,
-  ledgeW: 140,
-  cameraZoomTower: 1.4,
-  crownBurst: 40,
+  fallShownPx: 200, // a drop of at least this much counts as a fall (sound, spectator cut)
 } as const;

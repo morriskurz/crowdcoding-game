@@ -6,7 +6,7 @@
 //   if (s) for (const e of lerpBodies(s.a, s.b, s.t)) draw(e);
 import { lerp } from "./tween.js";
 
-export interface Body { id: string; x: number; y: number; r?: number }
+export interface Body { id: string; x: number; y: number; r?: number; vy?: number }
 
 export interface Sample<S> {
   a: S;
@@ -83,6 +83,17 @@ export class SnapshotBuffer<S> {
   clear(): void { this.ticks = []; this.states = []; this.offset = null; }
 }
 
+// y between two ticks. A body under constant acceleration (a jump arc: vy changed by a, then y moved by
+// the new vy, as semi-implicit Euler does) follows the parabola through both points instead of a straight
+// line, so 15 Hz arcs look round. Anything else (landing, teleport, no velocity) blends linearly.
+export function arcY(a: Body, b: Body, t: number): number {
+  const dy = b.y - a.y;
+  const va = a.vy, vb = b.vy;
+  if (typeof va !== "number" || typeof vb !== "number" || Math.abs(dy - vb) > 0.01) return a.y + dy * t;
+  const acc = vb - va;
+  return a.y + (dy - acc / 2) * t + (acc / 2) * t * t;
+}
+
 // Blend two id-keyed body maps. Bodies only in `b` appear as-is, bodies only in `a` are gone.
 // A move longer than `maxJump` (respawn, teleport) snaps instead of sliding across the map.
 export function lerpBodies<T extends Body>(a: Readonly<Record<string, T>>, b: Readonly<Record<string, T>>, t: number, maxJump = 200): T[] {
@@ -93,7 +104,7 @@ export function lerpBodies<T extends Body>(a: Readonly<Record<string, T>>, b: Re
     if (!ea || ea === eb || t >= 1) { out.push(eb); continue; }
     const dx = eb.x - ea.x, dy = eb.y - ea.y;
     if (dx * dx + dy * dy > maxJump * maxJump) { out.push(eb); continue; }
-    const e = { ...eb, x: ea.x + dx * t, y: ea.y + dy * t };
+    const e = { ...eb, x: ea.x + dx * t, y: arcY(ea, eb, t) };
     if (ea.r !== undefined && eb.r !== undefined) e.r = lerp(ea.r, eb.r, t);
     out.push(e);
   }

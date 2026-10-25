@@ -22,6 +22,14 @@ export function botTarget(archived: boolean, humans: number, spectators = 0): nu
 }
 
 const clamp1 = (v: number) => Math.max(-1, Math.min(1, v));
+
+/** A game bot's input, clamped like a client's; null when it is not a usable input. */
+function clean(i: unknown): Input | null {
+  if (!i || typeof i !== "object") return null;
+  const { dx, dy, action } = i as Record<string, unknown>;
+  if (typeof dx !== "number" || typeof dy !== "number" || !Number.isFinite(dx) || !Number.isFinite(dy)) return null;
+  return { dx: clamp1(dx), dy: clamp1(dy), action: action === true };
+}
 const DEAD_PX = 2;
 
 /**
@@ -57,9 +65,11 @@ export function botInput(w: World, id: string, n: number): Input {
 /** The bot players of one room: ids bot:1..bot:k, k = the last sync's target. */
 export class Bots {
   ids: string[] = [];
+  private rules: GameRules | null = null;
 
   /** Join or remove bots (newest first) until there are exactly `target`. */
   sync(w: World, rules: GameRules, target: number): void {
+    this.rules = rules;
     while (this.ids.length > target) leavePlayer(w, rules, this.ids.pop()!);
     while (this.ids.length < target) {
       const n = this.ids.length + 1;
@@ -69,10 +79,18 @@ export class Bots {
     }
   }
 
-  /** This tick's input for every bot (zero input while `idle`, e.g. a draining room). */
+  /** This tick's input for every bot (zero input while `idle`, e.g. a draining room). The game's own bot (rules.bot) if it has one. */
   inputs(w: World, idle = false): Record<string, Input> {
     const out: Record<string, Input> = {};
-    this.ids.forEach((id, i) => { out[id] = idle ? { dx: 0, dy: 0, action: false } : botInput(w, id, i + 1); });
+    const own = this.rules?.bot;
+    this.ids.forEach((id, i) => {
+      if (idle) { out[id] = { dx: 0, dy: 0, action: false }; return; }
+      let inp: Input | null = null;
+      if (own) {
+        try { inp = clean(own(w, id, i + 1)); } catch { inp = null; }
+      }
+      out[id] = inp ?? botInput(w, id, i + 1);
+    });
     return out;
   }
 }

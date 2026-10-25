@@ -4,6 +4,7 @@
 import { setTimeout as sleep } from "node:timers/promises";
 
 const N = Number(process.env.SMOKE_N ?? "30");
+const MAX_COORD = 20000;
 const url = process.argv[2] ?? "ws://127.0.0.1:1999/parties/preview/main";
 
 let ok = 0;
@@ -48,7 +49,9 @@ async function bot(i) {
     const players = Object.values(last.players ?? {});
     if (!players.length) throw new Error("no-players");
     for (const p of players) {
-      if (!(p.x >= 0 && p.x <= 2000 && p.y >= 0 && p.y <= 2000)) throw new Error("oob-player");
+      // Sanity only (finite, not absurd): the game's own arena is checked by /health (rules.arena), so a
+      // tall level like a tower is not squeezed to fit a fixed box here.
+      if (!(p.x >= 0 && p.x <= MAX_COORD && p.y >= 0 && p.y <= MAX_COORD)) throw new Error("oob-player");
       if (typeof p.size !== "number") throw new Error("bad-player-shape");
     }
     // input effect: this bot moved +x (allow 0.5 tolerance, server 15Hz)
