@@ -1,0 +1,4 @@
+
+> @tcg/games@0.1.0 check /home/user/crowdcoding-game/packages/registry
+> tsc --noEmit -p tsconfig.json
+

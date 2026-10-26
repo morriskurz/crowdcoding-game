@@ -1,7 +1,12 @@
 // Record one side of a presentation: start the sim server for a checkout, play the built client in
 // headless Chrome, and write video.mp4 (+ audio), 3 screenshots, audio.wav and frames.json.
 //
-// Run: node scripts/present/record.mjs --root <checkout> --out <dir> [--scenario idle-crowd] [--seed 1337] [--secs 20]
+// The browser watches as a spectator (?spectate=1), exactly like the stream overlay: the camera follows
+// the action (the game's spectateTarget, else the director), so the clip shows where things happen
+// even in a world much larger than the view (a tall tower).
+//
+// Run: node scripts/present/record.mjs --root <checkout> --out <dir> [--scenario idle-crowd] [--inferred] [--seed 1337] [--secs 20]
+//   --inferred  the scenario is a guess: a game with its own bot plays itself instead (server.mjs)
 // The checkout's client must be built with VITE_PARTY_HOST=127.0.0.1:<port> (see run.mjs).
 import fs from "node:fs";
 import path from "node:path";
@@ -29,8 +34,8 @@ export function findChrome() {
 }
 
 /** Start server.mjs for `root` in a child process (isolates the side's game modules). */
-export async function startServerProcess({ root, port, seed, scenario, game = null }) {
-  const args = [path.join(HERE, "server.mjs"), "--root", root, "--port", String(port), "--seed", String(seed), "--scenario", scenario, ...(game ? ["--game", game] : [])];
+export async function startServerProcess({ root, port, seed, scenario, explicit = true, game = null }) {
+  const args = [path.join(HERE, "server.mjs"), "--root", root, "--port", String(port), "--seed", String(seed), "--scenario", scenario, ...(explicit ? ["--explicit"] : []), ...(game ? ["--game", game] : [])];
   const child = spawn(process.execPath, args, { stdio: ["ignore", "pipe", "inherit"] });
   const ready = await new Promise((resolve, reject) => {
     let buf = "";
@@ -83,12 +88,12 @@ export function concatList(frames, start, secs) {
   return lines.join("\n") + "\n";
 }
 
-export async function recordSide({ root, out, scenario = "idle-crowd", seed = 1337, secs = 20, port = 8787, game = null, chrome = findChrome(), log = console.log }) {
+export async function recordSide({ root, out, scenario = "idle-crowd", explicit = true, seed = 1337, secs = 20, port = 8787, game = null, chrome = findChrome(), log = console.log }) {
   fs.mkdirSync(out, { recursive: true });
   const raw = path.join(out, ".raw");
   fs.rmSync(raw, { recursive: true, force: true });
   const t0 = Date.now();
-  const srv = await startServerProcess({ root, port, seed, scenario, game });
+  const srv = await startServerProcess({ root, port, seed, scenario, explicit, game });
   const ticks = Math.round(secs * TICK_HZ);
   const shotTicks = SHOT_AT.map((f) => Math.round(f * ticks));
   const browser = await chromium.launch({ headless: true, executablePath: chrome, args: ["--no-sandbox", "--autoplay-policy=no-user-gesture-required", "--mute-audio"] });
@@ -126,7 +131,7 @@ export async function recordSide({ root, out, scenario = "idle-crowd", seed = 13
     page.on("pageerror", (e) => log(`[page error] ${e.message}`));
 
     await srv.hold(shotTicks[0]);
-    await page.goto(`${srv.base}/?room=present&name=viewer`, { waitUntil: "domcontentloaded", timeout: 20000 });
+    await page.goto(`${srv.base}/?room=present&spectate=1`, { waitUntil: "domcontentloaded", timeout: 20000 });
     const timeOrigin = await page.evaluate(() => performance.timeOrigin);
     const screenshots = [];
     for (let k = 0; k < shotTicks.length; k++) {
@@ -180,9 +185,9 @@ export async function recordSide({ root, out, scenario = "idle-crowd", seed = 13
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-  const { values } = parseArgs({ options: { root: { type: "string" }, out: { type: "string" }, scenario: { type: "string", default: "idle-crowd" }, seed: { type: "string", default: "1337" }, secs: { type: "string", default: "20" }, port: { type: "string", default: "8787" }, game: { type: "string" } } });
+  const { values } = parseArgs({ options: { root: { type: "string" }, out: { type: "string" }, scenario: { type: "string", default: "idle-crowd" }, seed: { type: "string", default: "1337" }, secs: { type: "string", default: "20" }, port: { type: "string", default: "8787" }, game: { type: "string" }, inferred: { type: "boolean", default: false } } });
   if (!values.root || !values.out) { console.error("--root and --out required"); process.exit(2); }
-  const r = await recordSide({ root: values.root, out: values.out, scenario: values.scenario, seed: Number(values.seed), secs: Number(values.secs), port: Number(values.port), game: values.game ?? null });
+  const r = await recordSide({ root: values.root, out: values.out, scenario: values.scenario, explicit: !values.inferred, seed: Number(values.seed), secs: Number(values.secs), port: Number(values.port), game: values.game ?? null });
   console.log(JSON.stringify(r, null, 2));
   process.exit(0); // fetch keep-alive sockets would hold the process open
 }

@@ -239,9 +239,36 @@ function drawPlayerBody(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void 
   ctx.restore();
 }
 
+function drawBlast(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
+  void fx;
+  const ticks = config.blastTicks;
+  const ticksLeft = num((e.data as { ticksLeft?: unknown } | undefined)?.ticksLeft, 0);
+  const progress = 1 - clamp(ticksLeft / ticks, 0, 1);
+  const radius = e.r * (0.35 + 0.65 * progress);
+  drawGlow(ctx, e.x, e.y, radius * 1.3, "#ff9a2e", 0.9 * (1 - 0.5 * progress));
+  ctx.save();
+  ctx.globalAlpha = 1 - progress * 0.6;
+  const g = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, Math.max(1, radius));
+  g.addColorStop(0, "#ffd54a");
+  g.addColorStop(0.5, "#ff9a2e");
+  g.addColorStop(1, "rgba(255,60,0,0)");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(e.x, e.y, Math.max(1, radius), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1 - progress;
+  ctx.strokeStyle = "#ffd54a";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(e.x, e.y, Math.max(1, radius), 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 export function drawEntity(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
   if (e.kind === "platform") drawPlatform(ctx, e, fx);
   else if (e.kind === "player") drawPlayerBody(ctx, e, fx);
+  else if (e.kind === "blast") drawBlast(ctx, e, fx);
 }
 
 function popup(x: number, y: number, text: string, color: string, fx: Fx): void {
@@ -263,6 +290,20 @@ export function onSnapshot(prev: Readonly<Ents> | null, next: Readonly<Ents>, fx
   if (prevRound?.phase === "results" && nextRound?.phase === "play") {
     for (const k of Object.keys(airTop)) delete airTop[k];
     cut = null;
+  }
+
+  for (const b of Object.values(next)) {
+    if (b.kind !== "blast") continue;
+    if (prev[b.id]) continue;
+    fx.particles.emit({ x: b.x, y: b.y, count: 40, color: "#ff9a2e", speed: 260, life: 0.6, size: 4, drag: 2 });
+    fx.sfx.play("hurt", { volume: 0.5 });
+    if (fx.me) {
+      const me = next[fx.me];
+      if (me) {
+        const dist = Math.hypot(num(me.x, 0) - num(b.x, 0), num(me.y, 0) - num(b.y, 0));
+        if (dist < 400) fx.camera.shake(8, 0.3);
+      }
+    }
   }
 
   for (const p of Object.values(next)) {

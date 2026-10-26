@@ -1,9 +1,9 @@
 {
-  "id": "15",
-  "spec": "massive multiplayer tower climb — no checkpoints — chat's ideas become new tower sections every round\n\nPitch the viewers voted for: Side view. Everyone races up one tower stacked from random sections; fall and you fall. First to the top or highest after 3 min wins, then a new tower is built. One bump can drop the leader. Chat features add section types: spinners, conveyors, crumbling ledges.\n\nDesign brief:\nControls: move left/right; action = jump (hold for a slightly higher jump). No double jump on day one.\nRound: a new tower is stacked from 12 random sections; everyone spawns on the ground floor. The round ends when the first player touches the top platform or after 180 s, then 5 s of results and a new tower.\nScore: highest point reached this round; the first to the top wins and gets a crown burst. Leaderboard shows wins this session.\nPlayers: no checkpoints, falling just drops you lower. Late joiners spawn at the bottom of the current tower. Players collide and can bump each other off ledges.\nTension: one bad jump or one bump can drop the leader several sections; the tower is the same for everyone, so a new player can beat a regular.\nSpectate: follow the highest climber, cut to a long fall (big drop in height) when it happens.\nChat adds: new section types in a list the tower builder picks from (spinning bar, conveyor, crumbling ledge, trampoline, wind zone, ice). Each section has a height, a difficulty and its own step logic.\nDay one: tower builder with 4 section types (static ledges, moving platform, gap jumps, narrow beams), side-view camera, jump physics, round loop, height bar.",
+  "id": "19",
+  "spec": "Every jump by any player has a 1/30 chance to trigger an explosion at the jump location, damaging players in a small blast radius. The explosion is identical for all players and purely chance-based.",
   "slug": "tower-climb-20261025",
   "game": "template",
-  "branch": "f/15-tower-climb-20261025",
+  "branch": "f/19-tower-climb-20261025",
   "status": "ready",
-  "updatedAt": "2026-10-25T16:56:15.467Z"
+  "updatedAt": "2026-10-25T18:11:14.872Z"
 }

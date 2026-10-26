@@ -1,12 +1,12 @@
 [
   {
     "id": "t1",
-    "title": "config: tower, jump, round and camera numbers",
+    "title": "config: blast chance, radius, lifetime, knock values",
     "tier": "muse",
     "files": [
       "packages/games/template/config.ts"
     ],
-    "estMin": 8,
+    "estMin": 5,
     "actualMin": 1.4,
     "done": true,
     "attempts": [
@@ -19,103 +19,38 @@
   },
   {
     "id": "t2",
-    "title": "rules: tower builder (4 section types), platformer physics, bumping, round loop, wins + tests",
+    "title": "rules: 1/30 jump explosion entity that knocks players in radius down and away + tests",
     "tier": "sonnet",
     "files": [
       "packages/games/template/rules.ts",
       "packages/games/template/rules.test.ts"
     ],
     "estMin": 20,
-    "actualMin": 7.2,
+    "actualMin": 1.6,
     "done": true,
     "attempts": [
       {
         "tier": "sonnet",
-        "ok": false,
-        "minutes": 3.6
-      },
-      {
-        "tier": "sonnet",
-        "ok": false,
-        "minutes": 3.2
-      },
-      {
-        "tier": "opus",
         "ok": true,
-        "minutes": 0.4
+        "minutes": 1.6
       }
     ]
   },
   {
     "id": "t3",
-    "title": "assets: side-view tower drawing, height bar, results/leaderboard overlay",
+    "title": "assets: draw expanding fireball for blast entities, sound and shake",
     "tier": "muse",
     "files": [
       "packages/games/template/assets.ts"
     ],
-    "estMin": 15,
-    "actualMin": 3.3,
+    "estMin": 10,
+    "actualMin": 1.9,
     "done": true,
     "attempts": [
       {
         "tier": "muse",
         "ok": true,
-        "minutes": 3.3
-      }
-    ]
-  },
-  {
-    "id": "t4",
-    "title": "config: fit tower in 2000px (smoke bounds)",
-    "tier": "muse",
-    "files": [
-      "packages/games/template/config.ts"
-    ],
-    "estMin": 3,
-    "actualMin": 0.4,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 0.4
-      }
-    ]
-  },
-  {
-    "id": "t5",
-    "title": "rules: up input (dy<-0.5) also jumps, + test",
-    "tier": "sonnet",
-    "files": [
-      "packages/games/template/rules.ts",
-      "packages/games/template/rules.test.ts"
-    ],
-    "estMin": 8,
-    "actualMin": 1.1,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "sonnet",
-        "ok": true,
-        "minutes": 1.1
-      }
-    ]
-  },
-  {
-    "id": "t6",
-    "title": "assets: camera follows climbers when no own player; leaderboard clear of height labels",
-    "tier": "muse",
-    "files": [
-      "packages/games/template/assets.ts"
-    ],
-    "estMin": 8,
-    "actualMin": 1.5,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.5
+        "minutes": 1.9
       }
     ]
   }

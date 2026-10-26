@@ -3,7 +3,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type * as Registry from "@tcg/games";
 import { Room, SAVE_EVERY_TICKS, isSpectate } from "./room.js";
-import { BOT_FILL, CURRENT_FILL } from "./bots.js";
+import { BOT_FILL, BOT_NAMES_MS, CURRENT_FILL } from "./bots.js";
 
 vi.mock("partyserver", () => ({
   Server: class {
@@ -141,6 +141,23 @@ describe("archived room bots", () => {
     r.onClose(a);
     r.onClose(s);
     expect(r.bots.ids).toEqual([]);
+  });
+
+  it("bots carry the chat's top suggester names and pick up new ones every BOT_NAMES_MS", async () => {
+    let top = ["alice", "bob"];
+    const calls: string[] = [];
+    const env = { CHAT_BOT: { fetch: async (u: string) => (calls.push(u), Response.json(top.map((name) => ({ name, upvotes: 1, ships: 1 })))) } };
+    const r = new Room({ storage: storage() } as any, env as any);
+    (r as any).name = "main";
+    await r.onStart();
+    expect(calls).toHaveLength(1);
+    r.onConnect(conn("s"), { request: new Request("http://x/?spectate=1") });
+    expect(r.bots.ids.map((id) => r.world.names[id])).toEqual(["alice bot", "bob bot", "bot 3"]);
+    top = ["carol"];
+    sec(BOT_NAMES_MS / 1000 + 30);
+    await vi.waitFor(() => expect(r.world.names["bot:1"]).toBe("carol bot"));
+    expect(r.world.names["bot:2"]).toBe("bot 2");
+    expect(calls.length).toBe(2);
   });
 
   it("a client cannot take a bot's id", async () => {

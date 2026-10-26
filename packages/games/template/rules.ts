@@ -45,6 +45,11 @@ export interface PlayerData {
   deaths: number; // lava / spinner touches this round
 }
 
+export interface BlastData {
+  ticksLeft: number;
+  fresh: boolean; // spawned this tick: damage not applied yet
+}
+
 export interface RoundData {
   phase: "play" | "results";
   ticksLeft: number;
@@ -365,6 +370,9 @@ function movePlayer(w: World, p: Entity<PlayerData>, dx: number, action: boolean
     d.jumping = true;
     d.buffer = 0;
     d.coyote = 0;
+    if (randomInt(w, config.blastOdds) === 0) {
+      spawn<BlastData>(w, { kind: "blast", x: p.x, y: p.y, r: config.blastRadius, data: { ticksLeft: config.blastTicks, fresh: true } });
+    }
   }
   if (d.buffer > 0) d.buffer--;
   if (d.coyote > 0) d.coyote--;
@@ -446,7 +454,33 @@ function bumpPlayers(players: Entity<PlayerData>[]): void {
   }
 }
 
+/** Ages existing blasts and removes the expired ones. */
+function ageBlasts(w: World): void {
+  for (const b of bodies<BlastData>(w, "blast")) {
+    if (--b.data.ticksLeft <= 0) despawn(w, b.id);
+  }
+}
+
+/** Fresh blasts hit every player whose centre is in range: knocked away and slammed down. Same for everyone. */
+function applyBlasts(w: World, players: Entity<PlayerData>[]): void {
+  for (const b of bodies<BlastData>(w, "blast")) {
+    if (!b.data.fresh) continue;
+    b.data.fresh = false;
+    for (const p of players) {
+      const dx = p.x - b.x;
+      const dy = p.y - b.y;
+      if (dx * dx + dy * dy > b.r * b.r) continue;
+      p.data.kick = (dx < 0 ? -1 : 1) * config.blastKick;
+      p.vy = config.blastSlam;
+      p.data.jumping = false;
+      p.ground = false;
+      p.data.on = "";
+    }
+  }
+}
+
 function startRound(w: World, r: Entity<RoundData>): void {
+  for (const b of bodies(w, "blast")) despawn(w, b.id);
   for (const p of bodies(w, "platform")) despawn(w, p.id);
   r.data.topY = buildTower(w);
   for (const p of bodies<PlayerData>(w, "player")) toGround(w, p, true);
@@ -565,6 +599,7 @@ export const rules: GameRules = {
       return;
     }
     updatePlatforms(w);
+    ageBlasts(w);
     let winner: Entity<PlayerData> | null = null;
     for (const p of players) {
       const inp = inputs[p.id];
@@ -576,6 +611,7 @@ export const rules: GameRules = {
       }
       if (landed && landed.data.type === "top" && !winner) winner = p;
     }
+    applyBlasts(w, players);
     bumpPlayers(players);
     r.data.ticksLeft--;
     if (!winner && r.data.ticksLeft <= 0) {
