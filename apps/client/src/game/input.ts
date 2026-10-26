@@ -4,12 +4,15 @@
 // the client predicted it (the server rate limit's burst absorbs it).
 import type { Input } from "@tcg/shared";
 
+/** Keys that press the action button. */
+export const ACTION_KEYS: ReadonlySet<string> = new Set([" ", "space", "enter"]);
+
 export function readKeys(keys: ReadonlySet<string>): Input {
   const has = (...k: string[]) => k.some((x) => keys.has(x));
   return {
     dx: (has("d", "arrowright") ? 1 : 0) - (has("a", "arrowleft") ? 1 : 0),
     dy: (has("s", "arrowdown") ? 1 : 0) - (has("w", "arrowup") ? 1 : 0),
-    action: has(" ", "space", "enter"),
+    action: has(...ACTION_KEYS),
   };
 }
 

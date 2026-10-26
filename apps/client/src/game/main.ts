@@ -9,7 +9,7 @@ import "./game.css";
 import { FixedStep, SnapshotBuffer, arcY, createFx, damp, lerp, lerpBodies, type GameAssets } from "@tcg/kit";
 import { Predictor, type Entity, type GameRules, type SnapMessage } from "@tcg/shared";
 import { parseHostMessage, type GameMessage } from "../bridge.js";
-import { InputSender, readKeys } from "./input.js";
+import { ACTION_KEYS, InputSender, readKeys } from "./input.js";
 import { Director } from "./director.js";
 import { TouchPad, mergeInput } from "./touch.js";
 
@@ -42,6 +42,7 @@ export function startGame(rules: GameRules, assets: GameAssets<Entity>): void {
   let curMe: Entity | null = null;
   let offX = 0, offY = 0;
   let spectator = false;
+  let tapped = false; // action pressed since the last tick
   const director = new Director({}, { x: scene.width / 2, y: scene.height / 2 });
   let directed = false; // camera placed by the director at least once
 
@@ -63,14 +64,14 @@ export function startGame(rules: GameRules, assets: GameAssets<Entity>): void {
       spectator = stats.spectator = m.spectator === true;
       if (m.me && m.me !== me) { me = m.me; fx.me = me; predictor = new Predictor(rules, me); prevMe = curMe = null; }
     } else if (m.t === "key") {
-      if (m.down) { keys.add(m.key); toggle(m.key); } else keys.delete(m.key);
+      if (m.down) { keys.add(m.key); toggle(m.key); if (ACTION_KEYS.has(m.key)) tapped = true; } else keys.delete(m.key);
     } else onSnap(m.snap);
   });
 
   for (const type of ["keydown", "keyup"] as const) {
     addEventListener(type, (e) => {
       const k = e.key.toLowerCase();
-      if (type === "keydown") { keys.add(k); fx.sfx.unlock(); if (!e.repeat) toggle(k); } else keys.delete(k);
+      if (type === "keydown") { keys.add(k); fx.sfx.unlock(); if (!e.repeat) { toggle(k); if (ACTION_KEYS.has(k)) tapped = true; } } else keys.delete(k);
       if (k.startsWith("arrow") || k === " ") e.preventDefault();
     });
   }
@@ -81,7 +82,9 @@ export function startGame(rules: GameRules, assets: GameAssets<Entity>): void {
   canvas.addEventListener("pointerdown", (e) => {
     if (e.pointerType === "mouse") return;
     e.preventDefault();
-    if (touch.down(e.pointerId, e.clientX, e.clientY, innerWidth, innerHeight, spectator) === "toggle") toggle("v");
+    const hit = touch.down(e.pointerId, e.clientX, e.clientY, innerWidth, innerHeight, spectator);
+    if (hit === "toggle") toggle("v");
+    else if (hit === "action") tapped = true;
   });
   canvas.addEventListener("pointermove", (e) => { if (e.pointerType !== "mouse") touch.move(e.pointerId, e.clientX, e.clientY); });
   for (const type of ["pointerup", "pointercancel", "lostpointercapture"] as const) {
@@ -135,6 +138,9 @@ export function startGame(rules: GameRules, assets: GameAssets<Entity>): void {
   function tick(now: number): void {
     if (spectator) return; // no player: nothing to send or predict
     const input = mergeInput(readKeys(keys), touch.read());
+    // A tap pressed and released between two ticks still counts as pressed for this one tick.
+    if (tapped) input.action = true;
+    tapped = false;
     const out = sender.tick(input, now, acked);
     if (out) toHost({ t: "input", ...out });
     if (!predictor || draining) return;

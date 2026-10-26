@@ -243,6 +243,26 @@ describe("world persistence", () => {
   });
 });
 
+describe("short taps", () => {
+  it("a press and its release within one tick still give the game one tick of the press, in order", async () => {
+    const r = await room("main");
+    const a = conn("a");
+    r.onConnect(a, req("alice"));
+    const seen: boolean[] = [];
+    const step = r.game.rules.step;
+    r.game = { ...r.game, rules: { ...r.game.rules, step: (w, inputs) => { seen.push(inputs.a?.action === true); step(w, inputs); } } };
+    await r.onMessage(a, JSON.stringify({ v: 2, dx: 0, dy: 0, action: true, seq: 2 }));
+    await r.onMessage(a, JSON.stringify({ v: 2, dx: 0, dy: 0, action: false, seq: 3 }));
+    expect(r.inputs.a.action).toBe(true);
+    r.onTick();
+    expect(r.acks.acks.a).toEqual([2, 1]); // the client sees its press applied for exactly one tick
+    expect(r.inputs.a.action).toBe(false);
+    r.onTick();
+    expect(r.acks.acks.a).toEqual([3, 1]);
+    expect(seen).toEqual([true, false]);
+  });
+});
+
 describe("gameplay health", () => {
   it("reports entity kinds and oversized entities against the game's arena", async () => {
     const r = await room("main");

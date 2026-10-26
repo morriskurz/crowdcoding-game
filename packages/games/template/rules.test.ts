@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createWorld, joinPlayer, runTick, bodies, get, type Entity, type Input, type World } from "@tcg/shared";
-import { rules, SECTION_TYPES, MAX_RISE, airTicks, buildTower, maxGap, platformTop, typesFor, type PlatformData, type PlayerData, type RoundData } from "./rules.js";
+import { rules, STEP_TYPES, MAX_RISE, airTicks, buildTower, isHazard, maxGap, platformTop, typesFor, type PlatformData, type PlayerData, type RoundData } from "./rules.js";
 import { config } from "./config.js";
 
 const idle = { dx: 0, dy: 0, action: false };
@@ -16,7 +16,6 @@ function world(seed = 7) {
 const pl = (w: World, id = "a") => get<PlayerData>(w, id)!;
 const rd = (w: World) => get<RoundData>(w, "round")!.data;
 const platforms = (w: World) => bodies<PlatformData>(w, "platform");
-const safe = (w: World) => platforms(w).filter((q) => q.data.type !== "kill");
 
 /** Puts the player on a fresh flat ground far from any platform and returns the world. */
 function flat(seed = 7) {
@@ -44,14 +43,14 @@ describe("tower climb: movement feel", () => {
     expect(pl(w).ground).toBe(true);
   });
 
-  it("a full jump reaches 4 to 5 player heights in about one second (genre feel targets)", () => {
-    expect(MAX_RISE).toBeGreaterThan(4 * 2 * config.playerR);
-    expect(MAX_RISE).toBeLessThan(5 * 2 * config.playerR);
+  it("a full jump reaches 2.5 to 3.5 player heights in 0.5 to 0.7 s (genre feel targets)", () => {
+    expect(MAX_RISE).toBeGreaterThan(2.5 * 2 * config.playerR);
+    expect(MAX_RISE).toBeLessThan(3.5 * 2 * config.playerR);
     const w = flat();
     const ys = path(w, Array(40).fill(jump));
     const air = ys.findIndex((y, i) => i > 0 && y === startY) + 1;
-    expect(air / config.tickHz).toBeGreaterThan(0.9);
-    expect(air / config.tickHz).toBeLessThan(1.3);
+    expect(air / config.tickHz).toBeGreaterThanOrEqual(0.5);
+    expect(air / config.tickHz).toBeLessThanOrEqual(0.7);
     expect(startY - Math.min(...ys)).toBeCloseTo(MAX_RISE, 5);
   });
 
@@ -60,9 +59,10 @@ describe("tower climb: movement feel", () => {
     path(w, Array(40).fill(jump));
     const ws = flat();
     const ys = path(ws, Array(40).fill(jump));
-    const apex = ys.indexOf(Math.min(...ys));
+    const apex = ys.lastIndexOf(Math.min(...ys));
     const land = ys.findIndex((y, i) => i > apex && y === startY);
-    expect(land - apex).toBeLessThan(apex + 1);
+    // the fall from the apex takes about as long as the rise despite the hang at the top
+    expect(land - apex).toBeLessThanOrEqual(apex + 1);
     // gravity on the way down is stronger than on the way up
     expect(config.gravityFall).toBeGreaterThan(config.gravityRise * 1.4);
   });
@@ -72,9 +72,9 @@ describe("tower climb: movement feel", () => {
       const w = flat();
       return startY - Math.min(...path(w, Array.from({ length: 40 }, (_, t) => (t < hold ? jump : idle))));
     };
-    expect(peak(1)).toBeLessThan(35);
+    expect(peak(1)).toBeLessThan(MAX_RISE / 2);
     expect(peak(3)).toBeGreaterThan(peak(1));
-    expect(peak(40)).toBeGreaterThan(peak(3) + 20);
+    expect(peak(40)).toBeGreaterThan(peak(2) + 5);
   });
 
   it("holding jump does not bunny-hop: the next jump needs a fresh press", () => {
@@ -96,7 +96,7 @@ describe("tower climb: movement feel", () => {
     const run = { dx: 1, dy: 0, action: false };
     const tryJumpAfter = (ticksOff: number) => {
       const w = flat();
-      const ledge = rulesPlatform(w, 200, startY - 100, 90);
+      const ledge = rulesPlatform(w, 200, startY - 400, 90);
       const p = pl(w);
       p.x = ledge.x + 45 - 1;
       p.y = platformTop(ledge) - config.playerR;
@@ -157,6 +157,35 @@ describe("tower climb: movement feel", () => {
     expect(p.x).toBe(config.playerR);
   });
 
+  it("the stick is digital past the dead zone: half pushed runs at full speed", () => {
+    const speedAt = (dx: number) => {
+      const w = flat();
+      pl(w).x = 300;
+      path(w, Array(4).fill({ dx, dy: 0, action: false }));
+      return pl(w).vx;
+    };
+    expect(speedAt(0.5)).toBe(config.runSpeed);
+    expect(speedAt(-0.35)).toBe(-config.runSpeed);
+    expect(speedAt(0.2)).toBe(0);
+  });
+
+  it("ice: slow to stop, you slide on after letting go", () => {
+    const slide = (type: PlatformData["type"]) => {
+      const w = flat();
+      const ice = rulesPlatform(w, 300, startY - 100, 400, type);
+      const p = pl(w);
+      p.x = 200;
+      p.y = platformTop(ice) - config.playerR;
+      p.ground = true;
+      p.data.on = ice.id;
+      path(w, Array(4).fill({ dx: 1, dy: 0, action: false }));
+      const x = p.x;
+      path(w, Array(30).fill(idle));
+      return p.x - x;
+    };
+    expect(slide("ice")).toBeGreaterThan(3 * slide("ledge"));
+  });
+
   it("moving platforms carry riders", () => {
     const w = flat();
     const mp = rulesPlatform(w, 300, startY - 100, 90, "moving");
@@ -208,10 +237,19 @@ describe("tower climb: the tower", () => {
     expect(bodies(w, "pellet")).toHaveLength(0);
   });
 
-  it("gets harder going up: the first sections are plain ledges, lava only near the top", () => {
+  it("gets harder going up: the first sections are plain ledges, lava and spinners only near the top", () => {
     expect(typesFor(0).map((t) => t.name)).toEqual(["ledges"]);
-    expect(typesFor(config.sectionCount - 1).map((t) => t.name)).toContain("lava");
-    expect(SECTION_TYPES.length).toBeGreaterThanOrEqual(5);
+    const top = typesFor(config.sectionCount - 1).map((t) => t.name);
+    for (const n of ["lava", "spinner", "blink", "crumble", "ice"]) expect(top).toContain(n);
+    expect(typesFor(config.sectionCount / 2).map((t) => t.name)).not.toContain("spinner");
+    expect(STEP_TYPES.length).toBeGreaterThanOrEqual(9);
+  });
+
+  it("sections mix two step types, so most towers have many kinds of platforms", () => {
+    const w = createWorld(9);
+    buildTower(w);
+    const kinds = new Set(platforms(w).map((q) => q.data.type));
+    expect(kinds.size).toBeGreaterThanOrEqual(6);
   });
 
   it("every next safe platform is within jump reach, and the tower fits the world", () => {
@@ -224,11 +262,11 @@ describe("tower climb: the tower", () => {
         const half = q.data.w / 2 + (q.data.range ?? 0);
         expect(q.data.ox - half).toBeGreaterThanOrEqual(-0.001);
         expect(q.data.ox + half).toBeLessThanOrEqual(config.towerWidth + 0.001);
-        if (q.data.type === "kill") continue;
+        if (isHazard(q.data.type)) continue;
         if (prev && prev.data.type !== "ground") {
           const rise = platformTop(prev) - platformTop(q);
-          expect(rise).toBeGreaterThan(30);
-          expect(rise).toBeLessThan(MAX_RISE * 0.92);
+          expect(rise).toBeGreaterThan(MAX_RISE * 0.45);
+          expect(rise).toBeLessThan(MAX_RISE * 0.9);
           const gap = Math.abs(q.data.ox - prev.data.ox) - (q.data.w + prev.data.w) / 2;
           expect(gap).toBeLessThanOrEqual(maxGap(rise) * config.reachSafety + 0.001);
         }
@@ -274,10 +312,52 @@ describe("tower climb: falls and kill bricks", () => {
   });
 
   it("lava sections put a kill brick right behind a ledge", () => {
-    const lava = SECTION_TYPES.find((t) => t.name === "lava")!;
+    const lava = STEP_TYPES.find((t) => t.name === "lava")!;
     const w = createWorld(5);
-    const specs = lava.build(w, { x: 300, y: config.floorY, w: 300 });
+    const specs = lava.step(w, { x: 300, y: config.floorY, w: 300 }, 0);
     expect(specs.some((s) => s.type === "kill")).toBe(true);
+  });
+
+  it("a spinning bar sweeps its ledge: standing under it kills you sometimes, not always", () => {
+    const w = flat();
+    const ledge = rulesPlatform(w, 300, startY - 100, 90);
+    const id = "spin";
+    w.entities[id] = { id, kind: "platform", x: 300, y: platformTop(ledge) - config.spinnerLift, vx: 0, vy: 0, r: config.spinnerLen, data: { w: 2 * config.spinnerLen, h: 8, type: "spinner", ox: 300, a: 0, spin: config.spinnerSpeed } };
+    const p = pl(w);
+    let deaths = 0;
+    for (let t = 0; t < 30; t++) {
+      p.x = 300; p.y = platformTop(ledge) - config.playerR; p.ground = true; p.data.on = ledge.id; p.vy = 0;
+      runTick(w, rules, { a: idle });
+      if (p.y === startY) deaths++;
+    }
+    expect(deaths).toBeGreaterThan(0);
+    expect(deaths).toBeLessThan(15);
+  });
+
+  it("crumbling platforms drop a moment after you land and come back later", () => {
+    const w = flat();
+    const c = rulesPlatform(w, 300, startY - 100, 70, "crumble");
+    Object.assign(c.data, { solid: true, fuse: 0, down: 0 });
+    const p = pl(w);
+    p.x = 300; p.y = platformTop(c) - config.playerR - 5; p.ground = false;
+    runTick(w, rules, { a: idle });
+    expect(p.ground).toBe(true);
+    path(w, [], config.crumbleFuse - 2);
+    expect(p.y).toBe(platformTop(c) - config.playerR);
+    path(w, [], 20);
+    expect(p.y).toBe(startY);
+    expect(c.data.solid).toBe(false);
+    path(w, [], config.crumbleDown);
+    expect(c.data.solid).toBe(true);
+  });
+
+  it("blinking platforms are only solid part of the time", () => {
+    const w = flat();
+    const b = rulesPlatform(w, 300, startY - 100, 70, "blink");
+    Object.assign(b.data, { phase: 0, solid: true });
+    let on = 0;
+    for (let t = 0; t < config.blinkPeriod; t++) { runTick(w, rules, { a: idle }); if (b.data.solid) on++; }
+    expect(on).toBe(config.blinkOn);
   });
 });
 

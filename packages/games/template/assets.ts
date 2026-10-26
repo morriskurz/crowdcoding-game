@@ -85,6 +85,9 @@ function platformColor(type: string): string {
   if (type === "moving") return "#2dd4bf";
   if (type === "beam") return "#fb923c";
   if (type === "gap") return "#a78bfa";
+  if (type === "ice") return "#bae6fd";
+  if (type === "crumble") return "#b08968";
+  if (type === "blink") return "#f472b6";
   return "#94a3b8";
 }
 
@@ -106,19 +109,71 @@ function drawKill(ctx: CanvasRenderingContext2D, x: number, y: number, w: number
   ctx.restore();
 }
 
+/** A lava bar turning around its middle, with a bolt at the pivot. */
+function drawSpinner(ctx: CanvasRenderingContext2D, e: Entity, w: number, h: number, a: number, fx: Fx): void {
+  drawGlow(ctx, e.x, e.y, w * 0.55, "#ff2d2d", 0.25 + 0.15 * pulse(fx.time, 1.4));
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  ctx.rotate(a);
+  roundRectPath(ctx, -w / 2, -h / 2, w, h, h / 2);
+  ctx.fillStyle = "#e11d48";
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,220,120,0.7)";
+  ctx.fillRect(-w / 2 + 3, -1, w - 6, 2);
+  ctx.restore();
+  ctx.fillStyle = "#334155";
+  ctx.beginPath();
+  ctx.arc(e.x, e.y, 5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 function drawPlatform(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
-  const d = e.data as { w?: unknown; h?: unknown; type?: unknown } | undefined;
+  const d = e.data as { w?: unknown; h?: unknown; type?: unknown; solid?: unknown; warn?: unknown; a?: unknown } | undefined;
   const w = num(d?.w, 100);
   const h = Math.max(8, num(d?.h, 12));
   const type = typeof d?.type === "string" ? d.type : "ledge";
-  const x = e.x - w / 2;
+  if (type === "spinner") return drawSpinner(ctx, e, w, h, num(d?.a, 0), fx);
+  // Blinking / crumbling platforms: flicker and shake before they go, a dashed ghost while gone.
+  const gone = d?.solid === false;
+  const warn = d?.warn === true;
+  const shake = warn && type === "crumble" ? Math.sin(fx.time * 60) * 1.5 : 0;
+  const x = e.x - w / 2 + shake;
   const y = e.y - h / 2;
   if (type === "kill") return drawKill(ctx, x, y, w, h, fx);
+  if (gone) {
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = platformColor(type);
+    ctx.globalAlpha = 0.45;
+    ctx.lineWidth = 1.5;
+    roundRectPath(ctx, x, y, w, h, Math.min(5, h / 2));
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  ctx.save();
+  if (warn && type === "blink") ctx.globalAlpha = 0.35 + 0.65 * (Math.sin(fx.time * 40) > 0 ? 1 : 0);
   roundRectPath(ctx, x, y, w, h, Math.min(5, h / 2));
   ctx.fillStyle = platformColor(type);
   ctx.fill();
   ctx.fillStyle = "rgba(255,255,255,0.35)";
   ctx.fillRect(x + 3, y + 1, Math.max(0, w - 6), 2);
+  if (type === "ice") {
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    for (let sx = x + 8; sx < x + w - 6; sx += 22) ctx.fillRect(sx, y + 4, 8, 1.5);
+  }
+  if (type === "crumble") {
+    ctx.strokeStyle = "rgba(40,20,10,0.7)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let sx = x + 12; sx < x + w - 8; sx += 18) {
+      ctx.moveTo(sx, y);
+      ctx.lineTo(sx + 4, y + h / 2);
+      ctx.lineTo(sx - 2, y + h);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
   if (type === "top") {
     const px = e.x + w / 2 - 8;
     const poleTop = y - 40;

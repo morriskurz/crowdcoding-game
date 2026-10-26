@@ -1,15 +1,18 @@
 // Agent-editable rules. Pure functions only. See guard script for banned APIs.
 // Game: side-view tower climb, a 2D "Tower of Hell". Run, jump, shove rivals, reach the top first.
-// No checkpoints: a missed jump drops you to whatever is below, a red kill brick sends you back to the ground.
-// y grows downward: the ground surface is at config.floorY, the top platform is near y = 200 to 1200.
+// No checkpoints: a missed jump drops you to whatever is below; lava and spinning bars send you back to the ground.
+// y grows downward: the ground surface is at config.floorY, the top platform is a few hundred px from the top.
 //
 // Movement follows platformer conventions: fast ground acceleration, weaker air control, a fast rise
 // with a short hang at the apex, a faster fall, variable height (letting go cuts the jump), coyote
 // time and a jump buffer. The jump only fires on a fresh press, so holding the button never bunny-hops.
+// The stick is digital past a small dead zone: a half-pushed joystick runs at full speed.
 import { bodies, despawn, get, randomInt, randomRange, spawn, type Entity, type GameRules, type Input, type World } from "@tcg/shared";
 import { config } from "./config.js";
 
-export type PlatformType = "ground" | "top" | "ledge" | "moving" | "gap" | "beam" | "kill";
+export type PlatformType =
+  | "ground" | "top" | "ledge" | "moving" | "gap" | "beam" | "ice" | "crumble" | "blink" // stand on these
+  | "kill" | "spinner"; // touch these and you are back on the ground
 
 export interface PlatformData {
   w: number;
@@ -20,6 +23,13 @@ export interface PlatformData {
   dir?: number;
   dx?: number; // x movement this tick (carries riders)
   section?: number;
+  phase?: number; // blink: tick offset of the on/off cycle
+  solid?: boolean; // blink / crumble: can be stood on right now
+  warn?: boolean; // blink / crumble: about to vanish
+  fuse?: number; // crumble: ticks until it drops (counts once someone stands on it)
+  down?: number; // crumble: ticks until it is back
+  a?: number; // spinner: bar angle (radians)
+  spin?: number; // spinner: radians per tick
 }
 
 export interface PlayerData {
@@ -32,7 +42,7 @@ export interface PlayerData {
   jumping: boolean; // rising from a jump that can still be cut short
   coyote: number; // ticks left in which a jump still counts as from the ground
   buffer: number; // ticks left in which a pressed jump fires on landing
-  deaths: number; // kill bricks touched this round
+  deaths: number; // lava / spinner touches this round
 }
 
 export interface BlastData {
@@ -50,13 +60,14 @@ export interface RoundData {
 
 export interface PlatformSpec {
   x: number;
-  y: number; // surface (top) y
-  w: number;
+  y: number; // surface (top) y; a spinner's pivot
+  w: number; // a spinner: 2 x bar length
   type: PlatformType;
   range?: number;
+  phase?: number;
 }
 
-/** The last safe platform of the path so far: the next section continues from it. */
+/** The last safe platform of the path so far: the next step continues from it. */
 export interface PathEnd {
   x: number;
   y: number;
@@ -64,16 +75,24 @@ export interface PathEnd {
   dir?: number; // -1 / 1: the way the path is heading
 }
 
-export interface SectionType {
+/** One kind of step: the safe platform to land on next, plus any hazards around it. The first spec is the safe one. */
+export interface StepType {
   name: string;
   difficulty: number;
-  build(w: World, from: PathEnd): PlatformSpec[];
+  step(w: World, from: PathEnd, k: number): PlatformSpec[];
 }
 
 const ROUND_ID = "round";
 const W = config.towerWidth;
+const HAZARDS: ReadonlySet<PlatformType> = new Set(["kill", "spinner"]);
+export const isHazard = (t: PlatformType) => HAZARDS.has(t);
 
 // --- jump envelope ---------------------------------------------------------------------------------
+
+function gravityFor(vy: number, held: boolean): number {
+  if (held && Math.abs(vy) < config.apexSpeed) return config.gravityRise * config.apexGravityMult;
+  return vy < 0 ? config.gravityRise : config.gravityFall;
+}
 
 /** y offset (negative = up) after each tick of a jump with the button held all the way. */
 export const JUMP_PATH: number[] = (() => {
@@ -107,11 +126,6 @@ export function maxGap(rise: number): number {
   return config.runSpeed * airTicks(rise);
 }
 
-function gravityFor(vy: number, held: boolean): number {
-  if (held && Math.abs(vy) < config.apexSpeed) return config.gravityRise * config.apexGravityMult;
-  return vy < 0 ? config.gravityRise : config.gravityFall;
-}
-
 // --- tower -----------------------------------------------------------------------------------------
 
 /**
@@ -131,81 +145,86 @@ function nextStep(w: World, from: PathEnd, width: number, rise: number, gapShare
   return { x, y: from.y - rise, w: width, dir };
 }
 
+/** A rise between `lo` and `hi` shares of the highest jump (never above 85 % of it). */
 function rise(w: World, lo: number, hi: number): number {
-  return Math.round(randomRange(w, lo, Math.min(hi, MAX_RISE * 0.9)));
+  return Math.round(randomRange(w, lo, Math.min(hi, 0.85)) * MAX_RISE);
 }
 
-/** A path of plain platforms of one width and type. */
-function steps(w: World, from: PathEnd, type: PlatformType, width: number, riseLo: number, riseHi: number, gapLo: number, gapHi: number): PlatformSpec[] {
-  const out: PlatformSpec[] = [];
-  let at = from;
-  for (let k = 0; k < config.stepsPerSection; k++) {
-    at = nextStep(w, at, width, rise(w, riseLo, riseHi), randomRange(w, gapLo, gapHi));
-    out.push({ x: at.x, y: at.y, w: width, type });
-  }
-  return out;
+/** A plain step onto a platform of this type and width. */
+function plain(type: PlatformType, width: (w: World) => number, riseLo: number, riseHi: number, gapLo: number, gapHi: number) {
+  return (w: World, from: PathEnd): PlatformSpec[] => {
+    const wd = Math.round(width(w));
+    const at = nextStep(w, from, wd, rise(w, riseLo, riseHi), randomRange(w, gapLo, gapHi));
+    return [{ x: at.x, y: at.y, w: wd, type }];
+  };
 }
 
-// Add your own section types here. Every safe platform must stay inside 0..towerWidth and be reachable
-// from the one before it (nextStep keeps gaps within the jump envelope).
-export const SECTION_TYPES: SectionType[] = [
-  {
-    name: "ledges",
-    difficulty: 1,
-    build: (w, from) => steps(w, from, "ledge", config.ledgeW, 45, 65, 0.3, 0.6),
-  },
+// Add your own step types here. The first spec of a step is the platform to land on; it must stay inside
+// 0..towerWidth and be reachable from the one before (nextStep keeps gaps within the jump envelope).
+export const STEP_TYPES: StepType[] = [
+  { name: "ledges", difficulty: 1, step: plain("ledge", (w) => randomRange(w, 70, config.ledgeW), 0.5, 0.75, 0.3, 0.6) },
   {
     name: "moving",
     difficulty: 2,
-    build(w, from) {
-      const out: PlatformSpec[] = [];
-      let at = from;
-      for (let k = 0; k < config.stepsPerSection; k++) {
-        const moving = k % 2 === 0;
-        const width = moving ? config.ledgeW : config.gapW;
-        at = nextStep(w, at, width, rise(w, 45, 60), randomRange(w, 0.3, 0.6));
-        out.push(moving ? { x: at.x, y: at.y, w: width, type: "moving", range: config.movingRange } : { x: at.x, y: at.y, w: width, type: "gap" });
-      }
+    step(w, from, k) {
+      if (k % 2 === 1) return plain("gap", () => config.gapW, 0.5, 0.7, 0.3, 0.6)(w, from);
+      const at = nextStep(w, from, 80, rise(w, 0.5, 0.7), randomRange(w, 0.3, 0.6));
+      return [{ x: at.x, y: at.y, w: 80, type: "moving", range: config.movingRange }];
+    },
+  },
+  // Ice: you keep sliding after you let go, so a narrow icy ledge is easy to slide off.
+  { name: "ice", difficulty: 2, step: plain("ice", () => config.ledgeW, 0.5, 0.7, 0.3, 0.6) },
+  // Crumbling: drops a moment after someone lands on it, comes back a few seconds later.
+  { name: "crumble", difficulty: 2, step: plain("crumble", () => 70, 0.5, 0.75, 0.3, 0.6) },
+  { name: "gaps", difficulty: 3, step: plain("gap", () => config.gapW, 0.55, 0.8, 0.6, 1) },
+  { name: "beams", difficulty: 3, step: plain("beam", () => config.beamW, 0.5, 0.7, 0.2, 0.6) },
+  {
+    // Blinking: on and off in turn, neighbours out of phase, so you wait for your moment.
+    name: "blink",
+    difficulty: 3,
+    step(w, from, k) {
+      const at = nextStep(w, from, 70, rise(w, 0.5, 0.7), randomRange(w, 0.3, 0.6));
+      return [{ x: at.x, y: at.y, w: 70, type: "blink", phase: (k % 2) * Math.round(config.blinkPeriod / 2) }];
+    },
+  },
+  {
+    // Overshoot a ledge and you land in lava: a kill brick sits right behind it.
+    name: "lava",
+    difficulty: 4,
+    step(w, from) {
+      const at = nextStep(w, from, config.gapW, rise(w, 0.5, 0.8), randomRange(w, 0.4, 0.8));
+      const out: PlatformSpec[] = [{ x: at.x, y: at.y, w: config.gapW, type: "ledge" }];
+      const dir = at.x >= from.x ? 1 : -1;
+      const off = config.gapW / 2 + 10 + config.killW / 2;
+      const fits = (kx: number) => kx - config.killW / 2 >= 0 && kx + config.killW / 2 <= W;
+      // No room behind it (wall): the lava goes in front, so an undershoot burns instead.
+      const kx = fits(at.x + dir * off) ? at.x + dir * off : at.x - dir * off;
+      if (fits(kx)) out.push({ x: kx, y: at.y, w: config.killW, type: "kill" });
       return out;
     },
   },
   {
-    name: "gaps",
-    difficulty: 3,
-    build: (w, from) => steps(w, from, "gap", config.gapW, 50, 70, 0.6, 1),
-  },
-  {
-    name: "beams",
-    difficulty: 3,
-    build: (w, from) => steps(w, from, "beam", config.beamW, 40, 60, 0.2, 0.6),
-  },
-  {
-    name: "lava",
+    // A lava bar turns like a windmill above a ledge: land and leave while it points away.
+    name: "spinner",
     difficulty: 4,
-    build(w, from) {
-      // Overshoot a ledge and you land in lava: a kill brick sits right behind every ledge.
-      const out: PlatformSpec[] = [];
-      let at = from;
-      for (let k = 0; k < config.stepsPerSection; k++) {
-        const prev = at;
-        at = nextStep(w, at, config.gapW, rise(w, 45, 65), randomRange(w, 0.4, 0.8));
-        out.push({ x: at.x, y: at.y, w: config.gapW, type: "ledge" });
-        const dir = at.x >= prev.x ? 1 : -1;
-        const kx = at.x + dir * (config.gapW / 2 + 10 + config.killW / 2);
-        if (kx - config.killW / 2 >= 0 && kx + config.killW / 2 <= W) out.push({ x: kx, y: at.y, w: config.killW, type: "kill" });
-      }
-      return out;
+    step(w, from) {
+      const at = nextStep(w, from, config.ledgeW, rise(w, 0.5, 0.7), randomRange(w, 0.3, 0.6));
+      return [
+        { x: at.x, y: at.y, w: config.ledgeW, type: "ledge" },
+        { x: at.x, y: at.y - config.spinnerLift, w: 2 * config.spinnerLen, type: "spinner" },
+      ];
     },
   },
 ];
 
-/** Section types allowed at section `s`: the tower gets harder as it goes up. */
-export function typesFor(s: number): SectionType[] {
+/** Step types allowed in section `s`: the tower gets harder as it goes up. */
+export function typesFor(s: number): StepType[] {
   const maxDifficulty = 1 + Math.floor((s * 4) / config.sectionCount);
-  return SECTION_TYPES.filter((t) => t.difficulty <= maxDifficulty);
+  return STEP_TYPES.filter((t) => t.difficulty <= maxDifficulty);
 }
 
-function spawnPlatform(w: World, spec: PlatformSpec, h: number, section?: number): Entity<PlatformData> {
+function spawnPlatform(w: World, spec: PlatformSpec, section?: number): Entity<PlatformData> {
+  const h = spec.type === "ground" ? config.groundH : spec.type === "top" ? config.topH : spec.type === "kill" ? config.killH : spec.type === "spinner" ? 8 : config.platformH;
   const data: PlatformData = { w: spec.w, h, type: spec.type, ox: spec.x };
   if (section !== undefined) data.section = section;
   let x = spec.x;
@@ -216,6 +235,13 @@ function spawnPlatform(w: World, spec: PlatformSpec, h: number, section?: number
     x = spec.x + randomRange(w, -range, range);
     data.dx = 0;
   }
+  if (spec.type === "blink") { data.phase = spec.phase ?? 0; data.solid = true; data.warn = false; }
+  if (spec.type === "crumble") { data.fuse = 0; data.down = 0; data.solid = true; data.warn = false; }
+  if (spec.type === "spinner") {
+    data.a = randomRange(w, 0, Math.PI * 2);
+    data.spin = (randomInt(w, 2) === 0 ? -1 : 1) * config.spinnerSpeed;
+    return spawn<PlatformData>(w, { kind: "platform", x, y: spec.y, r: spec.w / 2, data });
+  }
   return spawn<PlatformData>(w, { kind: "platform", x, y: spec.y + h / 2, r: Math.min(spec.w / 2, 100), data });
 }
 
@@ -223,21 +249,32 @@ export function platformTop(p: Entity<PlatformData>): number {
   return p.y - p.data.h / 2;
 }
 
-/** Builds the ground, sectionCount sections and the top platform. Returns the top platform's surface y. */
+/** Can be stood on right now (blinking and crumbling platforms come and go; hazards never). */
+export function solid(p: Entity<PlatformData>): boolean {
+  return !isHazard(p.data.type) && p.data.solid !== false;
+}
+
+/**
+ * Builds the ground, sectionCount sections and the top platform. Returns the top platform's surface y.
+ * Each section alternates two step types from its difficulty pool (one type in the first sections).
+ */
 export function buildTower(w: World): number {
-  spawnPlatform(w, { x: W / 2, y: config.floorY, w: W, type: "ground" }, config.groundH);
+  spawnPlatform(w, { x: W / 2, y: config.floorY, w: W, type: "ground" });
   // The ground is the whole width: the first jump may start anywhere.
   let at: PathEnd = { x: randomRange(w, W * 0.3, W * 0.7), y: config.floorY, w: W * 0.4 };
   for (let s = 0; s < config.sectionCount; s++) {
     const pool = typesFor(s);
-    const type = pool[randomInt(w, pool.length)];
-    for (const spec of type.build(w, at)) {
-      spawnPlatform(w, spec, spec.type === "kill" ? config.killH : config.platformH, s);
-      if (spec.type !== "kill") at = { x: spec.x, y: spec.y, w: spec.w, dir: spec.x >= at.x ? 1 : -1 };
+    const a = pool[randomInt(w, pool.length)];
+    const b = s < 2 ? a : pool[randomInt(w, pool.length)];
+    for (let k = 0; k < config.stepsPerSection; k++) {
+      const specs = (k % 2 === 0 ? a : b).step(w, at, k);
+      for (const spec of specs) spawnPlatform(w, spec, s);
+      const safe = specs[0];
+      at = { x: safe.x, y: safe.y, w: safe.w, dir: safe.x >= at.x ? 1 : -1 };
     }
   }
-  const top = nextStep(w, at, config.topW, rise(w, 45, 60), 0.4);
-  spawnPlatform(w, { x: top.x, y: top.y, w: config.topW, type: "top" }, config.topH);
+  const top = nextStep(w, at, config.topW, rise(w, 0.5, 0.7), 0.4);
+  spawnPlatform(w, { x: top.x, y: top.y, w: config.topW, type: "top" });
   return top.y;
 }
 
@@ -277,15 +314,29 @@ function toGround(w: World, p: Entity<PlayerData>, newRound: boolean): void {
   d.buffer = 0;
 }
 
-function movePlatforms(w: World): void {
+/** Moving platforms move, blinking ones switch, crumbling ones count down, spinners turn. */
+function updatePlatforms(w: World): void {
   for (const p of bodies<PlatformData>(w, "platform")) {
-    if (p.data.type !== "moving") continue;
-    const range = p.data.range ?? 0;
-    const before = p.x;
-    p.x += (p.data.dir ?? 1) * config.movingPlatformSpeed;
-    if (p.x >= p.data.ox + range) { p.x = p.data.ox + range; p.data.dir = -1; }
-    else if (p.x <= p.data.ox - range) { p.x = p.data.ox - range; p.data.dir = 1; }
-    p.data.dx = p.x - before;
+    const d = p.data;
+    if (d.type === "moving") {
+      const range = d.range ?? 0;
+      const before = p.x;
+      p.x += (d.dir ?? 1) * config.movingPlatformSpeed;
+      if (p.x >= d.ox + range) { p.x = d.ox + range; d.dir = -1; }
+      else if (p.x <= d.ox - range) { p.x = d.ox - range; d.dir = 1; }
+      d.dx = p.x - before;
+    } else if (d.type === "blink") {
+      const t = (w.tick + (d.phase ?? 0)) % config.blinkPeriod;
+      d.solid = t < config.blinkOn;
+      d.warn = d.solid && t >= config.blinkOn - config.warnTicks;
+    } else if (d.type === "crumble") {
+      if ((d.fuse ?? 0) > 0 && --d.fuse! === 0) d.down = config.crumbleDown;
+      else if ((d.down ?? 0) > 0) d.down!--;
+      d.solid = (d.down ?? 0) === 0;
+      d.warn = (d.fuse ?? 0) > 0;
+    } else if (d.type === "spinner") {
+      d.a = ((d.a ?? 0) + (d.spin ?? 0) + Math.PI * 2) % (Math.PI * 2);
+    }
   }
 }
 
@@ -299,11 +350,14 @@ function movePlayer(w: World, p: Entity<PlayerData>, dx: number, action: boolean
   const R = p.r;
   const under = d.on ? get<PlatformData>(w, d.on) : undefined;
   if (under && under.data.type === "moving") p.x += under.data.dx ?? 0;
-  const grounded = p.ground === true;
+  const grounded = p.ground === true && (!under || solid(under));
+  const icy = grounded && under?.data.type === "ice";
 
-  // Run: target speed from the stick, reached fast on the ground and slower in the air.
-  const dir = Math.max(-1, Math.min(1, dx));
-  const accel = grounded ? (dir !== 0 ? config.groundAccel : config.groundDecel) : dir !== 0 ? config.airAccel : config.airDecel;
+  // Run: past the dead zone the stick is full speed (a platformer, not an analog racer).
+  const dir = Math.abs(dx) > config.stickDeadZone ? Math.sign(dx) : 0;
+  const accel = icy
+    ? (dir !== 0 ? config.iceAccel : config.iceDecel)
+    : grounded ? (dir !== 0 ? config.groundAccel : config.groundDecel) : dir !== 0 ? config.airAccel : config.airDecel;
   p.vx = approach(p.vx, dir * config.runSpeed, accel);
 
   // Jump: fresh press -> buffer; ground (or coyote time) + buffer -> jump.
@@ -340,7 +394,7 @@ function movePlayer(w: World, p: Entity<PlayerData>, dx: number, action: boolean
   if (p.vy >= 0) {
     const bottom = p.y + R;
     for (const pl of bodies<PlatformData>(w, "platform")) {
-      if (pl.data.type === "kill") continue;
+      if (!solid(pl)) continue;
       const top = platformTop(pl);
       if (top < prevBottom - 0.01 || top > bottom) continue;
       if (Math.abs(p.x - pl.x) > pl.data.w / 2) continue;
@@ -353,20 +407,29 @@ function movePlayer(w: World, p: Entity<PlayerData>, dx: number, action: boolean
       d.on = landed.id;
       d.last = landed.id;
       d.jumping = false;
+      if (landed.data.type === "crumble" && !landed.data.fuse) landed.data.fuse = config.crumbleFuse;
     }
   }
   if (p.y < d.best) d.best = p.y;
   return landed;
 }
 
-/** Touching a kill brick (with a slightly forgiving hitbox) sends the player back to the ground. */
-function touchesKill(w: World, p: Entity<PlayerData>): boolean {
+/** Touching lava or a spinning bar (with a slightly forgiving hitbox) sends the player back to the ground. */
+function touchesHazard(w: World, p: Entity<PlayerData>): boolean {
   const r = p.r * 0.8;
   for (const k of bodies<PlatformData>(w, "platform")) {
-    if (k.data.type !== "kill") continue;
-    const cx = Math.max(k.x - k.data.w / 2, Math.min(p.x, k.x + k.data.w / 2));
-    const cy = Math.max(k.y - k.data.h / 2, Math.min(p.y, k.y + k.data.h / 2));
-    if ((p.x - cx) ** 2 + (p.y - cy) ** 2 < r * r) return true;
+    if (k.data.type === "kill") {
+      const cx = Math.max(k.x - k.data.w / 2, Math.min(p.x, k.x + k.data.w / 2));
+      const cy = Math.max(k.y - k.data.h / 2, Math.min(p.y, k.y + k.data.h / 2));
+      if ((p.x - cx) ** 2 + (p.y - cy) ** 2 < r * r) return true;
+    } else if (k.data.type === "spinner") {
+      // The bar runs through the pivot: distance from the player to that segment.
+      const half = k.data.w / 2;
+      const ux = Math.cos(k.data.a ?? 0), uy = Math.sin(k.data.a ?? 0);
+      const t = Math.max(-half, Math.min(half, (p.x - k.x) * ux + (p.y - k.y) * uy));
+      const reach = r + k.data.h / 2;
+      if ((p.x - (k.x + ux * t)) ** 2 + (p.y - (k.y + uy * t)) ** 2 < reach * reach) return true;
+    }
   }
   return false;
 }
@@ -440,15 +503,15 @@ const jumpInput = (inp: Input | undefined) => (inp?.action ?? false) || (inp?.dy
 
 // --- bots ------------------------------------------------------------------------------------------
 
-/** The platform a climber standing on `from` should jump to next: reachable, above, horizontally closest. */
+/** The platform a climber standing on `from` should jump to next: reachable, standable now, above, horizontally closest. */
 export function nextTarget(w: World, from: Entity<PlatformData>): Entity<PlatformData> | null {
   const base = platformTop(from);
   let best: Entity<PlatformData> | null = null;
   let bestCost = Infinity;
   for (const pl of bodies<PlatformData>(w, "platform")) {
-    if (pl === from || pl.data.type === "kill" || pl.data.type === "ground") continue;
+    if (pl === from || isHazard(pl.data.type) || pl.data.type === "ground") continue;
     const rise = base - platformTop(pl);
-    if (rise < 15 || rise > MAX_RISE - 4) continue;
+    if (rise < 10 || rise > MAX_RISE - 3) continue;
     const gap = Math.abs(pl.x - from.x) - (pl.data.w + from.data.w) / 2;
     if (gap > maxGap(rise)) continue;
     const cost = Math.abs(pl.x - from.x) - rise * 2;
@@ -458,7 +521,6 @@ export function nextTarget(w: World, from: Entity<PlatformData>): Entity<Platfor
 }
 
 const BOT_MISS_PERCENT = 30;
-const BOT_STICK = 0.9;
 
 /** A climbing bot: runs toward the next platform up and jumps near the edge. Makes timing mistakes now and then. */
 function botInput(w: World, id: string, n: number): Input {
@@ -472,27 +534,26 @@ function botInput(w: World, id: string, n: number): Input {
     // On the ground (or never landed yet): go to the lowest platform's foot and jump.
     let first: Entity<PlatformData> | null = null;
     for (const pl of bodies<PlatformData>(w, "platform")) {
-      if (pl.data.type === "ground" || pl.data.type === "kill") continue;
+      if (pl.data.type === "ground" || isHazard(pl.data.type)) continue;
       if (!first || platformTop(pl) > platformTop(first)) first = pl;
     }
     if (!first) return idle;
     const dx = first.x - me.x;
-    const jump = me.ground === true && !d.held && Math.abs(dx) < first.data.w / 2 + 30;
+    const jump = me.ground === true && !d.held && Math.abs(dx) < first.data.w / 2 + 20;
     return { dx: Math.abs(dx) > 3 ? Math.sign(dx) : 0, dy: 0, action: jump || (d.jumping && me.vy < 0) };
   }
   const target = nextTarget(w, from);
   if (!target) return idle;
   const dx = target.x - me.x;
   // Bots are fillers, not rivals: about a third of their jumps from a platform are botched.
-  const roundNo = r.data.round;
-  let h = n * 2654435761 + roundNo * 40503 + Math.floor(w.tick / 45) * 97; // changes every 3 s: no bot is stuck botching one jump
+  let h = n * 2654435761 + r.data.round * 40503 + Math.floor(w.tick / 45) * 97; // changes every 3 s: no bot is stuck botching one jump
   for (let i = 0; i < from.id.length; i++) h = (Math.imul(h, 31) + from.id.charCodeAt(i)) >>> 0;
   const botched = h % 100 < BOT_MISS_PERCENT;
   if (me.ground !== true) {
     // In the air: steer onto the target and hold the jump while rising. A botched jump lets go of
     // the stick at the apex and drops short.
-    if (botched && me.vy > 0) return { dx: 0, dy: 0, action: false };
-    return { dx: Math.abs(dx) > 4 ? Math.sign(dx) * BOT_STICK : 0, dy: 0, action: d.jumping && me.vy < 0 };
+    if (botched && me.vy > 0) return idle;
+    return { dx: Math.abs(dx) > 4 ? Math.sign(dx) : 0, dy: 0, action: d.jumping && me.vy < 0 };
   }
   // On a platform: run toward the target; jump once close enough. The lead varies by bot and step, so bots sometimes miss.
   const rise = platformTop(from) - platformTop(target);
@@ -502,10 +563,13 @@ function botInput(w: World, id: string, n: number): Input {
   // About to run off the edge toward the target: jump now (the classic edge jump).
   const nx = me.x + me.vx + Math.sign(dx) * config.groundAccel;
   const atEdge = Math.abs(nx - from.x) > from.data.w / 2 - 1 && Math.sign(dx) === Math.sign(nx - from.x);
-  // Bots hesitate before each jump (about 1.5 s on average), like a player lining up.
-  if (!atEdge && (w.tick + h) % 40 >= 9) return { dx: 0, dy: 0, action: false };
+  // Bots hesitate before each jump (about 1.5 s on average), like a player lining up; a crumbling floor rushes them.
+  const rushed = from.data.warn === true;
+  if (!atEdge && !rushed && (w.tick + h) % 40 >= 9) return idle;
+  // A target that is off right now (blinking, crumbled): wait for it.
+  if (!solid(target) && !atEdge) return idle;
   const jump = !d.held && (Math.abs(dx) <= lead || atEdge);
-  return { dx: Math.abs(dx) > 3 ? Math.sign(dx) * BOT_STICK : 0, dy: 0, action: jump };
+  return { dx: Math.abs(dx) > 3 ? Math.sign(dx) : 0, dy: 0, action: jump };
 }
 
 // --- rules -----------------------------------------------------------------------------------------
@@ -534,13 +598,13 @@ export const rules: GameRules = {
       if (--r.data.ticksLeft <= 0) startRound(w, r);
       return;
     }
-    movePlatforms(w);
+    updatePlatforms(w);
     ageBlasts(w);
     let winner: Entity<PlayerData> | null = null;
     for (const p of players) {
       const inp = inputs[p.id];
       const landed = movePlayer(w, p, inp?.dx ?? 0, jumpInput(inp));
-      if (touchesKill(w, p)) {
+      if (touchesHazard(w, p)) {
         p.data.deaths++;
         toGround(w, p, false);
         continue;

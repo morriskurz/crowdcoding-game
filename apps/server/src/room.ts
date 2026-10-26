@@ -33,6 +33,10 @@ export class Room extends Server {
   inputs: Record<string, Input> = {};
   // Which input seq each tick applied, echoed in snapshots for client reconciliation.
   acks = new InputAcks();
+  // A button press holds for at least one tick: a release that arrives before any tick applied the press
+  // waits for the next tick, so a tap shorter than a tick still reaches the game (the client predicted it).
+  pressPending = new Set<string>();
+  deferred = new Map<string, { input: Input; seq: number | undefined }>();
   buildVersion: string = "v1";
   tickTimer: ReturnType<typeof setInterval> | null = null;
   tickGuard = new TickGuard(this.ctx.storage, TICK_MS, TICK_BUDGET_MS);
@@ -135,6 +139,8 @@ export class Room extends Server {
     if (!(conn.id in this.inputs)) return; // rejected (full, or a bot id): never joined
     leavePlayer(this.world, this.game.rules, conn.id);
     delete this.inputs[conn.id];
+    this.pressPending.delete(conn.id);
+    this.deferred.delete(conn.id);
     this.acks.leave(conn.id);
     this.syncRoom();
   }
@@ -149,8 +155,28 @@ export class Room extends Server {
     const r = InputSchema.safeParse(parsed);
     if (!r.success) return;
     if (!(sender.id in this.inputs) || this.draining) return;
+    const next = { dx: r.data.dx, dy: r.data.dy, action: r.data.action };
+    if (this.pressPending.has(sender.id)) {
+      // The press was not applied yet: whatever follows waits for the tick after it (newest wins).
+      const seq = r.data.seq;
+      const held = this.deferred.get(sender.id)?.seq ?? this.acks.seq[sender.id] ?? 0;
+      if (seq === undefined || seq >= held) this.deferred.set(sender.id, { input: next, seq });
+      return;
+    }
     if (!this.acks.received(sender.id, r.data.seq)) return; // reordered: keep the newer input
-    this.inputs[sender.id] = { dx: r.data.dx, dy: r.data.dy, action: r.data.action };
+    if (next.action && !this.inputs[sender.id].action) this.pressPending.add(sender.id);
+    this.inputs[sender.id] = next;
+  }
+
+  /** After a tick: presses have been applied, deferred inputs take effect for the next tick. */
+  private releaseDeferred(): void {
+    this.pressPending.clear();
+    for (const [id, d] of this.deferred) {
+      if (!(id in this.inputs) || !this.acks.received(id, d.seq)) continue;
+      if (d.input.action && !this.inputs[id].action) this.pressPending.add(id);
+      this.inputs[id] = d.input;
+    }
+    this.deferred.clear();
   }
 
   onTick() {
@@ -158,6 +184,7 @@ export class Room extends Server {
     const all = this.bots.ids.length ? { ...this.inputs, ...this.bots.inputs(this.world, this.draining) } : this.inputs;
     runTick(this.world, this.game.rules, all);
     this.acks.ticked(Object.keys(this.inputs));
+    this.releaseDeferred();
     if (this.world.tick % SAVE_EVERY_TICKS === 0) { this.save(); void this.refreshBotNames(); }
     const inputs: Record<string, PackedInput> = {};
     for (const id in all) inputs[id] = packInput(all[id]);
@@ -173,6 +200,8 @@ export class Room extends Server {
   startDrain() {
     this.draining = true;
     for (const id of Object.keys(this.inputs)) this.inputs[id] = { dx: 0, dy: 0, action: false };
+    this.pressPending.clear();
+    this.deferred.clear();
     this.broadcast(JSON.stringify({ t: "drain", version: this.buildVersion, draining: true }));
   }
 
