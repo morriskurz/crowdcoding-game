@@ -69,9 +69,9 @@ export async function preview({ afterOnly = false, secs = 12, out = DEFAULT_OUT,
     let side = null;
     try {
       buildClient(after, PORTS.after, quiet);
-      side = await recordSide({ root: after, out: dir, scenario: feature.scenario, secs, port: PORTS.after, game: feature.game, chrome: findChrome(), log: quiet });
+      side = await recordSide({ root: after, out: dir, scenario: feature.scenario, explicit: feature.explicit, secs, port: PORTS.after, game: feature.game, chrome: findChrome(), log: quiet });
     } catch (e) { errors.push(`after: ${e.message}`); }
-    const res = { ok: Boolean(side) && !side.exceptions, headSha, packagesTree, scenario: feature.scenario, before: [], after: side?.screenshots ?? [], video: side?.video ?? null, simExceptions: side?.exceptions ?? null, errors };
+    const res = { ok: Boolean(side) && !side.exceptions, headSha, packagesTree, scenario: side?.scenario ?? feature.scenario, before: [], after: side?.screenshots ?? [], video: side?.video ?? null, simExceptions: side?.exceptions ?? null, errors };
     fs.mkdirSync(path.resolve(out), { recursive: true });
     fs.writeFileSync(path.resolve(out, "preview.json"), JSON.stringify(res, null, 2) + "\n");
     return res;

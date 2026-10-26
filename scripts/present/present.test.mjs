@@ -113,16 +113,16 @@ test("frametime: pass, fail only when raw and normalized both regress, no-baseli
 });
 
 test("scenarios: fixed list, untrusted names fall back to the default", () => {
-  assert.deepEqual(Object.keys(SCENARIOS).sort(), ["chase", "collect", "idle-crowd"]);
+  assert.deepEqual(Object.keys(SCENARIOS).sort(), ["chase", "collect", "idle-crowd", "play"]);
   for (const bad of [undefined, 3, "nope", "__proto__", "constructor", "toString"]) assert.equal(resolveScenario(bad).name, DEFAULT_SCENARIO);
   assert.equal(resolveScenario("chase").name, "chase");
 });
 
 test("feature.json: id and scenario parsed defensively", () => {
   const dir = fs.mkdtempSync(path.join(tmp, "feat-"));
-  assert.deepEqual(readFeature(dir), { featureId: null, game: null, scenario: DEFAULT_SCENARIO, requestedScenario: null });
+  assert.deepEqual(readFeature(dir), { featureId: null, game: null, scenario: DEFAULT_SCENARIO, explicit: false, requestedScenario: null });
   fs.writeFileSync(path.join(dir, "feature.json"), JSON.stringify({ id: 7, slug: "x", game: "snake", scenario: "chase" }));
-  assert.deepEqual(readFeature(dir), { featureId: "7", game: "snake", scenario: "chase", requestedScenario: "chase" });
+  assert.deepEqual(readFeature(dir), { featureId: "7", game: "snake", scenario: "chase", explicit: true, requestedScenario: "chase" });
   for (const game of ["../x", "main", "A", 5]) {
     fs.writeFileSync(path.join(dir, "feature.json"), JSON.stringify({ id: 7, game }));
     assert.equal(readFeature(dir).game, null, String(game));
@@ -133,7 +133,7 @@ test("feature.json: id and scenario parsed defensively", () => {
   fs.writeFileSync(path.join(dir, "feature.json"), JSON.stringify({ id: 5, spec: "a burst of particles when a player scores, for all players" }));
   assert.equal(readFeature(dir).scenario, "collect");
   fs.writeFileSync(path.join(dir, "feature.json"), JSON.stringify({ id: 5, spec: "a burst of particles when a player scores", scenario: "nope" }));
-  assert.deepEqual(readFeature(dir), { featureId: "5", game: null, scenario: "collect", requestedScenario: "nope" });
+  assert.deepEqual(readFeature(dir), { featureId: "5", game: null, scenario: "collect", explicit: false, requestedScenario: "nope" });
   fs.writeFileSync(path.join(dir, "feature.json"), JSON.stringify({ id: 5, spec: "a burst of particles when a player scores", scenario: "idle-crowd" }));
   assert.equal(readFeature(dir).scenario, "idle-crowd");
 });
@@ -167,6 +167,23 @@ test("sim: same seed + scenario => identical world; different seed differs", asy
     assert.equal(run(1337), run(1337), name);
     assert.notEqual(run(1337), run(1338), name);
   }
+});
+
+test("sim: a game with its own bot plays itself unless the scenario was named", async () => {
+  const { shared, rules } = await loadGame(path.resolve(new URL("../..", import.meta.url).pathname));
+  const fake = { ...rules, bot: () => ({ dx: 5, dy: 0, action: true }) };
+  assert.equal(createSim(shared, fake, { seed: 1, scenario: "chase", explicit: false }).scenario.name, "play");
+  assert.equal(createSim(shared, fake, { seed: 1, scenario: "chase", explicit: true }).scenario.name, "chase");
+  const { bot: _none, ...botless } = rules;
+  assert.equal(createSim(shared, botless, { seed: 1, scenario: "chase", explicit: false }).scenario.name, "chase");
+  // play: the game bot's input, clamped; a throwing or broken bot falls back to the idle crowd.
+  const inputs = [];
+  const spy = { ...fake, step(w, inp) { inputs.push(inp); return rules.step(w, inp); } };
+  createSim(shared, spy, { seed: 1, scenario: "play" }).step();
+  assert.deepEqual(inputs[0].bot0, { dx: 1, dy: 0, action: true });
+  inputs.length = 0;
+  createSim(shared, { ...spy, bot: () => { throw new Error("x"); } }, { seed: 1, scenario: "play" }).step();
+  assert.equal(inputs[0].bot0.action, false);
 });
 
 test("video: concat list covers exactly the clip", () => {

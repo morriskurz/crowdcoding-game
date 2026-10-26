@@ -8,9 +8,12 @@
 import idleCrowd from "./idle-crowd.mjs";
 import chase from "./chase.mjs";
 import collect from "./collect.mjs";
+import play from "./play.mjs";
 
-export const SCENARIOS = { "idle-crowd": idleCrowd, chase, collect };
+export const SCENARIOS = { "idle-crowd": idleCrowd, chase, collect, play };
 export const DEFAULT_SCENARIO = "idle-crowd";
+// Used instead of an inferred scenario when the game has its own bot (rules.bot); see play.mjs.
+export const GAME_BOT_SCENARIO = "play";
 
 // Keywords that make a spec's effect visible in a scenario, checked in this order. Agents rarely set
 // feature.json `scenario`, and the default idle crowd almost never eats or collides, so a feature

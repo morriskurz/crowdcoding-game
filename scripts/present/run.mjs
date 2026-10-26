@@ -35,7 +35,8 @@ function readJson(file) {
  * feature.json at the PR head: {id, spec, slug, game?, branch, status, scenario?, ...}. Untrusted.
  * `game` (written by orchestrate.mjs start) picks the game both sides present; a side whose checkout
  * lacks it (before-side of a bootstrap) presents its own current game.
- * A known `scenario` wins; without one the scenario is inferred from `spec` (inferScenario).
+ * A known `scenario` wins (`explicit`); without one the scenario is inferred from `spec` (inferScenario),
+ * and the sim server lets a game with its own bot play itself instead (scenarios/play.mjs).
  */
 export function readFeature(root) {
   const f = readJson(path.join(root, "feature.json"));
@@ -45,7 +46,7 @@ export function readFeature(root) {
   const requested = ok && typeof f.scenario === "string" ? f.scenario.slice(0, 64) : null;
   const known = requested !== null && resolveScenario(requested).name === requested;
   const scenario = known ? requested : inferScenario(ok ? f.spec : undefined);
-  return { featureId: id, game, scenario, requestedScenario: requested };
+  return { featureId: id, game, scenario, explicit: known, requestedScenario: requested };
 }
 
 export function buildClient(root, port, log = console.log) {
@@ -81,7 +82,7 @@ export async function runPresentation({ before, after, out, pr = null, headSha =
     try {
       if (build) timings[`build_${side}`] = buildClient(root, PORTS[side], log);
       const t = Date.now();
-      sides[side] = await recordSide({ root, out: path.join(out, side), scenario: feature.scenario, seed, secs, port: PORTS[side], game: feature.game, chrome, log });
+      sides[side] = await recordSide({ root, out: path.join(out, side), scenario: feature.scenario, explicit: feature.explicit, seed, secs, port: PORTS[side], game: feature.game, chrome, log });
       timings[`record_${side}`] = Date.now() - t;
     } catch (e) {
       errors.push(`${side}: ${e.message}`);
@@ -111,7 +112,7 @@ export async function runPresentation({ before, after, out, pr = null, headSha =
     featureId: feature.featureId,
     game: { before: sides.before?.game ?? null, after: a?.game ?? null },
     headSha,
-    scenario: feature.scenario,
+    scenario: a?.scenario ?? sides.before?.scenario ?? feature.scenario, // what actually ran (play for a game with its own bot)
     before: media("before"),
     after: media("after"),
     captions,
