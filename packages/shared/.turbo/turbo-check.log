@@ -1,4 +1,0 @@
-
-> @tcg/shared@0.1.0 check /home/user/crowdcoding-game/packages/shared
-> tsc --noEmit -p tsconfig.json
-
