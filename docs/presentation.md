@@ -45,8 +45,12 @@ on stream.
 ## Agent inputs (at the PR head, all untrusted)
 
 - `feature.json`: `{id, spec, slug, game?, branch, status, scenario?}`. `featureId` comes from `id`.
-  `scenario` must name one of `scripts/scenarios` (`idle-crowd` (default), `chase`, `collect`, `play`).
-  Any other value falls back to the default. Without a valid `scenario` it is inferred from `spec`,
+  `scenario` must name one of `scripts/scenarios` (`idle-crowd` (default), `chase`, `collect`, `play`, `showcase`).
+  Any other value falls back to the default. Without a valid `scenario`, a game that stages its newest
+  feature (`rules.showcase`) records `showcase`: bot 0 is the hero, the game moves it and sets up the moment
+  (about 3 times in 10 s), the client's spectator camera follows the hero (`data.showcase`), and the other
+  bots play. A before-side checkout without the hook records the same scenario with the hero playing
+  normally. Otherwise the scenario is inferred from `spec`,
   and a game with its own bot (`rules.bot`) plays itself instead (`play`: every bot runs the game's
   bot AI), because the steering-only scenarios never press action (no jumping, climbing or racing).
   `index.json` records the scenario that actually ran.

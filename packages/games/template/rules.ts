@@ -461,6 +461,9 @@ const BOT_MISS_PERCENT = 30;
 const BOT_STICK = 0.9;
 
 /** A climbing bot: runs toward the next platform up and jumps near the edge. Makes timing mistakes now and then. */
+/** Showcase: one staged blast on the hero every 3.3 s, about 3 in a 10 s look. */
+export const SHOWCASE_EVERY = 50;
+
 function botInput(w: World, id: string, n: number): Input {
   const idle: Input = { dx: 0, dy: 0, action: false };
   const me = get<PlayerData>(w, id);
@@ -526,6 +529,15 @@ export const rules: GameRules = {
     toGround(w, p, true);
   },
   bot: botInput,
+  // Presentation only: the hero climbs like a bot, and every SHOWCASE_EVERY ticks a jump of its blows up
+  // (feature #19, normally 1 in 30), so the clip shows the blast knocking it and its neighbours away.
+  showcase(w, heroId, tick) {
+    const hero = w.entities[heroId];
+    if (hero && tick >= SHOWCASE_EVERY && tick % SHOWCASE_EVERY === 0) {
+      spawn<BlastData>(w, { kind: "blast", x: hero.x, y: hero.y, r: config.blastRadius, data: { ticksLeft: config.blastTicks, fresh: true } });
+    }
+    return botInput(w, heroId, 1);
+  },
   step(w, inputs) {
     const r = round(w);
     const players = bodies<PlayerData>(w, "player");

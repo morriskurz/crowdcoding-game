@@ -185,7 +185,10 @@ export function startGame(rules: GameRules, assets: GameAssets<Entity>): void {
     if (spectator) {
       // The game may name its own camera target; otherwise (or if it fails) the director follows the action.
       let own: { x: number; y: number; focus?: string } | null = null;
-      try { own = assets.spectateTarget?.(list, names, fx) ?? null; } catch { own = null; }
+      // Presentation recordings mark the hero of the staged feature (scripts/scenarios/showcase.mjs): follow it.
+      const hero = list.find((e) => (e.data as { showcase?: unknown } | undefined)?.showcase === true);
+      if (hero) own = { x: hero.x, y: hero.y, focus: hero.id };
+      else try { own = assets.spectateTarget?.(list, names, fx) ?? null; } catch { own = null; }
       const ok = own && Number.isFinite(own.x) && Number.isFinite(own.y);
       const t = ok ? own! : director.target(list);
       fx.camera.follow(t.x, t.y, !directed);

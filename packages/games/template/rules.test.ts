@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createWorld, joinPlayer, runTick, bodies, get, type Entity, type Input, type World } from "@tcg/shared";
-import { rules, SECTION_TYPES, MAX_RISE, airTicks, buildTower, maxGap, platformTop, typesFor, type PlatformData, type PlayerData, type RoundData } from "./rules.js";
+import { rules, SHOWCASE_EVERY, SECTION_TYPES, MAX_RISE, airTicks, buildTower, maxGap, platformTop, typesFor, type PlatformData, type PlayerData, type RoundData } from "./rules.js";
 import { config } from "./config.js";
 
 const idle = { dx: 0, dy: 0, action: false };
@@ -433,5 +433,20 @@ describe("tower climb: bots", () => {
     const inp = rules.bot!(w, "a", 1);
     expect(Math.abs(inp.dx)).toBeLessThanOrEqual(1);
     expect(typeof inp.action).toBe("boolean");
+  });
+});
+
+describe("tower climb: presentation showcase", () => {
+  it("stages a blast on the hero every SHOWCASE_EVERY ticks and otherwise climbs like a bot", () => {
+    const w = createWorld(1337);
+    rules.init?.(w);
+    joinPlayer(w, rules, "bot0", "bot0");
+    const blasts = () => bodies(w, "blast").length;
+    expect(rules.showcase!(w, "bot0", SHOWCASE_EVERY - 1)).toEqual(rules.bot!(w, "bot0", 1));
+    expect(blasts()).toBe(0);
+    rules.showcase!(w, "bot0", SHOWCASE_EVERY);
+    expect(blasts()).toBe(1);
+    const b = bodies(w, "blast")[0];
+    expect([b.x, b.y]).toEqual([w.entities.bot0.x, w.entities.bot0.y]);
   });
 });

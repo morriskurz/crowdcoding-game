@@ -113,7 +113,7 @@ test("frametime: pass, fail only when raw and normalized both regress, no-baseli
 });
 
 test("scenarios: fixed list, untrusted names fall back to the default", () => {
-  assert.deepEqual(Object.keys(SCENARIOS).sort(), ["chase", "collect", "idle-crowd", "play"]);
+  assert.deepEqual(Object.keys(SCENARIOS).sort(), ["chase", "collect", "idle-crowd", "play", "showcase"]);
   for (const bad of [undefined, 3, "nope", "__proto__", "constructor", "toString"]) assert.equal(resolveScenario(bad).name, DEFAULT_SCENARIO);
   assert.equal(resolveScenario("chase").name, "chase");
 });
@@ -171,10 +171,10 @@ test("sim: same seed + scenario => identical world; different seed differs", asy
 
 test("sim: a game with its own bot plays itself unless the scenario was named", async () => {
   const { shared, rules } = await loadGame(path.resolve(new URL("../..", import.meta.url).pathname));
-  const fake = { ...rules, bot: () => ({ dx: 5, dy: 0, action: true }) };
+  const fake = { ...rules, showcase: undefined, bot: () => ({ dx: 5, dy: 0, action: true }) };
   assert.equal(createSim(shared, fake, { seed: 1, scenario: "chase", explicit: false }).scenario.name, "play");
   assert.equal(createSim(shared, fake, { seed: 1, scenario: "chase", explicit: true }).scenario.name, "chase");
-  const { bot: _none, ...botless } = rules;
+  const { bot: _none, showcase: _staged, ...botless } = rules;
   assert.equal(createSim(shared, botless, { seed: 1, scenario: "chase", explicit: false }).scenario.name, "chase");
   // play: the game bot's input, clamped; a throwing or broken bot falls back to the idle crowd.
   const inputs = [];
@@ -184,6 +184,26 @@ test("sim: a game with its own bot plays itself unless the scenario was named", 
   inputs.length = 0;
   createSim(shared, { ...spy, bot: () => { throw new Error("x"); } }, { seed: 1, scenario: "play" }).step();
   assert.equal(inputs[0].bot0.action, false);
+});
+
+test("sim: a game that stages its feature (rules.showcase) records the showcase, hero marked for the camera", async () => {
+  const { shared, rules } = await loadGame(path.resolve(new URL("../..", import.meta.url).pathname));
+  const staged = { ...rules, showcase: (w, heroId) => { w.entities[heroId].data.staged = (w.entities[heroId].data.staged ?? 0) + 1; return { dx: -3, dy: 0, action: true }; } };
+  assert.equal(createSim(shared, staged, { seed: 1, scenario: "chase", explicit: false }).scenario.name, "showcase");
+  assert.equal(createSim(shared, staged, { seed: 1, scenario: "chase", explicit: true }).scenario.name, "chase");
+  const inputs = [];
+  const spy = { ...staged, step(w, inp) { inputs.push(inp); return rules.step(w, inp); } };
+  const sim = createSim(shared, spy, { seed: 1, scenario: "showcase" });
+  sim.step();
+  assert.deepEqual(inputs[0].bot0, { dx: -1, dy: 0, action: true }); // clamped like a client
+  assert.equal(sim.world.entities.bot0.data.showcase, true);
+  assert.equal(sim.world.entities.bot0.data.staged, 1);
+  assert.notEqual(sim.world.entities.bot1.data.showcase, true);
+  // A checkout without the hook (the before side) still plays: the hero falls back to the game bot / collect.
+  const { showcase: _none, ...plain } = rules;
+  const before = createSim(shared, plain, { seed: 1, scenario: "showcase" });
+  for (let i = 0; i < 30; i++) before.step();
+  assert.equal(before.exceptions, 0);
 });
 
 test("video: concat list covers exactly the clip", () => {
