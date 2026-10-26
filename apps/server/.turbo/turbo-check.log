@@ -1,4 +1,0 @@
-
-> @tcg/server@0.1.0 check /home/user/crowdcoding-game/apps/server
-> tsc --noEmit -p tsconfig.json
-

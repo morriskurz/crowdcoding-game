@@ -1,4 +1,0 @@
-
-> @tcg/game-template@0.1.0 check /home/user/crowdcoding-game/packages/games/template
-> tsc --noEmit -p tsconfig.json
-
