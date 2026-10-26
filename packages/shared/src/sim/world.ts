@@ -51,6 +51,11 @@ export interface GameRules {
   // Optional: input for server bot `playerId` (bot number n, 1-based) this tick. Pure function of the
   // world, like a client reading the screen. Without it the server's generic bot plays.
   bot?(w: World, playerId: string, n: number): Input;
+  // Optional, presentation only (the live server never calls it): stage the newest feature for the
+  // before/after clip. Called every tick before step() for the hero bot `heroId`, whom the camera
+  // follows. May change the world (spawn the new thing in the hero's path, trigger the event) and
+  // returns the hero's input. Show the new thing happening to the hero about 3 times in 10 s.
+  showcase?(w: World, heroId: string, tick: number): Input;
   // Playable area in world units. The server reports entities outside it or too big for it on /health,
   // so a feature that breaks the game shows up and the next feature can fix it.
   arena?: { w: number; h: number };

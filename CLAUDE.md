@@ -81,6 +81,7 @@ Then write `.orchestrator/tasks.json`, a JSON array in **dependency order** (a t
 - Tier = cheapest that can do it: `muse` for `config.ts` numbers and `assets.ts` visuals/audio; `sonnet` for `rules.ts` logic with tests; `opus` only for work that is genuinely hard or cross-cutting.
 - Any `rules.ts` change comes with a test in `rules.test.ts` that fails without the change. Keep the determinism test green.
 - Plan the visible effect: viewers vote on what they see in the before/after clip.
+- **Stage it for the clip.** The task that adds the feature's logic also rewrites `rules.showcase(w, heroId, tick)` in `rules.ts` (with its test) so the clip shows *the new thing happening to the hero*: spawn it in the hero's path or trigger it on the hero, about 3 times in 10 s (every 50 ticks), and return the hero's input (usually the game bot's). The camera follows the hero; the other bots play normally. Only the presentation calls it, never the live game, so it may cheat (place items, force the 1-in-30 case). The latest feature replaces the previous showcase. Example: the tower's blast showcase in `packages/games/template/rules.ts`. Add an acceptance criterion such as "In the showcase the hero eats a spiked pellet and barely grows, three times in 10 s".
 
 ```bash
 node scripts/orchestrate.mjs plan --tasks .orchestrator/tasks.json --accept .orchestrator/accept.json

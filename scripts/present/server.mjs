@@ -25,7 +25,7 @@ import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
 import { tsImport } from "tsx/esm/api";
 import { WebSocketServer } from "ws";
-import { GAME_BOT_SCENARIO, resolveScenario } from "../scenarios/index.mjs";
+import { GAME_BOT_SCENARIO, SHOWCASE_SCENARIO, resolveScenario } from "../scenarios/index.mjs";
 import { writeRegistry } from "../registry.mjs";
 
 export const TICK_HZ = 15;
@@ -66,7 +66,8 @@ function cleanInput(i) {
 /** Deterministic sim with scripted bots. Pure apart from rules; no IO. */
 export function createSim(shared, rules, { seed, scenario, explicit = true }) {
   const gameBot = typeof rules.bot === "function" ? rules.bot : null;
-  const sc = resolveScenario(!explicit && gameBot ? GAME_BOT_SCENARIO : scenario);
+  const showcase = typeof rules.showcase === "function" ? rules.showcase : null;
+  const sc = resolveScenario(explicit ? scenario : showcase ? SHOWCASE_SCENARIO : gameBot ? GAME_BOT_SCENARIO : scenario);
   const world = shared.createWorld(seed);
   rules.init?.(world);
   const botIds = Array.from({ length: sc.bots }, (_, i) => `bot${i}`);
@@ -79,6 +80,13 @@ export function createSim(shared, rules, { seed, scenario, explicit = true }) {
     gameBot: (i) => {
       if (!gameBot) return null;
       try { return cleanInput(gameBot(world, botIds[i], i + 1)); } catch { return null; }
+    },
+    // The game's staged input for bot i (the hero), which the spectator camera follows; null without one.
+    showcase: (i) => {
+      const hero = world.entities[botIds[i]];
+      if (hero) hero.data = { ...(hero.data ?? {}), showcase: true };
+      if (!showcase) return null;
+      try { return cleanInput(showcase(world, botIds[i], world.tick)); } catch { return null; }
     },
   };
   let exceptions = 0;
