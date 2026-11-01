@@ -6,5 +6,41 @@
     "A self-inflicted knockout shows no +1 or scorer name",
     "In a chain with several victims each victim gets its own tag naming the same starter"
   ],
-  "rounds": []
+  "rounds": [
+    {
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": true,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "Every knockout caused by another player shows \"+1\" and the chain starter's name above the victim's position",
+          "met": false,
+          "evidence": "diff adds +1 and killer-name popups in assets.ts onSnapshot; after/shot-3 shows them stacked on top of the existing KO!, +2 KO and victim name label near (360,300) as an unreadable smear, so the scorer name cannot be read"
+        },
+        {
+          "text": "The tag stays about 1.5 seconds then disappears, and is visible to other players and spectators, not only the scorer",
+          "met": true,
+          "evidence": "diff: life 1.5 passed to popup and used in drawOverlay; popups drawn from snapshot data for every client"
+        },
+        {
+          "text": "A self-inflicted knockout shows no +1 or scorer name",
+          "met": true,
+          "evidence": "diff: tags only drawn if killer non-empty; rules.ts knockOut sets d.killer = \"\" for self-kills"
+        },
+        {
+          "text": "In a chain with several victims each victim gets its own tag naming the same starter",
+          "met": false,
+          "evidence": "per-victim popups in diff, but popup cap and overlapping stacks are unproven in shots; in shot-3 the tags are unreadable and no clean multi-victim example is shown"
+        }
+      ],
+      "findings": [
+        "Popups collide: in packages/games/bomber-20261101/assets.ts onSnapshot, +1 (y-36) and name (y-52) overlap the existing KO! (y-18), '+N KO' (y-30) and the victim's nameStyle label, producing illegible text in after/shot-3. Merge into one popup like '+1 bot5' at a free offset, and drop or move the duplicate '+N KO' popup when the new tag is shown.",
+        "Name popup uses fx.names?.[killer] ?? 'player'; verify names resolve (shot shows bot5 repeated) and make the scorer name larger or outlined so it reads on a phone.",
+        "Effect is small text and hard to tell from before clip: make the tag bolder/larger (bigger font, colour of the scorer, outline) in drawOverlay in assets.ts."
+      ],
+      "packagesTree": "792b96c92af79ab72f15a6784c54c5d25b1947c8+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-01T21:15:17.726Z"
+    }
+  ]
 }
