@@ -1,20 +1,12 @@
 [
   {
-    "id": "bootstrap",
-    "title": "bootstrap: turn template into the grid bomber game (rules, config, assets, tests)",
-    "tier": "opus",
+    "id": "t1",
+    "title": "assets: victim popup with +1 and chain starter name, 1.5s",
+    "tier": "muse",
     "files": [
-      "packages/games/bomber-20261101/"
+      "packages/games/bomber-20261101/assets.ts"
     ],
-    "estMin": 20,
-    "actualMin": 19.1,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "opus",
-        "ok": true,
-        "minutes": 19.1
-      }
-    ]
+    "estMin": 10,
+    "done": false
   }
 ]

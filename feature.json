@@ -1,9 +1,9 @@
 {
-  "id": "21",
-  "spec": "massive multiplayer bomber — one bomb each — every knockout in a chain counts for whoever started it\n\nPitch the viewers voted for: Drop one bomb at a time with a 3 s fuse; blasts set off every bomb they reach. Most knockouts in a 3 min round wins and you respawn in 3 s, so the skill is lighting other people's bomb piles first. Chat features add blocks, pickups and bomb types.\n\nDesign brief:\nControls: move with dx/dy on a grid; action = drop a bomb (one at a time).\nRound: grid arena with breakable blocks, 180 s. Then 5 s results and a new arena.\nScore: knockouts; every knockout in a chain reaction counts for the player whose bomb started it.\nPlayers: a bomb explodes after 3 s in a cross, breaking blocks and setting off every bomb it reaches. Knocked-out players respawn after 3 s at a random free spot with 2 s of protection; late joiners the same.\nTension: lighting someone else's bomb pile first steals their knockouts; standing near piles risks being caught.\nSpectate: follow the largest bomb cluster, cut to the biggest chain when it explodes.\nChat adds: block types, pickups and bomb types in lists the arena picks from (bigger blast, kick bombs, remote bombs).\nDay one: grid, bombs, chain explosions, breakable blocks, respawn, knockout credit, round loop.",
+  "id": "22",
+  "spec": "When a bomb chain knockout occurs, a floating \"+1\" and the chain starter's name tag appear above the victim's position for 1.5 seconds, visible to all players and spectators so they can follow who scored each knockout in the chain.",
   "slug": "bomber-20261101",
   "game": "bomber-20261101",
-  "branch": "f/21-bomber-20261101",
-  "status": "ready",
-  "updatedAt": "2026-11-01T19:22:36.802Z"
+  "branch": "f/22-bomber-20261101",
+  "status": "building",
+  "updatedAt": "2026-11-01T21:11:32.212Z"
 }
