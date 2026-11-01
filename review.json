@@ -7,5 +7,44 @@
     "Knocked-out players respawn after 3 s at a free spot with 2 s of protection, and the 180 s round ends with 5 s results then a new arena",
     "The before/after clip shows bombs, a visible fuse, cross-shaped blasts and a score display"
   ],
-  "rounds": []
+  "rounds": [
+    {
+      "verdict": "pass",
+      "score": 4,
+      "playerImpact": true,
+      "visible": true,
+      "criteria": [
+        {
+          "text": "Players move on a grid and drop a bomb with the action button, only one live bomb per player",
+          "met": true,
+          "evidence": "after/shot-1..3: bots on grid, one bomb each; test 'one live bomb per player, one per fresh press'"
+        },
+        {
+          "text": "A bomb explodes after 3 s as a cross that breaks blocks and sets off other bombs it reaches in a chain",
+          "met": true,
+          "evidence": "tests 'go off exactly 3 s', 'blast cross stops at pillars and breaks only the first brick'; after/shot-3 shows bricks cleared vs shot-1. No blast cross captured in a shot."
+        },
+        {
+          "text": "A knockout caused by a chain reaction is scored for the owner of the bomb that started the chain",
+          "met": true,
+          "evidence": "test 'chain reaction: every knockout goes to the owner of the bomb that started it'; after/shot-3 shows '+2 KO' popup and bot5 2 on scoreboard"
+        },
+        {
+          "text": "Knocked-out players respawn after 3 s at a free spot with 2 s of protection, and the 180 s round ends with 5 s results then a new arena",
+          "met": true,
+          "evidence": "tests 'respawn after 3 s...' and 'round loop'; after/shot-3 shows ghost with X eyes; timer counts 2:58 to 2:50"
+        },
+        {
+          "text": "The before/after clip shows bombs, a visible fuse, cross-shaped blasts and a score display",
+          "met": true,
+          "evidence": "after shots show bombs with lit fuses, red glow late-fuse, KNOCKOUTS scoreboard, round timer; before is a different game (tower climber). Cross blasts not in a still but drawn by drawBlast."
+        }
+      ],
+      "findings": [
+        "Minor: player name labels overlap when bots share/adjoin cells (bot2/bot10, bot9/bot3), likely cause of the OCR gate failure; in assets.ts nameStyle could offset dy per player or shrink size. HUD text itself (timer, KNOCKOUTS) is legible."
+      ],
+      "packagesTree": "6473bde5c4799f0329f0f3d3272e4005b3e06467+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-01T19:22:03.119Z"
+    }
+  ]
 }
