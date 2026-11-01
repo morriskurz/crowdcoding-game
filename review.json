@@ -35,6 +35,35 @@
       ],
       "packagesTree": "7e476964c6f75daf7e3ab875606b9e60083f6692+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
       "at": "2026-11-01T23:16:03.927Z"
+    },
+    {
+      "verdict": "pass",
+      "score": 3,
+      "playerImpact": true,
+      "visible": true,
+      "criteria": [
+        {
+          "text": "Each player has a thin 1px trail path behind them following their recent positions (max 20 points, one per ~16ms)",
+          "met": true,
+          "evidence": "assets.ts drawTrail: lineWidth 1, per-player points capped at 20, drawn in drawPlayer. Sampling is every 0.1s rather than ~16ms, which keeps 20 points spanning the 2s fade. after/shot-3: thin lines behind bot5, bot4 and bot10."
+        },
+        {
+          "text": "The trail fades linearly from alpha 0.6 at the newest point to 0 over 2 seconds",
+          "met": true,
+          "evidence": "assets.ts: alpha = max(0, 0.6*(1-age/2)) per segment, and points older than 2s are dropped."
+        },
+        {
+          "text": "The trail is visible in the after clip behind moving players and disappears when they stand still",
+          "met": true,
+          "evidence": "after/shot-1 and shot-2 show faint lines behind bot0, bot2, bot8 and bot10, absent in before/shot-2. Stationary players add no new points, and old ones age out within 2s. The lines are subtle, but 1px and alpha 0.6 are fixed by the spec."
+        }
+      ],
+      "findings": [
+        "Optional: the trail is very faint on a phone. If the spec is relaxed later, raise lineWidth or alpha in drawTrail in assets.ts.",
+        "No test covers the trail. The code is in assets.ts, so this is not a blocker."
+      ],
+      "packagesTree": "f924aaa2ed7d5507823179aea0412b052e879293+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-01T23:19:05.971Z"
     }
   ]
 }
