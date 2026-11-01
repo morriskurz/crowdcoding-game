@@ -16,5 +16,15 @@
         "minutes": 2.4
       }
     ]
+  },
+  {
+    "id": "t2",
+    "title": "assets: one merged, bigger +1 scorer tag; drop clashing popups",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/bomber-20261101/assets.ts"
+    ],
+    "estMin": 10,
+    "done": false
   }
 ]
