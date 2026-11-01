@@ -11,7 +11,8 @@ export function readKeys(keys: ReadonlySet<string>): Input {
   const has = (...k: string[]) => k.some((x) => keys.has(x));
   return {
     dx: (has("d", "arrowright") ? 1 : 0) - (has("a", "arrowleft") ? 1 : 0),
-    dy: (has("s", "arrowdown") ? 1 : 0) - (has("w", "arrowup") ? 1 : 0),
+    // B is the wind-boost key in the tower game, sent as down.
+    dy: (has("s", "arrowdown", "b") ? 1 : 0) - (has("w", "arrowup") ? 1 : 0),
     action: has(...ACTION_KEYS),
   };
 }

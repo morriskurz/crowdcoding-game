@@ -64,4 +64,8 @@ export const config = {
   roundSeconds: 180,
   resultsSeconds: 5,
   fallShownPx: 200, // a drop of at least this much counts as a fall (sound, spectator cut)
+  boostCount: 3, // wind boosts per player per round
+  boostTicks: 23, // gust length: 1.5 s at 15 ticks/s, rounded up
+  boostSpeed: 13.4, // upward speed in px per tick = 200 px/s at 15 ticks/s
+  boostSwirlR: 10, // px, radius of the glowing swirl drawn around a boosting player
 } as const;

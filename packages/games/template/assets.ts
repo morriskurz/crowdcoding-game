@@ -244,6 +244,50 @@ function drawPlayerBody(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void 
     ctx.fill();
   }
   ctx.restore();
+  const boostT = (e.data as { boostT?: unknown }).boostT;
+  if (typeof boostT === "number" && boostT > 0) {
+    ctx.save();
+    ctx.strokeStyle = "#e8fdff";
+    ctx.shadowColor = "#5ff3ff";
+    ctx.shadowBlur = 18;
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = "round";
+    const base = fx.time * 9;
+    const swirlR = r + config.boostSwirlR;
+    for (let i = 0; i < 4; i++) {
+      const a0 = base + (i * Math.PI * 2) / 4;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, swirlR, a0, a0 + 1);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "rgba(191,247,255,0.8)";
+    ctx.lineWidth = 3;
+    for (const dx of [-r * 0.4, r * 0.4]) {
+      ctx.beginPath();
+      ctx.moveTo(e.x + dx, e.y + r + 2);
+      ctx.lineTo(e.x + dx, e.y + r + 2 + r * 2.2);
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+    const rawLeft = (e.data as { boostsLeft?: unknown }).boostsLeft;
+    const boostsLeft = Math.max(0, Math.min(config.boostCount, typeof rawLeft === "number" ? rawLeft : 0));
+    const pipY = e.y - (r + 16);
+    const pipStartX = e.x - ((config.boostCount - 1) * 9) / 2;
+    for (let i = 0; i < config.boostCount; i++) {
+      const cx = pipStartX + i * 9;
+      ctx.beginPath();
+      ctx.arc(cx, pipY, 3.5, 0, Math.PI * 2);
+      if (i < boostsLeft) {
+        ctx.fillStyle = "#5ff3ff";
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = "#5ff3ff";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
 }
 
 function drawBlast(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {

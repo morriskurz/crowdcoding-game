@@ -508,10 +508,89 @@ describe("tower climb: bots", () => {
     expect(Math.min(...heights)).toBeGreaterThan(sectionPx / 2);
   });
 
+  it("bots press for wind gusts now and then, as fresh presses", () => {
+    const w = createWorld(3);
+    rules.init!(w);
+    const ids = ["bot:1", "bot:2", "bot:3", "bot:4"];
+    for (const id of ids) joinPlayer(w, rules, id, id);
+    let presses = 0;
+    let minLeft: number = config.boostCount;
+    const prev: Record<string, boolean> = {};
+    for (let t = 0; t < 60 * config.tickHz; t++) {
+      const inputs: Record<string, Input> = {};
+      ids.forEach((id, i) => {
+        const inp = rules.bot!(w, id, i + 1);
+        inputs[id] = inp;
+        const on = inp.dy > 0.5;
+        if (on && !prev[id]) presses++;
+        prev[id] = on;
+      });
+      runTick(w, rules, inputs);
+      for (const id of ids) minLeft = Math.min(minLeft, pl(w, id).data.boostsLeft);
+      if (rd(w).phase !== "play") break;
+    }
+    expect(presses).toBeGreaterThan(0);
+    expect(minLeft).toBeLessThan(config.boostCount);
+  });
+
   it("bot inputs are valid wire inputs", () => {
     const w = world();
     const inp = rules.bot!(w, "a", 1);
     expect(Math.abs(inp.dx)).toBeLessThanOrEqual(1);
     expect(typeof inp.action).toBe("boolean");
+  });
+});
+
+describe("tower climb: wind boosts", () => {
+  const down = { dx: 0, dy: 1, action: false };
+
+  it("a down press starts a gust that lifts the player boostSpeed per tick for boostTicks", () => {
+    const w = flat();
+    expect(pl(w).data.boostsLeft).toBe(config.boostCount);
+    runTick(w, rules, { a: down });
+    expect(pl(w).data.boostsLeft).toBe(config.boostCount - 1);
+    expect(pl(w).vy).toBe(-config.boostSpeed);
+    expect(pl(w).data.boostT).toBe(config.boostTicks - 1);
+    path(w, Array(config.boostTicks - 1).fill(idle));
+    expect(startY - pl(w).y).toBeCloseTo(config.boostSpeed * config.boostTicks, 5);
+    expect(pl(w).data.boostT).toBe(0);
+    expect(pl(w).ground).toBe(false);
+  });
+
+  it("holding down does not re-trigger; a 4th separate press does nothing", () => {
+    const w = flat();
+    path(w, Array(config.boostTicks + 5).fill(down));
+    expect(pl(w).data.boostsLeft).toBe(config.boostCount - 1);
+    for (let i = 0; i < 5; i++) {
+      path(w, [idle, down, idle, idle]);
+      path(w, Array(config.boostTicks).fill(idle));
+    }
+    expect(pl(w).data.boostsLeft).toBe(0);
+    pl(w).vy = 0;
+    runTick(w, rules, { a: idle });
+    runTick(w, rules, { a: down });
+    expect(pl(w).data.boostT).toBe(0);
+    expect(pl(w).vy).toBeGreaterThan(-config.boostSpeed);
+  });
+
+  it("a new round refills boosts; a death respawn keeps them but ends the gust", () => {
+    const w = flat();
+    runTick(w, rules, { a: down });
+    const r = get<RoundData>(w, "round")!;
+    r.data.phase = "results";
+    r.data.ticksLeft = 1;
+    runTick(w, rules, { a: idle });
+    expect(rd(w).phase).toBe("play");
+    expect(pl(w).data.boostsLeft).toBe(config.boostCount);
+    expect(pl(w).data.boostT).toBe(0);
+
+    const w2 = flat();
+    runTick(w2, rules, { a: down });
+    const lava = rulesPlatform(w2, pl(w2).x, pl(w2).y - 2 * config.boostSpeed - config.killH / 2, 200, "kill");
+    lava.data.h = config.killH;
+    runTick(w2, rules, { a: idle });
+    expect(pl(w2).data.deaths).toBe(1);
+    expect(pl(w2).data.boostT).toBe(0);
+    expect(pl(w2).data.boostsLeft).toBe(config.boostCount - 1);
   });
 });

@@ -1,40 +1,46 @@
 {
-  "intent": "Everyone runs noticeably faster and the moving platforms glide 25% faster, so climbing the tower is quicker but riding platforms demands tighter timing.",
+  "intent": "Each climber has 3 wind boosts per round. Pressing B (or pushing down) gives a 1.5 s upward gust of 200 px/s, drawn as a glowing swirl around the player; boosts refill every round, so players choose when to spend them to skip a hard section.",
   "accept": [
-    "Player run speed is 25% higher than before (8 -> 10 px/tick)",
-    "Moving platforms travel 25% faster (2.5 -> 3.125 px/tick)",
-    "Gates, determinism test and bots still pass; the tower remains climbable"
+    "Pressing B (down input) while boosts remain lifts the player upward for 1.5 s and uses one of 3 boosts",
+    "After 3 boosts further presses do nothing; a new round refills to 3",
+    "A glowing swirl is visible around a boosting player in the after clip",
+    "Boost speed 200 px/s is applied (about 13 px per tick at 15 ticks/s)"
   ],
   "rounds": [
     {
       "verdict": "fix",
-      "score": 2,
+      "score": 3,
       "playerImpact": true,
       "visible": false,
       "criteria": [
         {
-          "text": "Player run speed is 25% higher than before (8 -> 10 px/tick)",
+          "text": "Pressing B (down input) while boosts remain lifts the player upward for 1.5 s and uses one of 3 boosts",
           "met": true,
-          "evidence": "diff: config.ts runSpeed 8 -> 10. after/shot-2 shows no visible difference in motion."
+          "evidence": "rules.ts movePlayer sets vy=-boostSpeed for boostTicks on a fresh dy>0.5 press; input.ts maps B to down; test 'a down press starts a gust' proves lift and boostsLeft-1."
         },
         {
-          "text": "Moving platforms travel 25% faster (2.5 -> 3.125 px/tick)",
+          "text": "After 3 boosts further presses do nothing; a new round refills to 3",
           "met": true,
-          "evidence": "diff: config.ts movingPlatformSpeed 2.5 -> 3.125. No moving platform is distinguishable in any after shot."
+          "evidence": "Test 'holding down does not re-trigger; a 4th separate press does nothing' and 'a new round refills boosts' in rules.test.ts."
         },
         {
-          "text": "Gates, determinism test and bots still pass; the tower remains climbable",
+          "text": "A glowing swirl is visible around a boosting player in the after clip",
+          "met": false,
+          "evidence": "after/shot-1..3 are identical to before: no swirl anywhere. Bots return dy:0 in rules.ts (lines 561/574/590) so nobody boosts in the preview scenario. Swirl exists in assets.ts drawPlayerBody but was never seen in the clip."
+        },
+        {
+          "text": "Boost speed 200 px/s is applied (about 13 px per tick at 15 ticks/s)",
           "met": true,
-          "evidence": "after/shot-2: bots climb (bot9 at 17m vs best 13m before). The preview ocr gate failed; I could not confirm it is unrelated."
+          "evidence": "config.boostSpeed 13.4, test asserts vy === -boostSpeed and displacement boostSpeed*boostTicks."
         }
       ],
       "findings": [
-        "The change is a pure number tweak (runSpeed, movingPlatformSpeed in packages/games/template/config.ts). A viewer cannot tell the after clip from the before clip, since before/after shots look the same apart from bot positions. Add something visible, for example a speed-trail or dust effect in assets.ts that scales with player speed, or a rule in rules.ts that gives a visible speed burst on landing",
-        "Make the effect noticeable to players: a 25% speed change is below perception. Consider a larger change or a new mechanic (for example a dash with a visible trail) in rules.ts with a test.",
-        "Check why the preview ocr gate failed and make sure it is not caused by this change."
+        "Bots never boost, so before/after clips are indistinguishable: in rules.ts bot input functions (around lines 545-590) make bots press dy:1 for one tick (fresh press, boostsLeft>0) when stuck or when the next platform is far above, so gusts and swirls appear in the preview scenario; add a test.",
+        "Boost is not discoverable: no on-screen hint or remaining-boosts display. Add a small boosts-left indicator (e.g. pips drawn by the player in assets.ts using data.boostsLeft) so viewers and players know B exists.",
+        "Swirl is only config.boostSwirlR=10 px beyond the player radius and thin; consider a larger/brighter swirl or trail in assets.ts so it reads on a phone."
       ],
-      "packagesTree": "fb05237055340d665a5c2c41ea64b857e007c41d+ba56c8ae101559744353fc271068a0ee61d86896",
-      "at": "2026-11-01T16:24:43.213Z"
+      "packagesTree": "9909a0b1512c7cf1a7263933b5083ee3370fe431+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-01T17:17:14.046Z"
     },
     {
       "verdict": "pass",
@@ -43,26 +49,31 @@
       "visible": true,
       "criteria": [
         {
-          "text": "Player run speed is 25% higher than before (8 -> 10 px/tick)",
+          "text": "Pressing B (down input) while boosts remain lifts the player upward for 1.5 s and uses one of 3 boosts",
           "met": true,
-          "evidence": "diff: config.ts runSpeed 8 -> 10; after/shot-2 shows bots at 0m with visible speed-streak afterimages (bot6, bot11) that are absent in before/shot-2, and the bot9 leader is at 17m vs 13m before."
+          "evidence": "rules.ts movePlayer; test 'a down press starts a gust that lifts the player boostSpeed per tick for boostTicks'; input.ts maps B to down."
         },
         {
-          "text": "Moving platforms travel 25% faster (2.5 -> 3.125 px/tick)",
+          "text": "After 3 boosts further presses do nothing; a new round refills to 3",
           "met": true,
-          "evidence": "diff: config.ts movingPlatformSpeed 2.5 -> 3.125. Platform positions differ between before and after shots, but speed is only provable from the config line."
+          "evidence": "tests 'holding down does not re-trigger; a 4th separate press does nothing' and 'a new round refills boosts'."
         },
         {
-          "text": "Gates, determinism test and bots still pass; the tower remains climbable",
+          "text": "A glowing swirl is visible around a boosting player in the after clip",
           "met": true,
-          "evidence": "preview.json: ok true, simExceptions 0/0, render/flash/audio pass. Bots climb to 17m by 2:54 in after/shot-2. The ocr gate failure is a tesseract tool error ('tesseract failed on after/shot-1.png: undefined'), raised on the after shot and unrelated to the game change. The report has no baseline-side"
+          "evidence": "after/shot-1 (bot9 at ~30m), shot-2 (two bots at ~90m) and shot-3 (bot10) show a white/cyan swirl ring with glow and trail around boosting players; before shots have none."
+        },
+        {
+          "text": "Boost speed 200 px/s is applied (about 13 px per tick at 15 ticks/s)",
+          "met": true,
+          "evidence": "config.boostSpeed 13.4; test asserts displacement boostSpeed*boostTicks."
         }
       ],
       "findings": [
-        "Optional: the streak afterimages are faint on a phone; raise their alpha or length in assets.ts drawPlayerBody if more visibility is wanted."
+        "Minor: boosts-left pips above players are tiny and overlap the name label (after/shot-2, shot-3); consider drawing them higher or larger in assets.ts."
       ],
-      "packagesTree": "990bf8755ae2c76983d659b0df6f3a46719c4b12+ba56c8ae101559744353fc271068a0ee61d86896",
-      "at": "2026-11-01T16:28:49.323Z"
+      "packagesTree": "fd10b936d83109d9aa9222e9e13b0c7baeaa3fdc+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-01T17:21:49.228Z"
     }
   ]
 }

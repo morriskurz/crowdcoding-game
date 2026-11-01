@@ -1,9 +1,9 @@
 {
-  "id": "17",
-  "spec": "Moving platforms and player movement speed are increased by 25% for all players.",
+  "id": "20",
+  "spec": "Every player gets 3 wind boosts per round. Pressing B triggers a 1.5s upward gust at 200px/s, shown as a glowing 10px swirl effect visible on stream. Boosts reset each round.",
   "slug": "tower-climb-20261025",
   "game": "template",
-  "branch": "f/17-tower-climb-20261025",
+  "branch": "f/20-tower-climb-20261025",
   "status": "ready",
-  "updatedAt": "2026-11-01T16:29:24.529Z"
+  "updatedAt": "2026-11-01T17:22:17.780Z"
 }
