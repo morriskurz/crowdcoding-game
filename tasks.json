@@ -1,56 +1,37 @@
 [
   {
     "id": "t1",
-    "title": "config: blast chance, radius, lifetime, knock values",
+    "title": "config: runSpeed 8->10 and movingPlatformSpeed 2.5->3.125",
     "tier": "muse",
     "files": [
       "packages/games/template/config.ts"
     ],
     "estMin": 5,
-    "actualMin": 1.4,
+    "actualMin": 2.7,
     "done": true,
     "attempts": [
       {
         "tier": "muse",
         "ok": true,
-        "minutes": 1.4
+        "minutes": 2.7
       }
     ]
   },
   {
     "id": "t2",
-    "title": "rules: 1/30 jump explosion entity that knocks players in radius down and away + tests",
-    "tier": "sonnet",
-    "files": [
-      "packages/games/template/rules.ts",
-      "packages/games/template/rules.test.ts"
-    ],
-    "estMin": 20,
-    "actualMin": 1.6,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "sonnet",
-        "ok": true,
-        "minutes": 1.6
-      }
-    ]
-  },
-  {
-    "id": "t3",
-    "title": "assets: draw expanding fireball for blast entities, sound and shake",
+    "title": "assets: speed streaks behind fast-running players",
     "tier": "muse",
     "files": [
       "packages/games/template/assets.ts"
     ],
     "estMin": 10,
-    "actualMin": 1.9,
+    "actualMin": 2.6,
     "done": true,
     "attempts": [
       {
         "tier": "muse",
         "ok": true,
-        "minutes": 1.9
+        "minutes": 2.6
       }
     ]
   }

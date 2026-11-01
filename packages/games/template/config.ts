@@ -20,7 +20,7 @@ export const config = {
   killW: 70,
   killH: 14,
   wallMargin: 40,
-  movingPlatformSpeed: 2.5,
+  movingPlatformSpeed: 3.125,
   movingRange: 90,
   reachSafety: 0.8, // generated jumps use at most this share of the longest possible jump
   blinkPeriod: 45, // blinking platforms: on for blinkOn ticks of every blinkPeriod
@@ -33,11 +33,11 @@ export const config = {
   spinnerSpeed: 0.21, // radians per tick (half a turn in 1 s)
 
   // Run: fast ground acceleration, less in the air (responsive, but a jump is a commitment).
-  runSpeed: 8,
+  runSpeed: 10,
   groundAccel: 4,
   groundDecel: 5,
   iceAccel: 0.8, // on ice: slow to start, slower to stop
-  iceDecel: 0.4,
+  iceDecel: 0.3,
   stickDeadZone: 0.3, // past this the stick counts as full speed in its direction
   airAccel: 2,
   airDecel: 0.6,

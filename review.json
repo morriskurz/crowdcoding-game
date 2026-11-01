@@ -1,12 +1,41 @@
 {
-  "intent": "Each jump has a 1-in-30 chance to set off a short-lived explosion where the jumper took off. Anyone caught in its small radius (jumper included) is blasted away and slammed downward, losing height; a visible fireball and shake make it readable.",
+  "intent": "Everyone runs noticeably faster and the moving platforms glide 25% faster, so climbing the tower is quicker but riding platforms demands tighter timing.",
   "accept": [
-    "Some jumps (roughly 1 in 30) produce a visible explosion at the take-off point; most do not",
-    "A player inside the blast radius is thrown sideways and downward, and a player outside is unaffected",
-    "The explosion looks the same regardless of who jumped",
-    "A test forces the chance roll and checks the blast hits only players in range"
+    "Player run speed is 25% higher than before (8 -> 10 px/tick)",
+    "Moving platforms travel 25% faster (2.5 -> 3.125 px/tick)",
+    "Gates, determinism test and bots still pass; the tower remains climbable"
   ],
   "rounds": [
+    {
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": true,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "Player run speed is 25% higher than before (8 -> 10 px/tick)",
+          "met": true,
+          "evidence": "diff: config.ts runSpeed 8 -> 10. after/shot-2 shows no visible difference in motion."
+        },
+        {
+          "text": "Moving platforms travel 25% faster (2.5 -> 3.125 px/tick)",
+          "met": true,
+          "evidence": "diff: config.ts movingPlatformSpeed 2.5 -> 3.125. No moving platform is distinguishable in any after shot."
+        },
+        {
+          "text": "Gates, determinism test and bots still pass; the tower remains climbable",
+          "met": true,
+          "evidence": "after/shot-2: bots climb (bot9 at 17m vs best 13m before). The preview ocr gate failed; I could not confirm it is unrelated."
+        }
+      ],
+      "findings": [
+        "The change is a pure number tweak (runSpeed, movingPlatformSpeed in packages/games/template/config.ts). A viewer cannot tell the after clip from the before clip, since before/after shots look the same apart from bot positions. Add something visible, for example a speed-trail or dust effect in assets.ts that scales with player speed, or a rule in rules.ts that gives a visible speed burst on landing",
+        "Make the effect noticeable to players: a 25% speed change is below perception. Consider a larger change or a new mechanic (for example a dash with a visible trail) in rules.ts with a test.",
+        "Check why the preview ocr gate failed and make sure it is not caused by this change."
+      ],
+      "packagesTree": "fb05237055340d665a5c2c41ea64b857e007c41d+ba56c8ae101559744353fc271068a0ee61d86896",
+      "at": "2026-11-01T16:24:43.213Z"
+    },
     {
       "verdict": "pass",
       "score": 3,
@@ -14,31 +43,26 @@
       "visible": true,
       "criteria": [
         {
-          "text": "Some jumps (roughly 1 in 30) produce a visible explosion at the take-off point; most do not",
+          "text": "Player run speed is 25% higher than before (8 -> 10 px/tick)",
           "met": true,
-          "evidence": "rules.ts movePlayer spawns a blast on randomInt(blastOdds)===0 at p.x,p.y; test 'about 1 in blastOdds jumps explodes' checks the rate; assets.ts drawBlast draws a 70px orange fireball + ring + particles. Not seen in after shots (all 3 identical to before; random and rare)."
+          "evidence": "diff: config.ts runSpeed 8 -> 10; after/shot-2 shows bots at 0m with visible speed-streak afterimages (bot6, bot11) that are absent in before/shot-2, and the bot9 leader is at 17m vs 13m before."
         },
         {
-          "text": "A player inside the blast radius is thrown sideways and downward, and a player outside is unaffected",
+          "text": "Moving platforms travel 25% faster (2.5 -> 3.125 px/tick)",
           "met": true,
-          "evidence": "applyBlasts sets kick and vy=blastSlam for players within r; test asserts jumper and close player slammed/kicked, far player vy 0, kick 0, still on ground."
+          "evidence": "diff: config.ts movingPlatformSpeed 2.5 -> 3.125. Platform positions differ between before and after shots, but speed is only provable from the config line."
         },
         {
-          "text": "The explosion looks the same regardless of who jumped",
+          "text": "Gates, determinism test and bots still pass; the tower remains climbable",
           "met": true,
-          "evidence": "drawBlast ignores the owner; blast entity carries no player data, only ticksLeft/fresh."
-        },
-        {
-          "text": "A test forces the chance roll and checks the blast hits only players in range",
-          "met": true,
-          "evidence": "rules.test.ts 'jump blasts' uses hitSeed() to find a seed with a blast, then checks near vs far players."
+          "evidence": "preview.json: ok true, simExceptions 0/0, render/flash/audio pass. Bots climb to 17m by 2:54 in after/shot-2. The ocr gate failure is a tesseract tool error ('tesseract failed on after/shot-1.png: undefined'), raised on the after shot and unrelated to the game change. The report has no baseline-side"
         }
       ],
       "findings": [
-        "Caveat: the preview clip (after shot-1..3) shows no blast, so a viewer comparing clips may see no difference. This is inherent to the 1-in-30 spec; consider only that the effect is large when it fires. Optionally make the preview scenario show jumping players."
+        "Optional: the streak afterimages are faint on a phone; raise their alpha or length in assets.ts drawPlayerBody if more visibility is wanted."
       ],
-      "packagesTree": "087a9f8ae81e2659eafbe006701726d71cef6970+34577ea47ea00a8c0ec2624f08646beae1708f9d",
-      "at": "2026-10-25T18:10:46.980Z"
+      "packagesTree": "990bf8755ae2c76983d659b0df6f3a46719c4b12+ba56c8ae101559744353fc271068a0ee61d86896",
+      "at": "2026-11-01T16:28:49.323Z"
     }
   ]
 }
