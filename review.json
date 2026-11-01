@@ -5,5 +5,36 @@
     "The trail fades linearly from alpha 0.6 at the newest point to 0 over 2 seconds",
     "The trail is visible in the after clip behind moving players and disappears when they stand still"
   ],
-  "rounds": []
+  "rounds": [
+    {
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": false,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "Each player has a thin 1px trail path behind them following their recent positions (max 20 points, one per ~16ms)",
+          "met": true,
+          "evidence": "diff assets.ts drawTrail: pts capped at 20, 0.016s spacing, lineWidth 1, per-player map. Code only; no test."
+        },
+        {
+          "text": "The trail fades linearly from alpha 0.6 at the newest point to 0 over 2 seconds",
+          "met": true,
+          "evidence": "diff: alpha = max(0, 0.6*(1-age/2)) per segment."
+        },
+        {
+          "text": "The trail is visible in the after clip behind moving players and disappears when they stand still",
+          "met": false,
+          "evidence": "after/shot-2 and shot-3 vs before: effectively identical. Only a few faint pixels near bot4 (shot-3) and under bot5 ghost. With 20 points at 16ms the trail spans about 0.3s, a few pixels long. A phone viewer cannot tell it apart. Also, standing players keep their stale points for up to 2s, so it doe"
+        }
+      ],
+      "findings": [
+        "Trail is invisible in practice: in packages/games/bomber-20261101/assets.ts drawTrail, the 20-point cap with 16ms spacing keeps only about 0.3s of history, so the line is only a few px long. Keep the 1px/alpha 0.6 to 0 fade but record points by distance or time (e.g. one point per movement step or ~100ms) while still keeping 20 points, so the trail covers 1-2 cells behind a moving bomber.",
+        "Points are only added when the player moves but old ones are only expired by age; make a stationary player's trail clearly vanish by aging with fx.time and not adding the live head segment at full alpha when still.",
+        "Pure cosmetic: it does not change what a player does or decides. Make the trail contrast with the green floor (e.g. brighter or lighter colour than the player colour, drawn before the player body) so rivals' movement direction is readable."
+      ],
+      "packagesTree": "7e476964c6f75daf7e3ab875606b9e60083f6692+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-01T23:16:03.927Z"
+    }
+  ]
 }
