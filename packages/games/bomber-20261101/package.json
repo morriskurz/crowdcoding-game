@@ -1,0 +1,23 @@
+{
+  "name": "@tcg/game-bomber-20261101",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "tcg": {
+    "title": "bomber-20261101",
+    "created": "2026-11-01T19:01:20.213Z"
+  },
+  "dependencies": {
+    "@tcg/shared": "workspace:^",
+    "@tcg/kit": "workspace:^"
+  },
+  "scripts": {
+    "check": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

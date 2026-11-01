@@ -7,6 +7,14 @@
       "packages/games/bomber-20261101/"
     ],
     "estMin": 20,
-    "done": false
+    "actualMin": 19.1,
+    "done": true,
+    "attempts": [
+      {
+        "tier": "opus",
+        "ok": true,
+        "minutes": 19.1
+      }
+    ]
   }
 ]

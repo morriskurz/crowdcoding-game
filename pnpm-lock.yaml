@@ -74,6 +74,22 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@26.6.5)
 
+  packages/games/bomber-20261101:
+    dependencies:
+      '@tcg/kit':
+        specifier: workspace:^
+        version: link:../../kit
+      '@tcg/shared':
+        specifier: workspace:^
+        version: link:../../shared
+    devDependencies:
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@26.6.5)
+
   packages/games/template:
     dependencies:
       '@tcg/kit':
