@@ -216,6 +216,13 @@ function drawPlayerBody(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void 
   const sy = 1 + stretch - squash;
   const sx = 1 / Math.max(0.6, sy);
   drawGlow(ctx, e.x, e.y, r * 2.4, color, 0.3);
+  if (Math.abs(e.vx) > 5) {
+    const strength = Math.min(1, Math.abs(e.vx) / 10);
+    const dir = e.vx > 0 ? -1 : 1;
+    for (let i = 0; i < 3; i++) {
+      drawGlow(ctx, e.x + dir * r * 0.8 * (i + 1), e.y, r * 1.3 * (1 - 0.15 * i), color, [0.6, 0.4, 0.2][i] * strength);
+    }
+  }
   ctx.save();
   ctx.translate(e.x, e.y + r * (1 - sy)); // squash toward the feet
   ctx.scale(sx, sy);

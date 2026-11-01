@@ -214,5 +214,21 @@
     "tokensOut": 227,
     "costUsd": 0.001493,
     "ok": true
+  },
+  {
+    "at": "2026-11-01T16:25:21.434Z",
+    "model": "opencode-go/muse-spark-1.3-contributor",
+    "tokensIn": 54261,
+    "tokensOut": 724,
+    "costUsd": 0.002337,
+    "ok": true
+  },
+  {
+    "at": "2026-11-01T16:26:17.665Z",
+    "model": "opencode-go/muse-spark-1.3-contributor",
+    "tokensIn": 54452,
+    "tokensOut": 776,
+    "costUsd": 0.002356,
+    "ok": true
   }
 ]
