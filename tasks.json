@@ -7,6 +7,14 @@
       "packages/games/bomber-20261101/assets.ts"
     ],
     "estMin": 10,
-    "done": false
+    "actualMin": 2.4,
+    "done": true,
+    "attempts": [
+      {
+        "tier": "muse",
+        "ok": true,
+        "minutes": 2.4
+      }
+    ]
   }
 ]

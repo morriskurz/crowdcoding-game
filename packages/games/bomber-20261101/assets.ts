@@ -17,7 +17,7 @@ type Ents = Record<string, Entity>;
 
 // Client-only effect state, fed by snapshots (never game state).
 let latest: Ents = {};
-interface Popup { x: number; y: number; text: string; color: string; t0: number }
+interface Popup { x: number; y: number; text: string; color: string; t0: number; life?: number }
 const popups: Popup[] = [];
 let leader: string | null = null;
 
@@ -292,9 +292,9 @@ export function nameStyle(e: Entity, _name: string, _fx: Fx): NameStyle {
 
 // --- snapshot effects ------------------------------------------------------------------------------------
 
-function popup(x: number, y: number, text: string, color: string, fx: Fx): void {
-  popups.push({ x, y, text, color, t0: fx.time });
-  if (popups.length > 14) popups.shift();
+function popup(x: number, y: number, text: string, color: string, fx: Fx, life = 1.4): void {
+  popups.push({ x, y, text, color, t0: fx.time, life });
+  if (popups.length > 30) popups.shift();
 }
 
 function nearMe(next: Readonly<Ents>, x: number, y: number, fx: Fx): number {
@@ -366,6 +366,11 @@ export function onSnapshot(prev: Readonly<Ents> | null, next: Readonly<Ents>, fx
       fx.sfx.play(mine ? "die" : "hurt", { volume: mine ? 1 : 0.45 * nearMe(next, p.x, p.y, fx) });
       if (mine) fx.camera.shake(12, 0.5);
       popup(p.x, p.y - 18, "KO!", "#ff6b6b", fx);
+      const killer = str(b.killer, "");
+      if (killer) {
+        popup(p.x, p.y - 36, "+1", "#ffd54a", fx, 1.5);
+        popup(p.x, p.y - 52, fx.names?.[killer] ?? "player", playerColor(killer), fx, 1.5);
+      }
     }
     if (num(b.ko, 0) > num(a.ko, 0)) {
       popup(p.x, p.y - 30, `+${num(b.ko, 0) - num(a.ko, 0)} KO`, "#ffd54a", fx);
@@ -431,9 +436,10 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, fx: Fx): void {
   for (let i = popups.length - 1; i >= 0; i--) {
     const p = popups[i];
     const age = fx.time - p.t0;
-    if (age > 1.4) { popups.splice(i, 1); continue; }
+    const life = p.life ?? 1.4;
+    if (age > life) { popups.splice(i, 1); continue; }
     const s = fx.camera.worldToScreen(p.x, p.y);
-    ctx.globalAlpha = clamp(1.4 - age, 0, 1);
+    ctx.globalAlpha = clamp(life - age, 0, 1);
     ctx.fillStyle = "rgba(0,0,0,0.6)";
     ctx.fillText(p.text, s.x + 1, s.y - age * 28 + 1);
     ctx.fillStyle = p.color;
