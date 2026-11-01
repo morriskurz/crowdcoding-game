@@ -76,5 +76,26 @@
         "minutes": 1.9
       }
     ]
+  },
+  {
+    "id": "t5",
+    "title": "rules: bots use a boost when the next platform is far above or after a botched jump, + test",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/template/rules.ts",
+      "packages/games/template/rules.test.ts"
+    ],
+    "estMin": 15,
+    "done": false
+  },
+  {
+    "id": "t6",
+    "title": "assets: brighter thicker swirl and boosts-left pips above players",
+    "tier": "muse",
+    "files": [
+      "packages/games/template/assets.ts"
+    ],
+    "estMin": 10,
+    "done": false
   }
 ]
