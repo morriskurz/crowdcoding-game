@@ -67,6 +67,14 @@
       "packages/games/template/assets.ts"
     ],
     "estMin": 12,
-    "done": false
+    "actualMin": 1.9,
+    "done": true,
+    "attempts": [
+      {
+        "tier": "muse",
+        "ok": true,
+        "minutes": 1.9
+      }
+    ]
   }
 ]

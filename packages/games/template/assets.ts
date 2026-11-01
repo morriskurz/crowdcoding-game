@@ -244,6 +244,32 @@ function drawPlayerBody(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void 
     ctx.fill();
   }
   ctx.restore();
+  const boostT = (e.data as { boostT?: unknown }).boostT;
+  if (typeof boostT === "number" && boostT > 0) {
+    ctx.save();
+    ctx.strokeStyle = "#bff7ff";
+    ctx.shadowColor = "#bff7ff";
+    ctx.shadowBlur = 12;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = "round";
+    const base = fx.time * 9;
+    const swirlR = r + config.boostSwirlR;
+    for (let i = 0; i < 3; i++) {
+      const a0 = base + (i * Math.PI * 2) / 3;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, swirlR, a0, a0 + 1);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "rgba(191,247,255,0.7)";
+    ctx.lineWidth = 2;
+    for (const dx of [-r * 0.4, r * 0.4]) {
+      ctx.beginPath();
+      ctx.moveTo(e.x + dx, e.y + r + 2);
+      ctx.lineTo(e.x + dx, e.y + r + 2 + r * 1.2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
 }
 
 function drawBlast(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
