@@ -35,6 +35,34 @@
       ],
       "packagesTree": "fb05237055340d665a5c2c41ea64b857e007c41d+ba56c8ae101559744353fc271068a0ee61d86896",
       "at": "2026-11-01T16:24:43.213Z"
+    },
+    {
+      "verdict": "pass",
+      "score": 3,
+      "playerImpact": true,
+      "visible": true,
+      "criteria": [
+        {
+          "text": "Player run speed is 25% higher than before (8 -> 10 px/tick)",
+          "met": true,
+          "evidence": "diff: config.ts runSpeed 8 -> 10; after/shot-2 shows bots at 0m with visible speed-streak afterimages (bot6, bot11) that are absent in before/shot-2, and the bot9 leader is at 17m vs 13m before."
+        },
+        {
+          "text": "Moving platforms travel 25% faster (2.5 -> 3.125 px/tick)",
+          "met": true,
+          "evidence": "diff: config.ts movingPlatformSpeed 2.5 -> 3.125. Platform positions differ between before and after shots, but speed is only provable from the config line."
+        },
+        {
+          "text": "Gates, determinism test and bots still pass; the tower remains climbable",
+          "met": true,
+          "evidence": "preview.json: ok true, simExceptions 0/0, render/flash/audio pass. Bots climb to 17m by 2:54 in after/shot-2. The ocr gate failure is a tesseract tool error ('tesseract failed on after/shot-1.png: undefined'), raised on the after shot and unrelated to the game change. The report has no baseline-side"
+        }
+      ],
+      "findings": [
+        "Optional: the streak afterimages are faint on a phone; raise their alpha or length in assets.ts drawPlayerBody if more visibility is wanted."
+      ],
+      "packagesTree": "990bf8755ae2c76983d659b0df6f3a46719c4b12+ba56c8ae101559744353fc271068a0ee61d86896",
+      "at": "2026-11-01T16:28:49.323Z"
     }
   ]
 }
