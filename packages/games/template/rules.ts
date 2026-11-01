@@ -43,6 +43,9 @@ export interface PlayerData {
   coyote: number; // ticks left in which a jump still counts as from the ground
   buffer: number; // ticks left in which a pressed jump fires on landing
   deaths: number; // lava / spinner touches this round
+  boostsLeft: number; // wind boosts left this round
+  boostT: number; // ticks left of the active gust (> 0: gust active)
+  boostHeld: boolean; // boost input held last tick (a boost needs a fresh press)
 }
 
 export interface BlastData {
@@ -312,6 +315,8 @@ function toGround(w: World, p: Entity<PlayerData>, newRound: boolean): void {
   d.jumping = false;
   d.coyote = 0;
   d.buffer = 0;
+  d.boostT = 0;
+  if (newRound) d.boostsLeft = config.boostCount;
 }
 
 /** Moving platforms move, blinking ones switch, crumbling ones count down, spinners turn. */
@@ -345,7 +350,7 @@ function approach(v: number, target: number, step: number): number {
 }
 
 /** One tick of movement. Returns the platform landed on, if any. */
-function movePlayer(w: World, p: Entity<PlayerData>, dx: number, action: boolean): Entity<PlatformData> | null {
+function movePlayer(w: World, p: Entity<PlayerData>, dx: number, action: boolean, boost = false): Entity<PlatformData> | null {
   const d = p.data;
   const R = p.r;
   const under = d.on ? get<PlatformData>(w, d.on) : undefined;
@@ -381,7 +386,20 @@ function movePlayer(w: World, p: Entity<PlayerData>, dx: number, action: boolean
     d.jumping = false;
   }
 
+  // Wind boost: a fresh press with boosts left starts a gust that overrides gravity while it lasts.
+  const boostPressed = boost && !d.boostHeld;
+  d.boostHeld = boost;
+  if (boostPressed && d.boostT <= 0 && d.boostsLeft > 0) {
+    d.boostsLeft--;
+    d.boostT = config.boostTicks;
+  }
+
   p.vy = Math.min(p.vy + gravityFor(p.vy, action), config.maxFall);
+  if (d.boostT > 0) {
+    d.boostT--;
+    p.vy = -config.boostSpeed;
+    d.jumping = false;
+  }
   p.x = Math.min(Math.max(p.x + p.vx + d.kick, R), W - R);
   if ((p.x <= R && p.vx < 0) || (p.x >= W - R && p.vx > 0)) p.vx = 0;
   d.kick = Math.abs(d.kick) < 0.1 ? 0 : d.kick * 0.6;
@@ -585,7 +603,7 @@ export const rules: GameRules = {
       id: playerId,
       kind: "player",
       r: config.playerR,
-      data: { best: 0, wins: 0, kick: 0, on: "", last: "", held: false, jumping: false, coyote: 0, buffer: 0, deaths: 0 },
+      data: { best: 0, wins: 0, kick: 0, on: "", last: "", held: false, jumping: false, coyote: 0, buffer: 0, deaths: 0, boostsLeft: config.boostCount, boostT: 0, boostHeld: false },
     });
     toGround(w, p, true);
   },
@@ -603,7 +621,7 @@ export const rules: GameRules = {
     let winner: Entity<PlayerData> | null = null;
     for (const p of players) {
       const inp = inputs[p.id];
-      const landed = movePlayer(w, p, inp?.dx ?? 0, jumpInput(inp));
+      const landed = movePlayer(w, p, inp?.dx ?? 0, jumpInput(inp), (inp?.dy ?? 0) > 0.5);
       if (touchesHazard(w, p)) {
         p.data.deaths++;
         toGround(w, p, false);

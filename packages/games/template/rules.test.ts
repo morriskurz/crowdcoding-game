@@ -515,3 +515,57 @@ describe("tower climb: bots", () => {
     expect(typeof inp.action).toBe("boolean");
   });
 });
+
+describe("tower climb: wind boosts", () => {
+  const down = { dx: 0, dy: 1, action: false };
+
+  it("a down press starts a gust that lifts the player boostSpeed per tick for boostTicks", () => {
+    const w = flat();
+    expect(pl(w).data.boostsLeft).toBe(config.boostCount);
+    runTick(w, rules, { a: down });
+    expect(pl(w).data.boostsLeft).toBe(config.boostCount - 1);
+    expect(pl(w).vy).toBe(-config.boostSpeed);
+    expect(pl(w).data.boostT).toBe(config.boostTicks - 1);
+    path(w, Array(config.boostTicks - 1).fill(idle));
+    expect(startY - pl(w).y).toBeCloseTo(config.boostSpeed * config.boostTicks, 5);
+    expect(pl(w).data.boostT).toBe(0);
+    expect(pl(w).ground).toBe(false);
+  });
+
+  it("holding down does not re-trigger; a 4th separate press does nothing", () => {
+    const w = flat();
+    path(w, Array(config.boostTicks + 5).fill(down));
+    expect(pl(w).data.boostsLeft).toBe(config.boostCount - 1);
+    for (let i = 0; i < 5; i++) {
+      path(w, [idle, down, idle, idle]);
+      path(w, Array(config.boostTicks).fill(idle));
+    }
+    expect(pl(w).data.boostsLeft).toBe(0);
+    pl(w).vy = 0;
+    runTick(w, rules, { a: idle });
+    runTick(w, rules, { a: down });
+    expect(pl(w).data.boostT).toBe(0);
+    expect(pl(w).vy).toBeGreaterThan(-config.boostSpeed);
+  });
+
+  it("a new round refills boosts; a death respawn keeps them but ends the gust", () => {
+    const w = flat();
+    runTick(w, rules, { a: down });
+    const r = get<RoundData>(w, "round")!;
+    r.data.phase = "results";
+    r.data.ticksLeft = 1;
+    runTick(w, rules, { a: idle });
+    expect(rd(w).phase).toBe("play");
+    expect(pl(w).data.boostsLeft).toBe(config.boostCount);
+    expect(pl(w).data.boostT).toBe(0);
+
+    const w2 = flat();
+    runTick(w2, rules, { a: down });
+    const lava = rulesPlatform(w2, pl(w2).x, pl(w2).y - 2 * config.boostSpeed - config.killH / 2, 200, "kill");
+    lava.data.h = config.killH;
+    runTick(w2, rules, { a: idle });
+    expect(pl(w2).data.deaths).toBe(1);
+    expect(pl(w2).data.boostT).toBe(0);
+    expect(pl(w2).data.boostsLeft).toBe(config.boostCount - 1);
+  });
+});
