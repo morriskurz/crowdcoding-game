@@ -7,7 +7,20 @@
       "apps/client/src/game/input.ts"
     ],
     "estMin": 8,
-    "done": false
+    "actualMin": 1.1,
+    "done": true,
+    "attempts": [
+      {
+        "tier": "sonnet",
+        "ok": false,
+        "minutes": 0.5
+      },
+      {
+        "tier": "sonnet",
+        "ok": true,
+        "minutes": 0.6
+      }
+    ]
   },
   {
     "id": "t2",
