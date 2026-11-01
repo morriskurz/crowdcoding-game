@@ -41,6 +41,39 @@
       ],
       "packagesTree": "792b96c92af79ab72f15a6784c54c5d25b1947c8+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
       "at": "2026-11-01T21:15:17.726Z"
+    },
+    {
+      "verdict": "pass",
+      "score": 3,
+      "playerImpact": true,
+      "visible": true,
+      "criteria": [
+        {
+          "text": "Every knockout caused by another player shows \"+1\" and the chain starter's name above the victim's position",
+          "met": true,
+          "evidence": "after/shot-3: outlined 22px \"+1 bot5\" tag above the dying victim ghost, scoreboard shows bot5 2; assets.ts onSnapshot pops it when data.killer is set"
+        },
+        {
+          "text": "The tag stays about 1.5 seconds then disappears, and is visible to other players and spectators, not only the scorer",
+          "met": true,
+          "evidence": "assets.ts popup(..., 1.5, 22, true) with life-based fade/removal in drawOverlay; shot-3 is a spectator view (watching bot3) and shows the tag"
+        },
+        {
+          "text": "A self-inflicted knockout shows no +1 or scorer name",
+          "met": true,
+          "evidence": "rules.ts knockOut sets killer to \"\" for self-kills; assets.ts then shows only \"KO!\" (rules.test.ts line 200 covers killer field)"
+        },
+        {
+          "text": "In a chain with several victims each victim gets its own tag naming the same starter",
+          "met": true,
+          "evidence": "popup is emitted per victim in the onSnapshot player loop using each victim's killer; not visible in a shot (client-side, untested)"
+        }
+      ],
+      "findings": [
+        "Minor: in after/shot-3 the gold \"+N KO\" popup (p.y-30, assets.ts ~line 373) still sits right above the \"+1 name\" tag (p.y-48) when killer and victim are adjacent, and they crowd; drop the \"+N KO\" popup or offset it to the killer's side/lower"
+      ],
+      "packagesTree": "f964399bd24078b43bc7228db6441cec2c5de66b+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-01T21:17:56.316Z"
     }
   ]
 }
