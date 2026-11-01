@@ -40,6 +40,12 @@ function playerColor(id: string): string {
   return `hsl(${(h >>> 0) % 360} 85% 62%)`;
 }
 
+function trailColor(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return `hsl(${(h >>> 0) % 360} 90% 80%)`;
+}
+
 const centre = (c: number) => c * C + C / 2;
 
 function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
@@ -126,7 +132,7 @@ function drawTrail(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
     pts.push({ x: e.x, y: e.y, t: fx.time });
   } else {
     const last = pts[pts.length - 1];
-    if (fx.time - last.t >= 0.016 && (e.x !== last.x || e.y !== last.y)) {
+    if (fx.time - last.t >= 0.1 && (e.x !== last.x || e.y !== last.y)) {
       pts.push({ x: e.x, y: e.y, t: fx.time });
     }
   }
@@ -136,7 +142,7 @@ function drawTrail(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
   const line = [...pts, { x: e.x, y: e.y, t: fx.time }];
   if (line.length < 2) return;
   ctx.lineWidth = 1;
-  ctx.strokeStyle = playerColor(id);
+  ctx.strokeStyle = trailColor(id);
   for (let i = 0; i < line.length - 1; i++) {
     const age = fx.time - line[i].t;
     const alpha = Math.max(0, 0.6 * (1 - age / 2));
