@@ -41,6 +41,39 @@
       ],
       "packagesTree": "9909a0b1512c7cf1a7263933b5083ee3370fe431+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
       "at": "2026-11-01T17:17:14.046Z"
+    },
+    {
+      "verdict": "pass",
+      "score": 3,
+      "playerImpact": true,
+      "visible": true,
+      "criteria": [
+        {
+          "text": "Pressing B (down input) while boosts remain lifts the player upward for 1.5 s and uses one of 3 boosts",
+          "met": true,
+          "evidence": "rules.ts movePlayer; test 'a down press starts a gust that lifts the player boostSpeed per tick for boostTicks'; input.ts maps B to down."
+        },
+        {
+          "text": "After 3 boosts further presses do nothing; a new round refills to 3",
+          "met": true,
+          "evidence": "tests 'holding down does not re-trigger; a 4th separate press does nothing' and 'a new round refills boosts'."
+        },
+        {
+          "text": "A glowing swirl is visible around a boosting player in the after clip",
+          "met": true,
+          "evidence": "after/shot-1 (bot9 at ~30m), shot-2 (two bots at ~90m) and shot-3 (bot10) show a white/cyan swirl ring with glow and trail around boosting players; before shots have none."
+        },
+        {
+          "text": "Boost speed 200 px/s is applied (about 13 px per tick at 15 ticks/s)",
+          "met": true,
+          "evidence": "config.boostSpeed 13.4; test asserts displacement boostSpeed*boostTicks."
+        }
+      ],
+      "findings": [
+        "Minor: boosts-left pips above players are tiny and overlap the name label (after/shot-2, shot-3); consider drawing them higher or larger in assets.ts."
+      ],
+      "packagesTree": "fd10b936d83109d9aa9222e9e13b0c7baeaa3fdc+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-01T17:21:49.228Z"
     }
   ]
 }
