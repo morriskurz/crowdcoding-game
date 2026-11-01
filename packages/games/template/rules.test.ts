@@ -508,6 +508,31 @@ describe("tower climb: bots", () => {
     expect(Math.min(...heights)).toBeGreaterThan(sectionPx / 2);
   });
 
+  it("bots press for wind gusts now and then, as fresh presses", () => {
+    const w = createWorld(3);
+    rules.init!(w);
+    const ids = ["bot:1", "bot:2", "bot:3", "bot:4"];
+    for (const id of ids) joinPlayer(w, rules, id, id);
+    let presses = 0;
+    let minLeft: number = config.boostCount;
+    const prev: Record<string, boolean> = {};
+    for (let t = 0; t < 60 * config.tickHz; t++) {
+      const inputs: Record<string, Input> = {};
+      ids.forEach((id, i) => {
+        const inp = rules.bot!(w, id, i + 1);
+        inputs[id] = inp;
+        const on = inp.dy > 0.5;
+        if (on && !prev[id]) presses++;
+        prev[id] = on;
+      });
+      runTick(w, rules, inputs);
+      for (const id of ids) minLeft = Math.min(minLeft, pl(w, id).data.boostsLeft);
+      if (rd(w).phase !== "play") break;
+    }
+    expect(presses).toBeGreaterThan(0);
+    expect(minLeft).toBeLessThan(config.boostCount);
+  });
+
   it("bot inputs are valid wire inputs", () => {
     const w = world();
     const inp = rules.bot!(w, "a", 1);

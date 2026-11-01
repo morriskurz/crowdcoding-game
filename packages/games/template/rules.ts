@@ -570,7 +570,11 @@ function botInput(w: World, id: string, n: number): Input {
   if (me.ground !== true) {
     // In the air: steer onto the target and hold the jump while rising. A botched jump lets go of
     // the stick at the apex and drops short.
-    if (botched && me.vy > 0) return idle;
+    if (botched && me.vy > 0) {
+      // Falling short: catch a gust (a fresh press; the next tick releases it).
+      const gust = d.boostsLeft > 0 && d.boostT === 0 && !d.boostHeld;
+      return gust ? { dx: Math.abs(dx) > 4 ? Math.sign(dx) : 0, dy: 1, action: false } : idle;
+    }
     return { dx: Math.abs(dx) > 4 ? Math.sign(dx) : 0, dy: 0, action: d.jumping && me.vy < 0 };
   }
   // On a platform: run toward the target; jump once close enough. The lead varies by bot and step, so bots sometimes miss.
@@ -587,7 +591,9 @@ function botInput(w: World, id: string, n: number): Input {
   // A target that is off right now (blinking, crumbled): wait for it.
   if (!solid(target) && !atEdge) return idle;
   const jump = !d.held && (Math.abs(dx) <= lead || atEdge);
-  return { dx: Math.abs(dx) > 3 ? Math.sign(dx) : 0, dy: 0, action: jump };
+  // A big climb: ride a gust with the jump (a fresh press, released on the next tick).
+  const bigRise = rise > 0.6 * MAX_RISE && d.boostsLeft > 0 && !d.boostHeld;
+  return { dx: Math.abs(dx) > 3 ? Math.sign(dx) : 0, dy: jump && bigRise ? 1 : 0, action: jump };
 }
 
 // --- rules -----------------------------------------------------------------------------------------
