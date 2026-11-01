@@ -1,19 +1,37 @@
 [
   {
-    "id": "bootstrap",
-    "title": "bootstrap: turn template into the grid bomber game (rules, config, assets, tests)",
-    "tier": "opus",
+    "id": "t1",
+    "title": "assets: victim popup with +1 and chain starter name, 1.5s",
+    "tier": "muse",
     "files": [
-      "packages/games/bomber-20261101/"
+      "packages/games/bomber-20261101/assets.ts"
     ],
-    "estMin": 20,
-    "actualMin": 19.1,
+    "estMin": 10,
+    "actualMin": 2.4,
     "done": true,
     "attempts": [
       {
-        "tier": "opus",
+        "tier": "muse",
         "ok": true,
-        "minutes": 19.1
+        "minutes": 2.4
+      }
+    ]
+  },
+  {
+    "id": "t2",
+    "title": "assets: one merged, bigger +1 scorer tag; drop clashing popups",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/bomber-20261101/assets.ts"
+    ],
+    "estMin": 10,
+    "actualMin": 1.2,
+    "done": true,
+    "attempts": [
+      {
+        "tier": "sonnet",
+        "ok": true,
+        "minutes": 1.2
       }
     ]
   }

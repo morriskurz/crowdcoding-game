@@ -17,7 +17,7 @@ type Ents = Record<string, Entity>;
 
 // Client-only effect state, fed by snapshots (never game state).
 let latest: Ents = {};
-interface Popup { x: number; y: number; text: string; color: string; t0: number }
+interface Popup { x: number; y: number; text: string; color: string; t0: number; life?: number; size?: number; outline?: boolean }
 const popups: Popup[] = [];
 let leader: string | null = null;
 
@@ -292,9 +292,9 @@ export function nameStyle(e: Entity, _name: string, _fx: Fx): NameStyle {
 
 // --- snapshot effects ------------------------------------------------------------------------------------
 
-function popup(x: number, y: number, text: string, color: string, fx: Fx): void {
-  popups.push({ x, y, text, color, t0: fx.time });
-  if (popups.length > 14) popups.shift();
+function popup(x: number, y: number, text: string, color: string, fx: Fx, life = 1.4, size?: number, outline?: boolean): void {
+  popups.push({ x, y, text, color, t0: fx.time, life, size, outline });
+  if (popups.length > 30) popups.shift();
 }
 
 function nearMe(next: Readonly<Ents>, x: number, y: number, fx: Fx): number {
@@ -365,7 +365,12 @@ export function onSnapshot(prev: Readonly<Ents> | null, next: Readonly<Ents>, fx
       fx.particles.emit({ x: p.x, y: p.y, count: 40, color: playerColor(p.id), speed: 220, life: 0.9, size: 3, drag: 2 });
       fx.sfx.play(mine ? "die" : "hurt", { volume: mine ? 1 : 0.45 * nearMe(next, p.x, p.y, fx) });
       if (mine) fx.camera.shake(12, 0.5);
-      popup(p.x, p.y - 18, "KO!", "#ff6b6b", fx);
+      const killer = str(b.killer, "");
+      if (killer) {
+        popup(p.x, p.y - 48, `+1 ${fx.names?.[killer] ?? "player"}`, playerColor(killer), fx, 1.5, 22, true);
+      } else {
+        popup(p.x, p.y - 18, "KO!", "#ff6b6b", fx);
+      }
     }
     if (num(b.ko, 0) > num(a.ko, 0)) {
       popup(p.x, p.y - 30, `+${num(b.ko, 0) - num(a.ko, 0)} KO`, "#ffd54a", fx);
@@ -431,13 +436,24 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, fx: Fx): void {
   for (let i = popups.length - 1; i >= 0; i--) {
     const p = popups[i];
     const age = fx.time - p.t0;
-    if (age > 1.4) { popups.splice(i, 1); continue; }
+    const life = p.life ?? 1.4;
+    if (age > life) { popups.splice(i, 1); continue; }
     const s = fx.camera.worldToScreen(p.x, p.y);
-    ctx.globalAlpha = clamp(1.4 - age, 0, 1);
-    ctx.fillStyle = "rgba(0,0,0,0.6)";
-    ctx.fillText(p.text, s.x + 1, s.y - age * 28 + 1);
+    ctx.globalAlpha = clamp(life - age, 0, 1);
+    const py = s.y - age * 28;
+    if (p.size) ctx.font = `bold ${p.size}px system-ui, sans-serif`;
+    if (p.outline) {
+      ctx.lineJoin = "round";
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = "rgba(0,0,0,0.85)";
+      ctx.strokeText(p.text, s.x, py);
+    } else {
+      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      ctx.fillText(p.text, s.x + 1, py + 1);
+    }
     ctx.fillStyle = p.color;
-    ctx.fillText(p.text, s.x, s.y - age * 28);
+    ctx.fillText(p.text, s.x, py);
+    if (p.size) ctx.font = "bold 17px system-ui, sans-serif";
   }
   ctx.globalAlpha = 1;
 

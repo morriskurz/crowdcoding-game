@@ -1,50 +1,79 @@
 {
-  "intent": "A grid arena of breakable blocks where every player drops one bomb at a time; a bomb blows up after 3 s in a cross, breaking blocks and detonating every bomb it reaches, and each knockout in the chain is credited to whoever's bomb started it. Knocked-out players respawn after 3 s with 2 s protection; the most knockouts in a 180 s round wins, then 5 s of results and a fresh arena.",
+  "intent": "When a player is knocked out by a bomb chain, everyone sees a floating \"+1\" and the name of whoever started the chain above the victim for 1.5 seconds, so the scorer of each knockout is clear.",
   "accept": [
-    "Players move on a grid and drop a bomb with the action button, only one live bomb per player",
-    "A bomb explodes after 3 s as a cross that breaks blocks and sets off other bombs it reaches in a chain",
-    "A knockout caused by a chain reaction is scored for the owner of the bomb that started the chain",
-    "Knocked-out players respawn after 3 s at a free spot with 2 s of protection, and the 180 s round ends with 5 s results then a new arena",
-    "The before/after clip shows bombs, a visible fuse, cross-shaped blasts and a score display"
+    "Every knockout caused by another player shows \"+1\" and the chain starter's name above the victim's position",
+    "The tag stays about 1.5 seconds then disappears, and is visible to other players and spectators, not only the scorer",
+    "A self-inflicted knockout shows no +1 or scorer name",
+    "In a chain with several victims each victim gets its own tag naming the same starter"
   ],
   "rounds": [
     {
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": true,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "Every knockout caused by another player shows \"+1\" and the chain starter's name above the victim's position",
+          "met": false,
+          "evidence": "diff adds +1 and killer-name popups in assets.ts onSnapshot; after/shot-3 shows them stacked on top of the existing KO!, +2 KO and victim name label near (360,300) as an unreadable smear, so the scorer name cannot be read"
+        },
+        {
+          "text": "The tag stays about 1.5 seconds then disappears, and is visible to other players and spectators, not only the scorer",
+          "met": true,
+          "evidence": "diff: life 1.5 passed to popup and used in drawOverlay; popups drawn from snapshot data for every client"
+        },
+        {
+          "text": "A self-inflicted knockout shows no +1 or scorer name",
+          "met": true,
+          "evidence": "diff: tags only drawn if killer non-empty; rules.ts knockOut sets d.killer = \"\" for self-kills"
+        },
+        {
+          "text": "In a chain with several victims each victim gets its own tag naming the same starter",
+          "met": false,
+          "evidence": "per-victim popups in diff, but popup cap and overlapping stacks are unproven in shots; in shot-3 the tags are unreadable and no clean multi-victim example is shown"
+        }
+      ],
+      "findings": [
+        "Popups collide: in packages/games/bomber-20261101/assets.ts onSnapshot, +1 (y-36) and name (y-52) overlap the existing KO! (y-18), '+N KO' (y-30) and the victim's nameStyle label, producing illegible text in after/shot-3. Merge into one popup like '+1 bot5' at a free offset, and drop or move the duplicate '+N KO' popup when the new tag is shown.",
+        "Name popup uses fx.names?.[killer] ?? 'player'; verify names resolve (shot shows bot5 repeated) and make the scorer name larger or outlined so it reads on a phone.",
+        "Effect is small text and hard to tell from before clip: make the tag bolder/larger (bigger font, colour of the scorer, outline) in drawOverlay in assets.ts."
+      ],
+      "packagesTree": "792b96c92af79ab72f15a6784c54c5d25b1947c8+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-01T21:15:17.726Z"
+    },
+    {
       "verdict": "pass",
-      "score": 4,
+      "score": 3,
       "playerImpact": true,
       "visible": true,
       "criteria": [
         {
-          "text": "Players move on a grid and drop a bomb with the action button, only one live bomb per player",
+          "text": "Every knockout caused by another player shows \"+1\" and the chain starter's name above the victim's position",
           "met": true,
-          "evidence": "after/shot-1..3: bots on grid, one bomb each; test 'one live bomb per player, one per fresh press'"
+          "evidence": "after/shot-3: outlined 22px \"+1 bot5\" tag above the dying victim ghost, scoreboard shows bot5 2; assets.ts onSnapshot pops it when data.killer is set"
         },
         {
-          "text": "A bomb explodes after 3 s as a cross that breaks blocks and sets off other bombs it reaches in a chain",
+          "text": "The tag stays about 1.5 seconds then disappears, and is visible to other players and spectators, not only the scorer",
           "met": true,
-          "evidence": "tests 'go off exactly 3 s', 'blast cross stops at pillars and breaks only the first brick'; after/shot-3 shows bricks cleared vs shot-1. No blast cross captured in a shot."
+          "evidence": "assets.ts popup(..., 1.5, 22, true) with life-based fade/removal in drawOverlay; shot-3 is a spectator view (watching bot3) and shows the tag"
         },
         {
-          "text": "A knockout caused by a chain reaction is scored for the owner of the bomb that started the chain",
+          "text": "A self-inflicted knockout shows no +1 or scorer name",
           "met": true,
-          "evidence": "test 'chain reaction: every knockout goes to the owner of the bomb that started it'; after/shot-3 shows '+2 KO' popup and bot5 2 on scoreboard"
+          "evidence": "rules.ts knockOut sets killer to \"\" for self-kills; assets.ts then shows only \"KO!\" (rules.test.ts line 200 covers killer field)"
         },
         {
-          "text": "Knocked-out players respawn after 3 s at a free spot with 2 s of protection, and the 180 s round ends with 5 s results then a new arena",
+          "text": "In a chain with several victims each victim gets its own tag naming the same starter",
           "met": true,
-          "evidence": "tests 'respawn after 3 s...' and 'round loop'; after/shot-3 shows ghost with X eyes; timer counts 2:58 to 2:50"
-        },
-        {
-          "text": "The before/after clip shows bombs, a visible fuse, cross-shaped blasts and a score display",
-          "met": true,
-          "evidence": "after shots show bombs with lit fuses, red glow late-fuse, KNOCKOUTS scoreboard, round timer; before is a different game (tower climber). Cross blasts not in a still but drawn by drawBlast."
+          "evidence": "popup is emitted per victim in the onSnapshot player loop using each victim's killer; not visible in a shot (client-side, untested)"
         }
       ],
       "findings": [
-        "Minor: player name labels overlap when bots share/adjoin cells (bot2/bot10, bot9/bot3), likely cause of the OCR gate failure; in assets.ts nameStyle could offset dy per player or shrink size. HUD text itself (timer, KNOCKOUTS) is legible."
+        "Minor: in after/shot-3 the gold \"+N KO\" popup (p.y-30, assets.ts ~line 373) still sits right above the \"+1 name\" tag (p.y-48) when killer and victim are adjacent, and they crowd; drop the \"+N KO\" popup or offset it to the killer's side/lower"
       ],
-      "packagesTree": "6473bde5c4799f0329f0f3d3272e4005b3e06467+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
-      "at": "2026-11-01T19:22:03.119Z"
+      "packagesTree": "f964399bd24078b43bc7228db6441cec2c5de66b+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-01T21:17:56.316Z"
     }
   ]
 }
