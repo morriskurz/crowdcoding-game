@@ -1,38 +1,43 @@
 [
   {
     "id": "t1",
-    "title": "config: runSpeed 8->10 and movingPlatformSpeed 2.5->3.125",
+    "title": "engine: B key counts as down input in readKeys + test",
+    "tier": "sonnet",
+    "files": [
+      "apps/client/src/game/input.ts"
+    ],
+    "estMin": 8,
+    "done": false
+  },
+  {
+    "id": "t2",
+    "title": "config: boost count, duration ticks, speed per tick, swirl size",
     "tier": "muse",
     "files": [
       "packages/games/template/config.ts"
     ],
     "estMin": 5,
-    "actualMin": 2.7,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 2.7
-      }
-    ]
+    "done": false
   },
   {
-    "id": "t2",
-    "title": "assets: speed streaks behind fast-running players",
+    "id": "t3",
+    "title": "rules: boost state, down input triggers upward gust, refill each round + tests",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/template/rules.ts",
+      "packages/games/template/rules.test.ts"
+    ],
+    "estMin": 20,
+    "done": false
+  },
+  {
+    "id": "t4",
+    "title": "assets: glowing swirl drawn around boosting players",
     "tier": "muse",
     "files": [
       "packages/games/template/assets.ts"
     ],
-    "estMin": 10,
-    "actualMin": 2.6,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 2.6
-      }
-    ]
+    "estMin": 12,
+    "done": false
   }
 ]

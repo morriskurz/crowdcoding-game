@@ -1,68 +1,10 @@
 {
-  "intent": "Everyone runs noticeably faster and the moving platforms glide 25% faster, so climbing the tower is quicker but riding platforms demands tighter timing.",
+  "intent": "Each climber has 3 wind boosts per round. Pressing B (or pushing down) gives a 1.5 s upward gust of 200 px/s, drawn as a glowing swirl around the player; boosts refill every round, so players choose when to spend them to skip a hard section.",
   "accept": [
-    "Player run speed is 25% higher than before (8 -> 10 px/tick)",
-    "Moving platforms travel 25% faster (2.5 -> 3.125 px/tick)",
-    "Gates, determinism test and bots still pass; the tower remains climbable"
+    "Pressing B (down input) while boosts remain lifts the player upward for 1.5 s and uses one of 3 boosts",
+    "After 3 boosts further presses do nothing; a new round refills to 3",
+    "A glowing swirl is visible around a boosting player in the after clip",
+    "Boost speed 200 px/s is applied (about 13 px per tick at 15 ticks/s)"
   ],
-  "rounds": [
-    {
-      "verdict": "fix",
-      "score": 2,
-      "playerImpact": true,
-      "visible": false,
-      "criteria": [
-        {
-          "text": "Player run speed is 25% higher than before (8 -> 10 px/tick)",
-          "met": true,
-          "evidence": "diff: config.ts runSpeed 8 -> 10. after/shot-2 shows no visible difference in motion."
-        },
-        {
-          "text": "Moving platforms travel 25% faster (2.5 -> 3.125 px/tick)",
-          "met": true,
-          "evidence": "diff: config.ts movingPlatformSpeed 2.5 -> 3.125. No moving platform is distinguishable in any after shot."
-        },
-        {
-          "text": "Gates, determinism test and bots still pass; the tower remains climbable",
-          "met": true,
-          "evidence": "after/shot-2: bots climb (bot9 at 17m vs best 13m before). The preview ocr gate failed; I could not confirm it is unrelated."
-        }
-      ],
-      "findings": [
-        "The change is a pure number tweak (runSpeed, movingPlatformSpeed in packages/games/template/config.ts). A viewer cannot tell the after clip from the before clip, since before/after shots look the same apart from bot positions. Add something visible, for example a speed-trail or dust effect in assets.ts that scales with player speed, or a rule in rules.ts that gives a visible speed burst on landing",
-        "Make the effect noticeable to players: a 25% speed change is below perception. Consider a larger change or a new mechanic (for example a dash with a visible trail) in rules.ts with a test.",
-        "Check why the preview ocr gate failed and make sure it is not caused by this change."
-      ],
-      "packagesTree": "fb05237055340d665a5c2c41ea64b857e007c41d+ba56c8ae101559744353fc271068a0ee61d86896",
-      "at": "2026-11-01T16:24:43.213Z"
-    },
-    {
-      "verdict": "pass",
-      "score": 3,
-      "playerImpact": true,
-      "visible": true,
-      "criteria": [
-        {
-          "text": "Player run speed is 25% higher than before (8 -> 10 px/tick)",
-          "met": true,
-          "evidence": "diff: config.ts runSpeed 8 -> 10; after/shot-2 shows bots at 0m with visible speed-streak afterimages (bot6, bot11) that are absent in before/shot-2, and the bot9 leader is at 17m vs 13m before."
-        },
-        {
-          "text": "Moving platforms travel 25% faster (2.5 -> 3.125 px/tick)",
-          "met": true,
-          "evidence": "diff: config.ts movingPlatformSpeed 2.5 -> 3.125. Platform positions differ between before and after shots, but speed is only provable from the config line."
-        },
-        {
-          "text": "Gates, determinism test and bots still pass; the tower remains climbable",
-          "met": true,
-          "evidence": "preview.json: ok true, simExceptions 0/0, render/flash/audio pass. Bots climb to 17m by 2:54 in after/shot-2. The ocr gate failure is a tesseract tool error ('tesseract failed on after/shot-1.png: undefined'), raised on the after shot and unrelated to the game change. The report has no baseline-side"
-        }
-      ],
-      "findings": [
-        "Optional: the streak afterimages are faint on a phone; raise their alpha or length in assets.ts drawPlayerBody if more visibility is wanted."
-      ],
-      "packagesTree": "990bf8755ae2c76983d659b0df6f3a46719c4b12+ba56c8ae101559744353fc271068a0ee61d86896",
-      "at": "2026-11-01T16:28:49.323Z"
-    }
-  ]
+  "rounds": []
 }
