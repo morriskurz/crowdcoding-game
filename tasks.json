@@ -16,5 +16,15 @@
         "minutes": 2.5
       }
     ]
+  },
+  {
+    "id": "t2",
+    "title": "assets: trail samples every ~100ms (max 20 pts), light colour, stale trail fades",
+    "tier": "muse",
+    "files": [
+      "packages/games/bomber-20261101/assets.ts"
+    ],
+    "estMin": 10,
+    "done": false
   }
 ]
