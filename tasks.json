@@ -16,5 +16,15 @@
         "minutes": 2.7
       }
     ]
+  },
+  {
+    "id": "t2",
+    "title": "assets: speed streaks behind fast-running players",
+    "tier": "muse",
+    "files": [
+      "packages/games/template/assets.ts"
+    ],
+    "estMin": 10,
+    "done": false
   }
 ]
