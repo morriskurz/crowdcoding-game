@@ -1,38 +1,12 @@
 [
   {
     "id": "t1",
-    "title": "assets: victim popup with +1 and chain starter name, 1.5s",
+    "title": "assets: record last 20 positions per player (16ms spacing) and draw 1px fading ghost trail",
     "tier": "muse",
     "files": [
       "packages/games/bomber-20261101/assets.ts"
     ],
-    "estMin": 10,
-    "actualMin": 2.4,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 2.4
-      }
-    ]
-  },
-  {
-    "id": "t2",
-    "title": "assets: one merged, bigger +1 scorer tag; drop clashing popups",
-    "tier": "sonnet",
-    "files": [
-      "packages/games/bomber-20261101/assets.ts"
-    ],
-    "estMin": 10,
-    "actualMin": 1.2,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "sonnet",
-        "ok": true,
-        "minutes": 1.2
-      }
-    ]
+    "estMin": 15,
+    "done": false
   }
 ]
