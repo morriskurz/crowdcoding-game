@@ -1,92 +1,10 @@
 {
-  "intent": "Long bomb chains now pay off: every bomb link past the third adds 10% to the chain starter's score multiplier (max 2x) and makes each knockout they score burst into extra gold sparkles. The chain popup shows the current bonus to everyone.",
+  "intent": "A player whose bomb chain reaches 3 or more earns a 1.5x score multiplier for 10 seconds, shown to everyone as a glowing ring around that player; a later short chain or the timeout ends it.",
   "accept": [
-    "A chain of 3 or fewer bombs gives no bonus; a chain of 5 gives +20% and the chain starter's knockouts score 1.2 points each",
-    "The bonus never exceeds 2x (100% extra)",
-    "Knockouts by a player with a bonus show extra gold sparkle bursts at the knocked-out player's spot, one per link beyond 3",
-    "The chain popup text shows the bonus, e.g. '5 chain +20%', visible to all players",
-    "The round winner is decided by weighted score"
+    "Finishing a chain of 3+ bombs gives that player a 1.5x score multiplier on knockouts for 10 seconds",
+    "A glowing ring is visible around the multiplier holder while it is active",
+    "The multiplier ends after 10 seconds or when the player's next chain is shorter than 3",
+    "Tests show a knockout scoring 1.5x during the multiplier and 1x after it ends"
   ],
-  "rounds": [
-    {
-      "verdict": "fix",
-      "score": 2,
-      "playerImpact": true,
-      "visible": false,
-      "criteria": [
-        {
-          "text": "A chain of 3 or fewer bombs gives no bonus; a chain of 5 gives +20% and the chain starter's knockouts score 1.2 points each",
-          "met": true,
-          "evidence": "rules.ts explodeBombs sets bonus=min(100,max(0,n-3)*10); knockOut adds 1+bonus/100; rules.test.ts 'chain bonus' covers chain 3 -> 0, chain 5 -> 20, KO scores 1.2 vs 1."
-        },
-        {
-          "text": "The bonus never exceeds 2x (100% extra)",
-          "met": true,
-          "evidence": "Math.min(100, ...) in rules.ts; test with chain of 14 expects bonus 100."
-        },
-        {
-          "text": "Knockouts by a player with a bonus show extra gold sparkle bursts at the knocked-out player's spot, one per link beyond 3",
-          "met": false,
-          "evidence": "Only in assets.ts diff (particles.emit loop); after/shot-1..3 are identical to before, no gold bursts seen, and no test or scenario exercises it. Also the burst count uses current chain, which a later chain can overwrite."
-        },
-        {
-          "text": "The chain popup text shows the bonus, e.g. '5 chain +20%', visible to all players",
-          "met": false,
-          "evidence": "after/shot-2 and shot-3 only show '1 chain' popups, same as before; the +% text appears only in the assets.ts diff and was never shown."
-        },
-        {
-          "text": "The round winner is decided by weighted score",
-          "met": true,
-          "evidence": "endRound uses p.data.score; test 'the round winner is the highest score, not the most knockouts' passes."
-        }
-      ],
-      "findings": [
-        "Before and after screenshots are pixel-identical in practice: the scenario only produces 1-chains, so a viewer cannot tell the clip apart. Make the effect show up in ordinary play, e.g. in config.ts/rules.ts lower the threshold so chains of 2 or 3 already give a bonus, or make the preview scenario reach 4+ chains.",
-        "The bonus is invisible to the scoreboard: the HUD leaderboard still lists integer KNOCKOUTS, so players never see that score differs and the winner can appear to be the one with fewer KOs. Show the weighted score (or the bonus) in the leaderboard, via assets.ts hud/leaderboard code.",
-        "Chains of 4+ are rare with this bot and player behaviour (shots show almost only 1-chains), so the feature rarely triggers. Reduce the threshold or scale the bonus per link in rules.ts explodeBombs so that ordinary 2-3 chains matter.",
-        "Gold sparkle burst in assets.ts onSnapshot reads the killer's current chain/bonus; add a persistent, clearly visible indicator (e.g. a gold ring or glow on a player holding a bonus) in assets.ts so everyone can see who has a multiplier."
-      ],
-      "packagesTree": "8495445947ceba6bb8a60eb11d44e602cf50d374+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
-      "at": "2026-11-02T05:22:11.180Z"
-    },
-    {
-      "verdict": "pass",
-      "score": 3,
-      "playerImpact": true,
-      "visible": true,
-      "criteria": [
-        {
-          "text": "A chain of 3 or fewer bombs gives no bonus; a chain of 5 gives +20% and the chain starter's knockouts score 1.2 points each",
-          "met": true,
-          "evidence": "rules.ts explodeBombs: bonus=min(100,max(0,n-3)*10); knockOut adds 1+bonus/100 to score; rules.test.ts chain bonus tests cover chain 3 -> 0, chain 5 -> 20, KO worth 1.2."
-        },
-        {
-          "text": "The bonus never exceeds 2x (100% extra)",
-          "met": true,
-          "evidence": "Math.min(100, ...) in rules.ts; test with a 14-chain expects 100."
-        },
-        {
-          "text": "Knockouts by a player with a bonus show extra gold sparkle bursts at the knocked-out player's spot, one per link beyond 3",
-          "met": true,
-          "evidence": "assets.ts onSnapshot emits one gold particle burst per (chain-3) at the KO'd player's x,y when killer bonus>0. Not seen in after shots (scenario has only 1-chains); judged by diff."
-        },
-        {
-          "text": "The chain popup text shows the bonus, e.g. '5 chain +20%', visible to all players",
-          "met": true,
-          "evidence": "assets.ts chainSeq popup uses `${chain} chain +${bonus}%` when bonus>0; popups are drawn for all players. Not seen in shots (only '1 chain'); judged by diff. Persistent gold ring and xN.N label on bonus holders also added in drawPlayer."
-        },
-        {
-          "text": "The round winner is decided by weighted score",
-          "met": true,
-          "evidence": "endRound picks highest p.data.score; test for score-vs-KO winner passes; after/shot-3 leaderboard now titled SCORE and ranks by score (bot5 shows 2)."
-        }
-      ],
-      "findings": [
-        "Caveat, not blocking: in the preview scenario no 4+ chain occurs, so the after clip differs from before only by the SCORE leaderboard title; ring, xN.N label, sparkles and '+N%' popup are verified by diff only.",
-        "Optional: bonus is overwritten by every later chain (including 1-chains) in rules.ts explodeBombs, so a holder loses the multiplier on their next small bomb; consider keeping the max until round end if the spec allows."
-      ],
-      "packagesTree": "4b160f557eab73eac8f0d772ca09a6b5e3725db5+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
-      "at": "2026-11-02T05:24:58.842Z"
-    }
-  ]
+  "rounds": []
 }

@@ -1,9 +1,9 @@
 {
-  "id": "26",
-  "spec": "When a chain of knockouts happens, each link beyond 3 adds +1 gold sparkle burst at that knockout spot and +10% score multiplier, capped at 2x. The current chain bonus is shown on the chain popup for all players.",
+  "id": "27",
+  "spec": "When any player's chain reaches 3 or more, that chain leader gains a 1.5x score multiplier for 10 seconds. During this time a glowing ring is shown around their bomb origin, visible to all players. The multiplier ends after 10 seconds or when the chain drops below 3.",
   "slug": "bomber-20261101",
   "game": "bomber-20261101",
-  "branch": "f/26-bomber-20261101",
-  "status": "ready",
-  "updatedAt": "2026-11-02T05:25:31.675Z"
+  "branch": "f/27-bomber-20261101",
+  "status": "building",
+  "updatedAt": "2026-11-02T07:17:34.946Z"
 }
