@@ -213,6 +213,45 @@ describe("knockouts", () => {
     expect(pl(w, "a").data.ko).toBe(1);
   });
 
+  it("records the chain size and a rising chainSeq on the player who started it", () => {
+    const w = arena({ a: [1, 1] });
+    expect(pl(w, "a").data.chain).toBe(0);
+    expect(pl(w, "a").data.chainSeq).toBe(0);
+    tick(w, { a: bomb });
+    put(w, "a", 1, 5);
+    bombs(w)[0].data.fuse = 1;
+    tick(w);
+    expect(pl(w, "a").data.chain).toBe(1);
+    expect(pl(w, "a").data.chainSeq).toBe(1);
+
+    const w2 = arena({ a: [1, 1], b: [3, 1], c: [5, 1] });
+    tick(w2, { a: bomb, b: bomb, c: bomb });
+    put(w2, "a", 1, 5);
+    put(w2, "b", 7, 5);
+    put(w2, "c", 9, 9);
+    const ordered = bombs(w2).sort((p, q) => p.data.cx - q.data.cx);
+    ordered[0].data.fuse = 1;
+    ordered[1].data.fuse = 40;
+    ordered[2].data.fuse = 40;
+    tick(w2);
+    expect(bombs(w2).length).toBe(0);
+    expect(pl(w2, "a").data.chain).toBe(3);
+    expect(pl(w2, "a").data.chainSeq).toBe(1);
+    expect(pl(w2, "b").data.chainSeq).toBe(0);
+    expect(pl(w2, "c").data.chainSeq).toBe(0);
+
+    // a second chain by the same player
+    tick(w2, {}, config.blastTicks + 1);
+    pl(w2, "a").data.dead = false;
+    put(w2, "a", 1, 1);
+    tick(w2, { a: bomb });
+    put(w2, "a", 1, 5);
+    bombs(w2)[0].data.fuse = 1;
+    tick(w2);
+    expect(pl(w2, "a").data.chain).toBe(1);
+    expect(pl(w2, "a").data.chainSeq).toBe(2);
+  });
+
   it("self knockouts score nothing", () => {
     const w = arena({ a: [1, 1] });
     tick(w, { a: bomb });
