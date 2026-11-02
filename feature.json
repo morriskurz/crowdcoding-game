@@ -1,9 +1,9 @@
 {
-  "id": "25",
-  "spec": "A gold crown sprite appears over the bomb origin of the player currently holding the longest chain, visible to all players. It updates live whenever the leader changes and fades out after 5 seconds.",
+  "id": "26",
+  "spec": "When a chain of knockouts happens, each link beyond 3 adds +1 gold sparkle burst at that knockout spot and +10% score multiplier, capped at 2x. The current chain bonus is shown on the chain popup for all players.",
   "slug": "bomber-20261101",
   "game": "bomber-20261101",
-  "branch": "f/25-bomber-20261101",
-  "status": "ready",
-  "updatedAt": "2026-11-02T03:27:58.282Z"
+  "branch": "f/26-bomber-20261101",
+  "status": "building",
+  "updatedAt": "2026-11-02T05:16:32.652Z"
 }
