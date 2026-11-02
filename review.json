@@ -1,12 +1,46 @@
 {
-  "intent": "When a bomb chain reaction finishes, a number popup showing how many bombs were in the chain rises above the player whose bomb started it, fading out over 3 seconds. Every player gets it, not just the local one.",
+  "intent": "When a player sets the longest bomb chain among everyone in the round, a gold crown appears over that player for all to see, moves to a new leader live, and fades away after 5 seconds.",
   "accept": [
-    "When a chain of bombs has finished exploding, the player who started it has a popup above them showing the chain's bomb count (a single bomb shows 1)",
-    "The popup floats upward, fades gradually over 3 seconds and then disappears",
-    "It appears for every player equally, including bots and other players, not only the local player",
-    "A test shows the chain count and event counter on the starting player's data increase after a chain of 3 bombs"
+    "A player whose bomb chain is longer than every other player's current chain gets a gold crown drawn above them",
+    "When another player completes a longer chain, the crown moves to them and leaves the previous holder",
+    "The crown fades out and disappears 5 seconds after it was awarded",
+    "In the after clip a crown is visible over a player after a chain reaction"
   ],
   "rounds": [
+    {
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": true,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "A player whose bomb chain is longer than every other player's current chain gets a gold crown drawn above them",
+          "met": true,
+          "evidence": "rules.ts explodeBombs sets crown=config.crownTicks for the max chain (>=2) owner; test 'goes to a player finishing a chain of 2 or more'. Not visible in any after shot or the 12 s video (only '1 chain' popups)."
+        },
+        {
+          "text": "When another player completes a longer chain, the crown moves to them and leaves the previous holder",
+          "met": true,
+          "evidence": "rules.ts resets crown to 0 for all but leader; test 'moves to a longer chain by another player and is not stolen by a shorter one'. Not seen in clip."
+        },
+        {
+          "text": "The crown fades out and disappears 5 seconds after it was awarded",
+          "met": true,
+          "evidence": "config.crownTicks=75, decremented per tick in step; assets.ts alpha=crown/15; test 'counts down by 1 per step and runs out after crownTicks steps'."
+        },
+        {
+          "text": "In the after clip a crown is visible over a player after a chain reaction",
+          "met": false,
+          "evidence": "after/shot-1..3 and every 1 s frame of after/video.mp4 show only '1 chain' popups and no crown; shot-2 is identical to before/shot-2."
+        }
+      ],
+      "findings": [
+        "Crown never appears in the preview scenario: in rules.ts explodeBombs the threshold 'max >= 2' is too strict because bots only make 1-bomb chains in the clip. Lower it to max >= 1 (ties do not steal from the current holder) so the first detonation crowns someone, or make bots chain bombs, so the crown shows in the after clip.",
+        "Crown lasts only 5 s and is small (about 22 px wide) above a ~35 px player: in assets.ts drawPlayer enlarge it (about 1.5x) and fade only over the last second (alpha clamp(crown/15) is fine), so a phone viewer notices it."
+      ],
+      "packagesTree": "28d12219839ade3307ea52d4d09e5b5edc2f4d55+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-02T03:22:58.278Z"
+    },
     {
       "verdict": "pass",
       "score": 3,
@@ -14,32 +48,31 @@
       "visible": true,
       "criteria": [
         {
-          "text": "When a chain of bombs has finished exploding, the player who started it has a popup above them showing the chain's bomb count (a single bomb shows 1)",
+          "text": "A player whose bomb chain is longer than every other player's current chain gets a gold crown drawn above them",
           "met": true,
-          "evidence": "after/shot-2 and shot-3: '1 chain' popups in player colours above bomb owners (before/shot-2 has none); rules.ts explodeBombs sets chain/chainSeq on rootOwner; assets.ts onSnapshot spawns the popup."
+          "evidence": "after/shot-2: gold crown over bot10 (1 chain) absent in before/shot-2; rules.ts explodeBombs awards crown to the max chain (>=1); tests added"
         },
         {
-          "text": "The popup floats upward, fades gradually over 3 seconds and then disappears",
+          "text": "When another player completes a longer chain, the crown moves to them and leaves the previous holder",
           "met": true,
-          "evidence": "assets.ts: popup life=3, alpha = 1 - age/life, y rises age*28, removed when age > life; after/shot-3 shows older popups drawn fainter and higher."
+          "evidence": "rules.ts explodeBombs clears crown on all others when a max-chain finisher is found; rules.test.ts covers it"
         },
         {
-          "text": "It appears for every player equally, including bots and other players, not only the local player",
+          "text": "The crown fades out and disappears 5 seconds after it was awarded",
           "met": true,
-          "evidence": "after/shot-3: popups over many bots (lime and cyan) while spectating bot3; the trigger is not gated on 'mine'."
+          "evidence": "config.crownTicks=75 (5 s), decremented per tick in rules.ts; shot-3 crown on bot0 only"
         },
         {
-          "text": "A test shows the chain count and event counter on the starting player's data increase after a chain of 3 bombs",
+          "text": "In the after clip a crown is visible over a player after a chain reaction",
           "met": true,
-          "evidence": "rules.test.ts 'records the chain size and a rising chainSeq...' asserts chain==3 and chainSeq==1 for a 3-bomb chain, and chainSeq==2 after a second chain."
+          "evidence": "after/shot-2 crown over bot10, after/shot-3 crown over bot0 with 1 chain popups; before shots have none"
         }
       ],
       "findings": [
-        "Optional polish: with 12 bots the 3s '1 chain' popups pile up and overlap player names and each other (after/shot-3). In assets.ts consider showing the popup only for chains of 2 or more, or a shorter life or smaller size for other players, if the viewer spec allows. Not a blocker.",
-        "The ocr gate failure is unrelated to the popup. report.json says 'tesseract failed on after/shot-1.png: undefined', and shot-1 has no popups. It is a tool failure."
+        "Minor: crown is cosmetic only and at chain>=1 is awarded for trivial single-bomb chains with ties going to the first finisher; consider requiring chain>=2 or a bonus effect in rules.ts if more impact is wanted."
       ],
-      "packagesTree": "822a288dadcf2577fe8e38de41c2485fda72732b+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
-      "at": "2026-11-02T01:17:36.766Z"
+      "packagesTree": "e17f84d0657428c9c1a29ccbbde719e116771c09+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-02T03:27:28.536Z"
     }
   ]
 }

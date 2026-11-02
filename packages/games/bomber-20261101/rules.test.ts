@@ -252,6 +252,67 @@ describe("knockouts", () => {
     expect(pl(w2, "a").data.chainSeq).toBe(2);
   });
 
+  describe("crown", () => {
+    /** Players `ids` each drop a bomb in a row at y, left to right 2 cells apart from x=1; the first one fires. */
+    function chainRow(w: World, ids: string[], y: number): void {
+      ids.forEach((id, i) => put(w, id, 1 + 2 * i, y));
+      tick(w, Object.fromEntries(ids.map((id) => [id, bomb])));
+      ids.forEach((id, i) => put(w, id, 1 + 2 * i, 11)); // everyone out of the way
+      const ordered = bombs(w).sort((p, q) => p.data.cx - q.data.cx);
+      ordered[0].data.fuse = 1;
+      for (let i = 1; i < ordered.length; i++) ordered[i].data.fuse = 40;
+      tick(w);
+      expect(bombs(w).length).toBe(0);
+    }
+    const settle = (w: World) => tick(w, {}, config.blastTicks + 1);
+    // explodeBombs awards the crown, then the same step counts it down once.
+    const fresh = config.crownTicks - 1;
+
+    it("goes to a player finishing a chain of 1 or more", () => {
+      const w1 = arena({ a: [1, 1] });
+      chainRow(w1, ["a"], 1);
+      expect(pl(w1, "a").data.chain).toBe(1);
+      expect(pl(w1, "a").data.crown).toBe(fresh);
+      const w = arena({ a: [1, 1], b: [3, 1] });
+      chainRow(w, ["a", "b"], 1);
+      expect(pl(w, "a").data.chain).toBe(2);
+      expect(pl(w, "a").data.crown).toBe(fresh);
+      expect(pl(w, "b").data.crown).toBe(0);
+    });
+
+    it("moves to a longer chain by another player and is not stolen by a shorter one", () => {
+      const w = arena({ a: [1, 1], b: [3, 1], c: [1, 5], d: [3, 5], e: [5, 5] });
+      chainRow(w, ["a", "b"], 1);
+      expect(pl(w, "a").data.crown).toBe(fresh);
+      settle(w);
+      chainRow(w, ["c", "d", "e"], 5);
+      expect(pl(w, "c").data.chain).toBe(3);
+      expect(pl(w, "c").data.crown).toBe(fresh);
+      expect(pl(w, "a").data.crown).toBe(0);
+      settle(w);
+      const held = pl(w, "c").data.crown;
+      expect(held).toBeGreaterThan(0);
+      chainRow(w, ["a", "b"], 1); // shorter chain by another player
+      expect(pl(w, "a").data.chain).toBe(2);
+      expect(pl(w, "a").data.crown).toBe(0);
+      expect(pl(w, "c").data.crown).toBe(held - 2); // the two ticks of chainRow
+    });
+
+    it("counts down by 1 per step and runs out after crownTicks steps", () => {
+      const w = arena({ a: [1, 1], b: [3, 1], z: [13, 11] });
+      chainRow(w, ["a", "b"], 1);
+      expect(pl(w, "a").data.crown).toBe(fresh);
+      tick(w);
+      expect(pl(w, "a").data.crown).toBe(fresh - 1);
+      tick(w, {}, fresh - 2);
+      expect(pl(w, "a").data.crown).toBe(1);
+      tick(w);
+      expect(pl(w, "a").data.crown).toBe(0);
+      tick(w);
+      expect(pl(w, "a").data.crown).toBe(0);
+    });
+  });
+
   it("self knockouts score nothing", () => {
     const w = arena({ a: [1, 1] });
     tick(w, { a: bomb });

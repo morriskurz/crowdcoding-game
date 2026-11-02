@@ -1,9 +1,9 @@
 {
-  "id": "24",
-  "spec": "When a player's chain ends, a small popup appears above their character showing their current chain count. It floats upward and fades out over 3 seconds, then disappears. Applies to all players equally.",
+  "id": "25",
+  "spec": "A gold crown sprite appears over the bomb origin of the player currently holding the longest chain, visible to all players. It updates live whenever the leader changes and fades out after 5 seconds.",
   "slug": "bomber-20261101",
   "game": "bomber-20261101",
-  "branch": "f/24-bomber-20261101",
+  "branch": "f/25-bomber-20261101",
   "status": "ready",
-  "updatedAt": "2026-11-02T01:18:11.721Z"
+  "updatedAt": "2026-11-02T03:27:58.282Z"
 }
