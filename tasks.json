@@ -34,5 +34,15 @@
         "minutes": 2.3
       }
     ]
+  },
+  {
+    "id": "t3",
+    "title": "test: assets onSnapshot chain sparkle and 5-victim flash",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/bomber-20261101/assets.test.ts"
+    ],
+    "estMin": 15,
+    "done": false
   }
 ]
