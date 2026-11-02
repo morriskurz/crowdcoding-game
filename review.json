@@ -48,6 +48,45 @@
       ],
       "packagesTree": "8495445947ceba6bb8a60eb11d44e602cf50d374+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
       "at": "2026-11-02T05:22:11.180Z"
+    },
+    {
+      "verdict": "pass",
+      "score": 3,
+      "playerImpact": true,
+      "visible": true,
+      "criteria": [
+        {
+          "text": "A chain of 3 or fewer bombs gives no bonus; a chain of 5 gives +20% and the chain starter's knockouts score 1.2 points each",
+          "met": true,
+          "evidence": "rules.ts explodeBombs: bonus=min(100,max(0,n-3)*10); knockOut adds 1+bonus/100 to score; rules.test.ts chain bonus tests cover chain 3 -> 0, chain 5 -> 20, KO worth 1.2."
+        },
+        {
+          "text": "The bonus never exceeds 2x (100% extra)",
+          "met": true,
+          "evidence": "Math.min(100, ...) in rules.ts; test with a 14-chain expects 100."
+        },
+        {
+          "text": "Knockouts by a player with a bonus show extra gold sparkle bursts at the knocked-out player's spot, one per link beyond 3",
+          "met": true,
+          "evidence": "assets.ts onSnapshot emits one gold particle burst per (chain-3) at the KO'd player's x,y when killer bonus>0. Not seen in after shots (scenario has only 1-chains); judged by diff."
+        },
+        {
+          "text": "The chain popup text shows the bonus, e.g. '5 chain +20%', visible to all players",
+          "met": true,
+          "evidence": "assets.ts chainSeq popup uses `${chain} chain +${bonus}%` when bonus>0; popups are drawn for all players. Not seen in shots (only '1 chain'); judged by diff. Persistent gold ring and xN.N label on bonus holders also added in drawPlayer."
+        },
+        {
+          "text": "The round winner is decided by weighted score",
+          "met": true,
+          "evidence": "endRound picks highest p.data.score; test for score-vs-KO winner passes; after/shot-3 leaderboard now titled SCORE and ranks by score (bot5 shows 2)."
+        }
+      ],
+      "findings": [
+        "Caveat, not blocking: in the preview scenario no 4+ chain occurs, so the after clip differs from before only by the SCORE leaderboard title; ring, xN.N label, sparkles and '+N%' popup are verified by diff only.",
+        "Optional: bonus is overwritten by every later chain (including 1-chains) in rules.ts explodeBombs, so a holder loses the multiplier on their next small bomb; consider keeping the max until round end if the spec allows."
+      ],
+      "packagesTree": "4b160f557eab73eac8f0d772ca09a6b5e3725db5+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-02T05:24:58.842Z"
     }
   ]
 }
