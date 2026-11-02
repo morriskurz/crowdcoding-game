@@ -252,6 +252,74 @@ describe("knockouts", () => {
     expect(pl(w2, "a").data.chainSeq).toBe(2);
   });
 
+  describe("chain bonus", () => {
+    /** Players drop bombs on the given cells, then a's bomb (first by position) fires and chains the rest. */
+    function chainOf(cells: [number, number][]): World {
+      const players: Record<string, [number, number]> = {};
+      cells.forEach(([cx, cy], i) => { players[`p${i}`] = [cx, cy]; });
+      const w = arena(players);
+      tick(w, Object.fromEntries(Object.keys(players).map((id) => [id, bomb])));
+      Object.keys(players).forEach((id, i) => put(w, id, 1 + (i % 13), 11));
+      const ordered = bombs(w).sort((p, q) => p.data.cy - q.data.cy || p.data.cx - q.data.cx);
+      ordered[0].data.fuse = 1;
+      for (let i = 1; i < ordered.length; i++) ordered[i].data.fuse = 40;
+      tick(w);
+      expect(bombs(w).length).toBe(0);
+      return w;
+    }
+    const row = (n: number, y = 1): [number, number][] => Array.from({ length: n }, (_, i) => [1 + 2 * i, y]);
+
+    it("a chain of 3 gives no bonus, a chain of 5 gives 20%", () => {
+      const w3 = chainOf(row(3));
+      expect(pl(w3, "p0").data.chain).toBe(3);
+      expect(pl(w3, "p0").data.bonus).toBe(0);
+      const w5 = chainOf(row(5));
+      expect(pl(w5, "p0").data.chain).toBe(5);
+      expect(pl(w5, "p0").data.bonus).toBe(20);
+    });
+
+    it("the bonus is capped at 100%", () => {
+      const w = chainOf([...row(7, 1), ...row(7, 3)]);
+      expect(pl(w, "p0").data.chain).toBe(14);
+      expect(pl(w, "p0").data.bonus).toBe(100);
+    });
+
+    it("a knockout made by a chain of 5 scores 1.2, a chain of 1 scores 1", () => {
+      const w = arena({ a: [1, 1], b: [3, 1], c: [5, 1], d: [7, 1], e: [9, 1], v: [1, 3] });
+      tick(w, { a: bomb, b: bomb, c: bomb, d: bomb, e: bomb });
+      ["a", "b", "c", "d", "e"].forEach((id, i) => put(w, id, 1 + 2 * i, 11));
+      put(w, "v", 1, 3);
+      const ordered = bombs(w).sort((p, q) => p.data.cx - q.data.cx);
+      ordered[0].data.fuse = 1;
+      for (let i = 1; i < ordered.length; i++) ordered[i].data.fuse = 40;
+      tick(w);
+      expect(pl(w, "v").data.dead).toBe(true);
+      expect(pl(w, "a").data.bonus).toBe(20);
+      expect(pl(w, "a").data.ko).toBe(1);
+      expect(pl(w, "a").data.score).toBeCloseTo(1.2, 5);
+
+      const w1 = arena({ a: [1, 1], v: [1, 3] });
+      tick(w1, { a: bomb });
+      put(w1, "a", 1, 11);
+      put(w1, "v", 1, 3);
+      bombs(w1)[0].data.fuse = 1;
+      tick(w1);
+      expect(pl(w1, "v").data.dead).toBe(true);
+      expect(pl(w1, "a").data.score).toBe(1);
+    });
+
+    it("the round winner is the highest score, not the most knockouts", () => {
+      const w = arena({ a: [1, 1], b: [3, 1] });
+      pl(w, "a").data.ko = 3;
+      pl(w, "a").data.score = 3;
+      pl(w, "b").data.ko = 2;
+      pl(w, "b").data.score = 4.4;
+      tick(w, {}, 180 * config.tickHz);
+      expect(rd(w).phase).toBe("results");
+      expect(rd(w).winner).toBe("b");
+    });
+  });
+
   describe("crown", () => {
     /** Players `ids` each drop a bomb in a row at y, left to right 2 cells apart from x=1; the first one fires. */
     function chainRow(w: World, ids: string[], y: number): void {
@@ -385,6 +453,7 @@ describe("round loop", () => {
   it("180 s of play, 5 s of results, then a fresh arena with scores reset", () => {
     const w = arena({ a: [1, 1] });
     pl(w, "a").data.ko = 4;
+    pl(w, "a").data.score = 4;
     const before = rd(w).tiles;
     expect(rd(w).ticksLeft).toBe(180 * config.tickHz);
     tick(w, {}, 180 * config.tickHz - 1);
