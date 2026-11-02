@@ -443,12 +443,12 @@ function explodeBombs(w: World, r: RoundData): void {
       p.data.chainSeq++;
     }
   }
-  // Crown: the longest chain (at least 2 bombs) wears it. A player who just finished a chain that
+  // Crown: the longest chain (at least 1 bomb) wears it. A player who just finished a chain that
   // matches the max takes it from the holder; a shorter chain never steals it.
   let max = 0;
   const all = bodies<PlayerData>(w, "player");
   for (const p of all) if (p.data.chain > max) max = p.data.chain;
-  if (max >= 2) {
+  if (max >= 1) {
     let leader: Entity<PlayerData> | undefined;
     for (const owner of sizes.keys()) {
       const p = get<PlayerData>(w, owner);
