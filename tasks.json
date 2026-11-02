@@ -43,6 +43,19 @@
       "packages/games/bomber-20261101/assets.test.ts"
     ],
     "estMin": 15,
-    "done": false
+    "actualMin": 1.4,
+    "done": true,
+    "attempts": [
+      {
+        "tier": "sonnet",
+        "ok": false,
+        "minutes": 0.9
+      },
+      {
+        "tier": "sonnet",
+        "ok": true,
+        "minutes": 0.5
+      }
+    ]
   }
 ]
