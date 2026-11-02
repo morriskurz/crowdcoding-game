@@ -21,6 +21,7 @@ interface Popup { x: number; y: number; text: string; color: string; t0: number;
 const popups: Popup[] = [];
 let leader: string | null = null;
 let flashStart = -Infinity;
+const chainHits: Array<{ killer: string; t: number }> = [];
 const trails = new Map<string, { x: number; y: number; t: number }[]>();
 
 function num(v: unknown, d: number): number {
@@ -454,7 +455,6 @@ function nearMe(next: Readonly<Ents>, x: number, y: number, fx: Fx): number {
 export function onSnapshot(prev: Readonly<Ents> | null, next: Readonly<Ents>, fx: Fx): void {
   latest = next as Ents;
   if (!prev) return;
-  const chainKills = new Map<string, number>();
   const pr = dataOf(prev["round"]), nr = dataOf(next["round"]);
   if (pr.phase !== "results" && nr.phase === "results") {
     const wid = str(nr.winner, "");
@@ -462,7 +462,7 @@ export function onSnapshot(prev: Readonly<Ents> | null, next: Readonly<Ents>, fx
     if (wEnt) fx.particles.emit({ x: wEnt.x, y: wEnt.y, count: 70, color: "#ffd54a", speed: 240, life: 1.3, size: 3, drag: 2 });
     fx.sfx.play(wid && wid === fx.me ? "win" : "powerup");
   }
-  if (pr.phase === "results" && nr.phase === "play") { popups.length = 0; flashStart = -Infinity; }
+  if (pr.phase === "results" && nr.phase === "play") { popups.length = 0; flashStart = -Infinity; chainHits.length = 0; }
 
   // Broken bricks: debris where a block turned into floor.
   const t0 = tilesOf(prev["round"]), t1 = tilesOf(next["round"]);
@@ -528,7 +528,17 @@ export function onSnapshot(prev: Readonly<Ents> | null, next: Readonly<Ents>, fx
       }
       if (killer && killerEnt && num(dataOf(killerEnt).chain, 0) >= 2) {
         fx.particles.emit({ x: p.x, y: p.y, count: 12, color: "#ffd54a", speed: 150, life: 0.6, size: 3, drag: 2 });
-        chainKills.set(killer, (chainKills.get(killer) ?? 0) + 1);
+        fx.particles.emit({ x: p.x, y: p.y, count: 8, color: "#ffd54a", speed: 260, life: 0.6, size: 2, drag: 2 });
+        popup(p.x, p.y - 40, "CHAIN KO!", "#ffd54a", fx, 1, 18, true);
+        chainHits.push({ killer, t: fx.time });
+        for (let i = chainHits.length - 1; i >= 0; i--) {
+          if (fx.time - chainHits[i].t > 1) chainHits.splice(i, 1);
+        }
+        for (const h of chainHits) {
+          let n = 0;
+          for (const o of chainHits) if (o.killer === h.killer) n++;
+          if (n >= 5) { flashStart = fx.time; break; }
+        }
       }
     }
     if (num(b.ko, 0) > num(a.ko, 0)) {
@@ -543,9 +553,6 @@ export function onSnapshot(prev: Readonly<Ents> | null, next: Readonly<Ents>, fx
     if (num(b.score, 0) - num(a.score, 0) >= 1.5 && num(b.mult, 0) > 0) {
       popup(p.x, p.y - 30, "+1.5 x1.5", "#ff3bd4", fx, 1.4, 18, true);
     }
-  }
-  for (const n of chainKills.values()) {
-    if (n >= 5) { flashStart = fx.time; break; }
   }
 }
 
