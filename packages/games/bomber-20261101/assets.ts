@@ -194,13 +194,30 @@ function drawPlayer(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
   if (mult > 0) {
     if (mult < 30) ctx.globalAlpha = Math.sin(fx.time * 24) > 0 ? 1 : 0.25;
     else ctx.globalAlpha = 0.6 + 0.4 * pulse(fx.time, 0.5);
-    drawGlow(ctx, e.x, e.y, r * 2.6, "#ffe45c", 0.5);
-    ctx.strokeStyle = "#ffe45c";
-    ctx.lineWidth = 3;
+    drawGlow(ctx, e.x, e.y, r * 3.2, "#ff3bd4", 0.6);
+    ctx.strokeStyle = "#ff3bd4";
+    ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.arc(e.x, e.y, r + 9, 0, Math.PI * 2);
+    ctx.arc(e.x, e.y, r + 12, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.strokeStyle = "#ffe6f5";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, r + 8, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = "#ffffff";
+    for (let k = 0; k < 8; k++) {
+      const a = fx.time * 1.5 + k * Math.PI / 4;
+      ctx.beginPath();
+      ctx.arc(e.x + Math.cos(a) * (r + 12), e.y + Math.sin(a) * (r + 12), 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.globalAlpha = 1;
+    ctx.font = "bold 12px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#ff3bd4";
+    ctx.fillText("x1.5", e.x, e.y + r + 16);
   }
   if (protect > 0) {
     ctx.globalAlpha = Math.sin(fx.time * 28) > 0 ? 1 : 0.35;
@@ -497,6 +514,9 @@ export function onSnapshot(prev: Readonly<Ents> | null, next: Readonly<Ents>, fx
       popup(p.x, p.y - 34, bonus > 0 ? `${num(b.chain, 0)} chain +${bonus}%` : `${num(b.chain, 0)} chain`, playerColor(p.id), fx, 3, 22, true);
     }
     if (a.dead === true && b.dead !== true && mine) fx.sfx.play("powerup", { volume: 0.5 });
+    if (num(b.score, 0) - num(a.score, 0) >= 1.5 && num(b.mult, 0) > 0) {
+      popup(p.x, p.y - 30, "+1.5 x1.5", "#ff3bd4", fx, 1.4, 18, true);
+    }
   }
 }
 
