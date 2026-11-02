@@ -53,5 +53,15 @@
         "minutes": 1.8
       }
     ]
+  },
+  {
+    "id": "t4",
+    "title": "assets: bigger distinct multiplier ring + x1.5 popup",
+    "tier": "muse",
+    "files": [
+      "packages/games/bomber-20261101/assets.ts"
+    ],
+    "estMin": 10,
+    "done": false
   }
 ]
