@@ -1,9 +1,9 @@
 {
-  "id": "28",
-  "spec": "When a bomb lands, draw an expanding circle ring at its position: radius grows from 0 to 3 tiles over 2 seconds, fading out as it expands, showing the blast range to all players and spectators before knockouts start.",
+  "id": "29",
+  "spec": "When a player is knocked out as part of a chain, spawn a sparkle burst at each chain victim: 12 gold particles, 0.6s lifetime, 3px radius. If the chain reaches 5+ victims, add a screen-wide golden flash lasting 0.3s, visible to all spectators.",
   "slug": "bomber-20261101",
   "game": "bomber-20261101",
-  "branch": "f/28-bomber-20261101",
+  "branch": "f/29-bomber-20261101",
   "status": "ready",
-  "updatedAt": "2026-11-02T09:22:38.727Z"
+  "updatedAt": "2026-11-02T11:30:39.982Z"
 }

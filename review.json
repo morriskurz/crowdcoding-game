@@ -1,38 +1,116 @@
 {
-  "intent": "When any player drops a bomb, a ring spreads out from it and fades, so everyone (players and spectators) sees the danger zone before the blast knocks players out.",
+  "intent": "When a bomb chain knocks players out, each victim bursts in a quick gold sparkle, and a chain that takes down five or more players at once floods every screen, spectators included, with a brief golden flash.",
   "accept": [
-    "Every lit bomb shows a ring centred on it whose radius grows from 0 to 3 tiles over its first 2 seconds",
-    "The ring fades out as it expands and is gone after 2 seconds, with no ring left once the bomb has exploded",
-    "The ring is visible in the before/after clip for bombs of any player and does not hide players"
+    "A player knocked out by a chain (killer's chain of 2+ bombs) emits a 12-particle gold burst, 0.6s life, 3px size at their position",
+    "A non-chain knockout keeps only the existing effect, no gold sparkle",
+    "When 5 or more players are knocked out by the same chain in one snapshot, a full-screen golden flash fades over 0.3s for all viewers",
+    "Flash never blocks the view for long and does not appear for smaller chains"
   ],
   "rounds": [
     {
-      "verdict": "pass",
-      "score": 3,
-      "playerImpact": true,
-      "visible": true,
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": false,
+      "visible": false,
       "criteria": [
         {
-          "text": "Every lit bomb shows a ring centred on it whose radius grows from 0 to 3 tiles over its first 2 seconds",
+          "text": "A player knocked out by a chain (killer's chain of 2+ bombs) emits a 12-particle gold burst, 0.6s life, 3px size at their position",
           "met": true,
-          "evidence": "after/shot-1 and shot-3: orange rings centred on freshly dropped bombs at different growth stages; assets.ts drawBomb uses age 0..30 ticks (2s at 15Hz) and R = t*3*cell."
+          "evidence": "diff assets.ts onSnapshot: emit count 12, #ffd54a, life 0.6, size 3 when killer chain >= 2. No kill visible in after/shot-1..3 so not seen, and no test covers it."
         },
         {
-          "text": "The ring fades out as it expands and is gone after 2 seconds, with no ring left once the bomb has exploded",
+          "text": "A non-chain knockout keeps only the existing effect, no gold sparkle",
           "met": true,
-          "evidence": "alpha = 1 - t in assets.ts; the ring is only drawn for age <= 30 of the 45-tick fuse, and older bombs in after/shot-2 and shot-3 have no ring."
+          "evidence": "diff: new emit is guarded by killer chain >= 2; the existing 40-particle death burst is untouched."
         },
         {
-          "text": "The ring is visible in the before/after clip for bombs of any player and does not hide players",
+          "text": "When 5 or more players are knocked out by the same chain in one snapshot, a full-screen golden flash fades over 0.3s for all viewers",
           "met": true,
-          "evidence": "after/shot-2: ring around the new bomb where before/shot-2 has none; after/shot-3 shows three rings on bombs of different players; the ring is a thin stroke with a 12% fill, and players and labels stay readable."
+          "evidence": "diff: chainKills per killer, n>=5 sets flashStart; drawOverlay draws a #ffd54a fillRect with alpha 0.55 fading over 0.3s. Not visible in any after shot; no test."
+        },
+        {
+          "text": "Flash never blocks the view for long and does not appear for smaller chains",
+          "met": true,
+          "evidence": "diff: 0.3s duration, peak alpha 0.55, only when n>=5 for one killer; reset on new round."
         }
       ],
       "findings": [
-        "Optional polish: the ring is circular but real blasts are cross-shaped, so it can overstate danger diagonally. In assets.ts drawBomb, consider clipping or marking the lanes. No test was added, but the change is visual only."
+        "Effect is nearly invisible: after/shot-2 and shot-3 look identical to before apart from normal play. A 12-particle, 0.6s, 3px gold burst sits on top of the existing 40-particle death burst and the existing gold burst for bonus chains (chain>3), so a phone viewer cannot tell it apart. In assets.ts make the chain-kill sparkle larger and distinct, e.g. more particles, bigger size, a ring or star shap",
+        "The 5+ victim flash needs 5 kills by one killer in a single snapshot, which almost never happens in the scenario, so it is not seen in the clip. In assets.ts lower the threshold (e.g. 3) or count kills over a short window (~1s) per killer, and lengthen the flash a little so it registers.",
+        "Purely cosmetic: nothing changes what players do or decide. Add a gameplay-affecting element in rules.ts or config.ts, e.g. a score bonus or short speed boost for chain kills of 3+, and show it.",
+        "No tests cover the new onSnapshot branches (chain sparkle, flash trigger). Add an assets test with a mock fx that asserts the emit and the flash for 5+ and none for smaller chains."
       ],
-      "packagesTree": "f63c2e3677e5dbdf0cdccebdef50c5d6bbd25f4b+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
-      "at": "2026-11-02T09:22:05.272Z"
+      "packagesTree": "daea0ffa3beddccb99e9ebbe127054341db61257+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-02T11:23:12.951Z"
+    },
+    {
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": false,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "A player knocked out by a chain (killer's chain of 2+ bombs) emits a 12-particle gold burst, 0.6s life, 3px size at their position",
+          "met": true,
+          "evidence": "diff assets.ts onSnapshot: emit count 12, #ffd54a, speed 150, life 0.6, size 3 at victim when killer chain >= 2, plus extra ring and CHAIN KO! popup. Not seen in after/shot-1..3: shot-3 shows a death (bot5 ghost) with only '1 chain' popups and no gold."
+        },
+        {
+          "text": "A non-chain knockout keeps only the existing effect, no gold sparkle",
+          "met": true,
+          "evidence": "diff: new emit, popup and chainHits are inside the killer chain >= 2 guard; the existing death burst is untouched."
+        },
+        {
+          "text": "When 5 or more players are knocked out by the same chain in one snapshot, a full-screen golden flash fades over 0.3s for all viewers",
+          "met": true,
+          "evidence": "diff: chainHits per killer within a 1s window, n>=5 sets flashStart; drawOverlay fills #ffd54a at alpha 0.55 fading over 0.3s. No flash in any after shot."
+        },
+        {
+          "text": "Flash never blocks the view for long and does not appear for smaller chains",
+          "met": true,
+          "evidence": "diff: 0.3s duration, peak alpha 0.55, needs 5 hits from one killer inside 1s, reset on new round."
+        }
+      ],
+      "findings": [
+        "Chain sparkle never shows in the clip: in the after shots every bomber has only '1 chain' and the single death in after/shot-3 has no gold, so the chain>=2 gate rarely fires in the scenario. In assets.ts check what 'chain' counts in the killer data (it may be the count of the current bomb chain, not 2+). If the gate is too strict, trigger on killer chain >= 2 OR on 2+ victims in one snapshot, so t",
+        "The 5+ flash needs 5 kills from one killer inside 1s, which essentially never happens with 12 bots. After shot-3 shows no flash. The spec fixes 5+ and 0.3s, so keep those, but make sure the clip scenario can reach it, or accept that the flash is a rare bonus and make the sparkle (finding 1) the visible part.",
+        "No tests cover the new onSnapshot branches (chain sparkle emit, popup, flash trigger for 5+, none for smaller chains). Add them in packages/games/bomber-20261101/assets.test.ts with a mock fx."
+      ],
+      "packagesTree": "30c26a59603c2d6a6042b87bfba3377e454aa96b+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-02T11:26:45.082Z"
+    },
+    {
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": false,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "A player knocked out by a chain (killer's chain of 2+ bombs) emits a 12-particle gold burst, 0.6s life, 3px size at their position",
+          "met": true,
+          "evidence": "diff assets.ts onSnapshot emits count 12, #ffd54a, life 0.6, size 3 when killer chain >= 2; assets.test.ts asserts it for chain 2 and not for chain 1. Not seen in after/shot-1..3: the only death (shot-3, bot5 ghost) shows only '1 chain' popups and no gold."
+        },
+        {
+          "text": "A non-chain knockout keeps only the existing effect, no gold sparkle",
+          "met": true,
+          "evidence": "diff: new emit is inside the killer chain >= 2 guard; test 'emits no chain burst when the killer chain is 1'."
+        },
+        {
+          "text": "When 5 or more players are knocked out by the same chain in one snapshot, a full-screen golden flash fades over 0.3s for all viewers",
+          "met": true,
+          "evidence": "diff: drawOverlay fills #ffd54a alpha 0.55 fading over 0.3s when flashStart set by 5 hits; test checks flash at 0.1s and none at 0.4s. Not visible in any after shot."
+        },
+        {
+          "text": "Flash never blocks the view for long and does not appear for smaller chains",
+          "met": true,
+          "evidence": "test: 4 chained KOs give no flash; 0.3s duration, peak alpha 0.55."
+        }
+      ],
+      "findings": [
+        "Not visible in the clip: after/shot-1..3 are indistinguishable from before except normal play; every bomber shows only '1 chain', so the chain>=2 gate and the 5-kill flash never fire in the scenario. This is an inherent limit of the fixed spec numbers; to make it noticeable, in assets.ts also trigger the sparkle/CHAIN KO popup when 2+ victims die in one snapshot from the same killer, not only when",
+        "Purely cosmetic: it changes nothing a player does or decides. The spec asked for no gameplay change, so this caps the score at about 2; if a higher score is wanted, a rules.ts/config.ts reward for chain kills would be needed, which the spec does not request."
+      ],
+      "packagesTree": "9ea082613fc60d84abbf4f639a12b3e1f95d35eb+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-02T11:30:10.377Z"
     }
   ]
 }

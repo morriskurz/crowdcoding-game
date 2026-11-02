@@ -20,6 +20,8 @@ let latest: Ents = {};
 interface Popup { x: number; y: number; text: string; color: string; t0: number; life?: number; size?: number; outline?: boolean }
 const popups: Popup[] = [];
 let leader: string | null = null;
+let flashStart = -Infinity;
+const chainHits: Array<{ killer: string; t: number }> = [];
 const trails = new Map<string, { x: number; y: number; t: number }[]>();
 
 function num(v: unknown, d: number): number {
@@ -460,7 +462,7 @@ export function onSnapshot(prev: Readonly<Ents> | null, next: Readonly<Ents>, fx
     if (wEnt) fx.particles.emit({ x: wEnt.x, y: wEnt.y, count: 70, color: "#ffd54a", speed: 240, life: 1.3, size: 3, drag: 2 });
     fx.sfx.play(wid && wid === fx.me ? "win" : "powerup");
   }
-  if (pr.phase === "results" && nr.phase === "play") popups.length = 0;
+  if (pr.phase === "results" && nr.phase === "play") { popups.length = 0; flashStart = -Infinity; chainHits.length = 0; }
 
   // Broken bricks: debris where a block turned into floor.
   const t0 = tilesOf(prev["round"]), t1 = tilesOf(next["round"]);
@@ -522,6 +524,20 @@ export function onSnapshot(prev: Readonly<Ents> | null, next: Readonly<Ents>, fx
         const links = Math.max(0, num(dataOf(killerEnt).chain, 0) - 3);
         for (let k = 0; k < links; k++) {
           fx.particles.emit({ x: p.x, y: p.y, count: 18, color: "#ffd54a", speed: 200 + k * 15, life: 0.8, size: 3, drag: 2 });
+        }
+      }
+      if (killer && killerEnt && num(dataOf(killerEnt).chain, 0) >= 2) {
+        fx.particles.emit({ x: p.x, y: p.y, count: 12, color: "#ffd54a", speed: 150, life: 0.6, size: 3, drag: 2 });
+        fx.particles.emit({ x: p.x, y: p.y, count: 8, color: "#ffd54a", speed: 260, life: 0.6, size: 2, drag: 2 });
+        popup(p.x, p.y - 40, "CHAIN KO!", "#ffd54a", fx, 1, 18, true);
+        chainHits.push({ killer, t: fx.time });
+        for (let i = chainHits.length - 1; i >= 0; i--) {
+          if (fx.time - chainHits[i].t > 1) chainHits.splice(i, 1);
+        }
+        for (const h of chainHits) {
+          let n = 0;
+          for (const o of chainHits) if (o.killer === h.killer) n++;
+          if (n >= 5) { flashStart = fx.time; break; }
         }
       }
     }
@@ -591,6 +607,12 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, fx: Fx): void {
   ctx.save();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+  const flashAge = fx.time - flashStart;
+  if (flashAge >= 0 && flashAge < 0.3) {
+    ctx.globalAlpha = 0.55 * (1 - flashAge / 0.3);
+    ctx.fillStyle = "#ffd54a";
+    ctx.fillRect(0, 0, W, H);
+  }
 
   // Popups float up from where they happened.
   ctx.font = "bold 17px system-ui, sans-serif";

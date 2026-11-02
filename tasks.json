@@ -1,19 +1,60 @@
 [
   {
     "id": "t1",
-    "title": "assets: expanding fading blast-warning ring around each bomb",
+    "title": "assets: chain victim gold sparkle + 5-victim golden screen flash",
     "tier": "muse",
     "files": [
       "packages/games/bomber-20261101/assets.ts"
     ],
-    "estMin": 10,
-    "actualMin": 2.2,
+    "estMin": 15,
+    "actualMin": 2.3,
     "done": true,
     "attempts": [
       {
         "tier": "muse",
         "ok": true,
-        "minutes": 2.2
+        "minutes": 2.3
+      }
+    ]
+  },
+  {
+    "id": "t2",
+    "title": "assets: make chain sparkle distinct, count flash kills over 1s window",
+    "tier": "muse",
+    "files": [
+      "packages/games/bomber-20261101/assets.ts"
+    ],
+    "estMin": 10,
+    "actualMin": 2.3,
+    "done": true,
+    "attempts": [
+      {
+        "tier": "muse",
+        "ok": true,
+        "minutes": 2.3
+      }
+    ]
+  },
+  {
+    "id": "t3",
+    "title": "test: assets onSnapshot chain sparkle and 5-victim flash",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/bomber-20261101/assets.test.ts"
+    ],
+    "estMin": 15,
+    "actualMin": 1.4,
+    "done": true,
+    "attempts": [
+      {
+        "tier": "sonnet",
+        "ok": false,
+        "minutes": 0.9
+      },
+      {
+        "tier": "sonnet",
+        "ok": true,
+        "minutes": 0.5
       }
     ]
   }
