@@ -35,5 +35,15 @@
         "minutes": 1.9
       }
     ]
+  },
+  {
+    "id": "t3",
+    "title": "assets: leaderboard ranks/shows weighted score; gold ring on players holding a chain bonus",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/bomber-20261101/assets.ts"
+    ],
+    "estMin": 10,
+    "done": false
   }
 ]
