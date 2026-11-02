@@ -1,44 +1,42 @@
 [
   {
     "id": "t1",
-    "title": "rules: when a chain of bombs finishes exploding, record its bomb count on the root owner player (chain count + incrementing counter) + tests",
-    "tier": "sonnet",
+    "title": "config: crownTicks = 75 (5 s)",
+    "tier": "muse",
     "files": [
-      "packages/games/bomber-20261101/rules.ts",
-      "packages/games/bomber-20261101/rules.test.ts"
+      "packages/games/bomber-20261101/config.ts"
     ],
-    "estMin": 15,
-    "actualMin": 1.4,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "sonnet",
-        "ok": false,
-        "minutes": 0.8
-      },
-      {
-        "tier": "sonnet",
-        "ok": true,
-        "minutes": 0.6
-      }
-    ]
+    "estMin": 3,
+    "done": false
   },
   {
     "id": "t2",
-    "title": "assets: chain-count popup above the owner, rising and fading over 3s",
+    "title": "rules: crown ticks on PlayerData awarded to longest-chain leader, counts down, tests",
     "tier": "sonnet",
+    "files": [
+      "packages/games/bomber-20261101/rules.ts"
+    ],
+    "estMin": 15,
+    "done": false
+  },
+  {
+    "id": "t3",
+    "title": "rules tests: crown award, handover, expiry",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/bomber-20261101/rules.test.ts"
+    ],
+    "estMin": 12,
+    "done": false
+  },
+  {
+    "id": "t4",
+    "title": "assets: draw gold crown over player with crown>0, fading in last second",
+    "tier": "muse",
     "files": [
       "packages/games/bomber-20261101/assets.ts"
     ],
-    "estMin": 15,
-    "actualMin": 1,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "sonnet",
-        "ok": true,
-        "minutes": 1
-      }
-    ]
+    "estMin": 10,
+    "done": false
   }
 ]
