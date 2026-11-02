@@ -21,6 +21,8 @@ export interface BlockType {
 
 export interface PlayerData {
   ko: number; // knockouts scored this round
+  bonus: number; // percent extra per knockout from the last chain (0..100)
+  score: number; // weighted knockout points this round (decides the winner)
   deaths: number; // times knocked out this round
   dead: boolean; // ghost waiting to respawn
   respawn: number; // ticks until respawn while dead
@@ -280,6 +282,8 @@ function startRound(w: World, r: Entity<RoundData>): void {
   for (const p of bodies<PlayerData>(w, "player")) {
     const d = p.data;
     d.ko = 0;
+    d.bonus = 0;
+    d.score = 0;
     d.deaths = 0;
     d.range = config.blastRange;
     d.bombs = config.bombsPerPlayer;
@@ -295,7 +299,7 @@ function endRound(w: World, r: Entity<RoundData>): void {
   clearKind(w, "bomb");
   clearKind(w, "blast");
   let best: Entity<PlayerData> | null = null;
-  for (const p of bodies<PlayerData>(w, "player")) if (p.data.ko > 0 && (!best || p.data.ko > best.data.ko)) best = p;
+  for (const p of bodies<PlayerData>(w, "player")) if (p.data.score > 0 && (!best || p.data.score > best.data.score)) best = p;
   r.data.winner = best ? best.id : "";
   r.data.phase = "results";
   r.data.ticksLeft = config.resultsSeconds * config.tickHz;
@@ -440,6 +444,7 @@ function explodeBombs(w: World, r: RoundData): void {
     const p = get<PlayerData>(w, owner);
     if (p && p.kind === "player") {
       p.data.chain = n;
+      p.data.bonus = Math.min(100, Math.max(0, n - 3) * 10);
       p.data.chainSeq++;
     }
   }
@@ -475,7 +480,10 @@ function knockOut(w: World, p: Entity<PlayerData>, killer: string): void {
   p.vx = 0;
   p.vy = 0;
   const k = killer !== p.id ? get<PlayerData>(w, killer) : undefined;
-  if (k && k.kind === "player") k.data.ko++;
+  if (k && k.kind === "player") {
+    k.data.ko++;
+    k.data.score += 1 + k.data.bonus / 100;
+  }
 }
 
 // --- bots ------------------------------------------------------------------------------------------------
@@ -616,7 +624,7 @@ function botInput(w: World, id: string, n: number): Input {
 // --- rules -----------------------------------------------------------------------------------------------
 
 export function newPlayerData(): PlayerData {
-  return { ko: 0, deaths: 0, dead: false, respawn: 0, protect: 0, range: config.blastRange, bombs: config.bombsPerPlayer, bomb: BOMB_TYPES[0].name, held: false, killer: "", home: -1, born: 0, chain: 0, crown: 0, chainSeq: 0 };
+  return { ko: 0, deaths: 0, dead: false, respawn: 0, protect: 0, range: config.blastRange, bombs: config.bombsPerPlayer, bomb: BOMB_TYPES[0].name, held: false, killer: "", home: -1, born: 0, chain: 0, crown: 0, chainSeq: 0, bonus: 0, score: 0 };
 }
 
 export const rules: GameRules = {
