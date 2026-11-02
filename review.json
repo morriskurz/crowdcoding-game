@@ -6,5 +6,40 @@
     "It appears for every player equally, including bots and other players, not only the local player",
     "A test shows the chain count and event counter on the starting player's data increase after a chain of 3 bombs"
   ],
-  "rounds": []
+  "rounds": [
+    {
+      "verdict": "pass",
+      "score": 3,
+      "playerImpact": true,
+      "visible": true,
+      "criteria": [
+        {
+          "text": "When a chain of bombs has finished exploding, the player who started it has a popup above them showing the chain's bomb count (a single bomb shows 1)",
+          "met": true,
+          "evidence": "after/shot-2 and shot-3: '1 chain' popups in player colours above bomb owners (before/shot-2 has none); rules.ts explodeBombs sets chain/chainSeq on rootOwner; assets.ts onSnapshot spawns the popup."
+        },
+        {
+          "text": "The popup floats upward, fades gradually over 3 seconds and then disappears",
+          "met": true,
+          "evidence": "assets.ts: popup life=3, alpha = 1 - age/life, y rises age*28, removed when age > life; after/shot-3 shows older popups drawn fainter and higher."
+        },
+        {
+          "text": "It appears for every player equally, including bots and other players, not only the local player",
+          "met": true,
+          "evidence": "after/shot-3: popups over many bots (lime and cyan) while spectating bot3; the trigger is not gated on 'mine'."
+        },
+        {
+          "text": "A test shows the chain count and event counter on the starting player's data increase after a chain of 3 bombs",
+          "met": true,
+          "evidence": "rules.test.ts 'records the chain size and a rising chainSeq...' asserts chain==3 and chainSeq==1 for a 3-bomb chain, and chainSeq==2 after a second chain."
+        }
+      ],
+      "findings": [
+        "Optional polish: with 12 bots the 3s '1 chain' popups pile up and overlap player names and each other (after/shot-3). In assets.ts consider showing the popup only for chains of 2 or more, or a shorter life or smaller size for other players, if the viewer spec allows. Not a blocker.",
+        "The ocr gate failure is unrelated to the popup. report.json says 'tesseract failed on after/shot-1.png: undefined', and shot-1 has no popups. It is a tool failure."
+      ],
+      "packagesTree": "822a288dadcf2577fe8e38de41c2485fda72732b+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-02T01:17:36.766Z"
+    }
+  ]
 }
