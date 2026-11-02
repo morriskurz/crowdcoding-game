@@ -6,5 +6,40 @@
     "The crown fades out and disappears 5 seconds after it was awarded",
     "In the after clip a crown is visible over a player after a chain reaction"
   ],
-  "rounds": []
+  "rounds": [
+    {
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": true,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "A player whose bomb chain is longer than every other player's current chain gets a gold crown drawn above them",
+          "met": true,
+          "evidence": "rules.ts explodeBombs sets crown=config.crownTicks for the max chain (>=2) owner; test 'goes to a player finishing a chain of 2 or more'. Not visible in any after shot or the 12 s video (only '1 chain' popups)."
+        },
+        {
+          "text": "When another player completes a longer chain, the crown moves to them and leaves the previous holder",
+          "met": true,
+          "evidence": "rules.ts resets crown to 0 for all but leader; test 'moves to a longer chain by another player and is not stolen by a shorter one'. Not seen in clip."
+        },
+        {
+          "text": "The crown fades out and disappears 5 seconds after it was awarded",
+          "met": true,
+          "evidence": "config.crownTicks=75, decremented per tick in step; assets.ts alpha=crown/15; test 'counts down by 1 per step and runs out after crownTicks steps'."
+        },
+        {
+          "text": "In the after clip a crown is visible over a player after a chain reaction",
+          "met": false,
+          "evidence": "after/shot-1..3 and every 1 s frame of after/video.mp4 show only '1 chain' popups and no crown; shot-2 is identical to before/shot-2."
+        }
+      ],
+      "findings": [
+        "Crown never appears in the preview scenario: in rules.ts explodeBombs the threshold 'max >= 2' is too strict because bots only make 1-bomb chains in the clip. Lower it to max >= 1 (ties do not steal from the current holder) so the first detonation crowns someone, or make bots chain bombs, so the crown shows in the after clip.",
+        "Crown lasts only 5 s and is small (about 22 px wide) above a ~35 px player: in assets.ts drawPlayer enlarge it (about 1.5x) and fade only over the last second (alpha clamp(crown/15) is fine), so a phone viewer notices it."
+      ],
+      "packagesTree": "28d12219839ade3307ea52d4d09e5b5edc2f4d55+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-02T03:22:58.278Z"
+    }
+  ]
 }
