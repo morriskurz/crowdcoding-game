@@ -31,6 +31,9 @@ export const config = {
 
   // Crown
   crownTicks: 75, // ticks the leader's gold crown lasts (5 s)
+  chainMultMinChain: 3, // bombs in a chain needed to earn the score multiplier
+  chainMultTicks: 150, // multiplier lasts 10 s
+  chainMultFactor: 1.5, // score factor on knockouts while active
 
   // Round loop
   roundSeconds: 180,

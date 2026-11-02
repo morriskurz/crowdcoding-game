@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createWorld, joinPlayer, runTick, bodies, get, type Input, type World } from "@tcg/shared";
+import { createWorld, joinPlayer, runTick, bodies, get, spawn, type Input, type World } from "@tcg/shared";
 import {
   rules, buildTiles, centre, cellOf, idx, tileAt, freeCell, BLOCK_TYPES, BOMB_TYPES, PICKUP_TYPES, ROUND_ID,
   type BlastData, type BombData, type PickupData, type PlayerData, type RoundData,
@@ -284,7 +284,7 @@ describe("knockouts", () => {
       expect(pl(w, "p0").data.bonus).toBe(100);
     });
 
-    it("a knockout made by a chain of 5 scores 1.2, a chain of 1 scores 1", () => {
+    it("a knockout made by a chain of 5 scores 1.2 x multiplier, a chain of 1 scores 1", () => {
       const w = arena({ a: [1, 1], b: [3, 1], c: [5, 1], d: [7, 1], e: [9, 1], v: [1, 3] });
       tick(w, { a: bomb, b: bomb, c: bomb, d: bomb, e: bomb });
       ["a", "b", "c", "d", "e"].forEach((id, i) => put(w, id, 1 + 2 * i, 11));
@@ -296,7 +296,7 @@ describe("knockouts", () => {
       expect(pl(w, "v").data.dead).toBe(true);
       expect(pl(w, "a").data.bonus).toBe(20);
       expect(pl(w, "a").data.ko).toBe(1);
-      expect(pl(w, "a").data.score).toBeCloseTo(1.2, 5);
+      expect(pl(w, "a").data.score).toBeCloseTo(1.2 * config.chainMultFactor, 5); // chain of 5 also earns the multiplier
 
       const w1 = arena({ a: [1, 1], v: [1, 3] });
       tick(w1, { a: bomb });
@@ -378,6 +378,65 @@ describe("knockouts", () => {
       expect(pl(w, "a").data.crown).toBe(0);
       tick(w);
       expect(pl(w, "a").data.crown).toBe(0);
+    });
+  });
+
+  describe("chain multiplier", () => {
+    /** a, b, c bomb in a row at y=1 and chain; victim v stands in the first blast's path. */
+    function chain3(n = 3): World {
+      const ids = ["a", "b", "c"].slice(0, n);
+      const w = arena({ a: [1, 1], b: [3, 1], c: [5, 1], v: [1, 3] });
+      tick(w, Object.fromEntries(ids.map((id) => [id, bomb])));
+      ids.forEach((id, i) => put(w, id, 1 + 2 * i, 11));
+      if (n < 3) put(w, "c", 13, 11);
+      put(w, "v", 1, 3);
+      const ordered = bombs(w).sort((p, q) => p.data.cx - q.data.cx);
+      ordered[0].data.fuse = 1;
+      for (let i = 1; i < ordered.length; i++) ordered[i].data.fuse = 40;
+      tick(w);
+      return w;
+    }
+    const blastOn = (w: World, owner: string) =>
+      spawn<BlastData>(w, { kind: "blast", x: centre(1), y: centre(3), r: 1, data: { owner, ticksLeft: 5, cx: 1, cy: 3, up: 0, down: 0, left: 0, right: 0 } });
+
+    it("a chain of 3 sets the multiplier and its knockout scores 1.5x", () => {
+      const w = chain3(3);
+      expect(pl(w, "a").data.chain).toBe(3);
+      expect(pl(w, "a").data.mult).toBe(config.chainMultTicks - 1);
+      expect(pl(w, "v").data.dead).toBe(true);
+      expect(pl(w, "a").data.score).toBeCloseTo(config.chainMultFactor, 5);
+    });
+
+    it("a chain of 2 gives no multiplier", () => {
+      const w = chain3(2);
+      expect(pl(w, "a").data.mult).toBe(0);
+      expect(pl(w, "a").data.score).toBe(1);
+    });
+
+    it("expires after chainMultTicks ticks; later knockouts score 1x", () => {
+      const w = chain3(3);
+      tick(w, {}, config.chainMultTicks - 1);
+      expect(pl(w, "a").data.mult).toBe(0);
+      const before = pl(w, "a").data.score;
+      put(w, "v", 1, 3);
+      pl(w, "v").data.dead = false;
+      blastOn(w, "a");
+      tick(w);
+      expect(pl(w, "v").data.dead).toBe(true);
+      expect(pl(w, "a").data.score - before).toBe(1);
+    });
+
+    it("a later chain under 3 clears the multiplier", () => {
+      const w = chain3(3);
+      expect(pl(w, "a").data.mult).toBeGreaterThan(0);
+      tick(w, {}, config.blastTicks + 1);
+      put(w, "a", 7, 7);
+      tick(w, { a: bomb });
+      put(w, "a", 13, 11);
+      bombs(w)[0].data.fuse = 1;
+      tick(w);
+      expect(pl(w, "a").data.chain).toBe(1);
+      expect(pl(w, "a").data.mult).toBe(0);
     });
   });
 

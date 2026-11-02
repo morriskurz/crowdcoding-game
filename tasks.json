@@ -1,56 +1,74 @@
 [
   {
     "id": "t1",
-    "title": "rules: chain bonus (+10% per link beyond 3, cap 2x) weighting knockout score, winner by score + tests",
+    "title": "config: chain multiplier settings",
+    "tier": "muse",
+    "files": [
+      "packages/games/bomber-20261101/config.ts"
+    ],
+    "estMin": 5,
+    "actualMin": 1.4,
+    "done": true,
+    "attempts": [
+      {
+        "tier": "muse",
+        "ok": true,
+        "minutes": 1.4
+      }
+    ]
+  },
+  {
+    "id": "t2",
+    "title": "rules: chain>=3 grants timed 1.5x score multiplier + tests",
     "tier": "sonnet",
     "files": [
       "packages/games/bomber-20261101/rules.ts",
       "packages/games/bomber-20261101/rules.test.ts"
     ],
     "estMin": 15,
-    "actualMin": 2.3,
+    "actualMin": 1.6,
     "done": true,
     "attempts": [
       {
         "tier": "sonnet",
         "ok": true,
-        "minutes": 2.3
-      }
-    ]
-  },
-  {
-    "id": "t2",
-    "title": "assets: chain popup shows bonus; gold sparkle bursts per link beyond 3 at knockout spot",
-    "tier": "muse",
-    "files": [
-      "packages/games/bomber-20261101/assets.ts"
-    ],
-    "estMin": 10,
-    "actualMin": 1.9,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 1.9
+        "minutes": 1.6
       }
     ]
   },
   {
     "id": "t3",
-    "title": "assets: leaderboard ranks/shows weighted score; gold ring on players holding a chain bonus",
-    "tier": "sonnet",
+    "title": "assets: glowing ring around multiplier holder",
+    "tier": "muse",
     "files": [
       "packages/games/bomber-20261101/assets.ts"
     ],
     "estMin": 10,
-    "actualMin": 1.4,
+    "actualMin": 1.8,
     "done": true,
     "attempts": [
       {
-        "tier": "sonnet",
+        "tier": "muse",
         "ok": true,
-        "minutes": 1.4
+        "minutes": 1.8
+      }
+    ]
+  },
+  {
+    "id": "t4",
+    "title": "assets: bigger distinct multiplier ring + x1.5 popup",
+    "tier": "muse",
+    "files": [
+      "packages/games/bomber-20261101/assets.ts"
+    ],
+    "estMin": 10,
+    "actualMin": 2.1,
+    "done": true,
+    "attempts": [
+      {
+        "tier": "muse",
+        "ok": true,
+        "minutes": 2.1
       }
     ]
   }
