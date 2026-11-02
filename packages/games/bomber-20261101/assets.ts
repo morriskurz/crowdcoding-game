@@ -229,6 +229,41 @@ function drawPlayer(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
     ctx.arc(e.x + ex + lx, e.y - 2 + ly, 2.2, 0, Math.PI * 2);
     ctx.fill();
   }
+  if (num(d.crown, 0) > 0) {
+    const bob = Math.sin(fx.time * 4 + e.x) * 2;
+    const crownY = e.y - r - 2 + bob;
+    ctx.globalAlpha = clamp(num(d.crown, 0) / 15, 0, 1);
+    drawGlow(ctx, e.x, crownY, 14, "#ffd23a", 0.5);
+    ctx.fillStyle = "#ffd23a";
+    ctx.strokeStyle = "#b8860b";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(e.x - 11, crownY - 4);
+    ctx.lineTo(e.x - 11, crownY - 9);
+    ctx.lineTo(e.x - 5.5, crownY - 4);
+    ctx.lineTo(e.x, crownY - 14);
+    ctx.lineTo(e.x + 5.5, crownY - 4);
+    ctx.lineTo(e.x + 11, crownY - 9);
+    ctx.lineTo(e.x + 11, crownY - 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#ffd23a";
+    ctx.fillRect(e.x - 11, crownY - 4, 22, 4);
+    ctx.strokeRect(e.x - 11, crownY - 4, 22, 4);
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(e.x - 11, crownY - 9, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(e.x + 11, crownY - 9, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#e0245e";
+    ctx.beginPath();
+    ctx.arc(e.x, crownY - 14, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
   ctx.restore();
 }
 
