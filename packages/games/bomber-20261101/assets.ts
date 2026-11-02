@@ -221,6 +221,21 @@ function drawPlayer(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
     ctx.stroke();
     ctx.setLineDash([]);
   }
+  const bonus = num(d.bonus, 0);
+  if (bonus > 0) {
+    ctx.strokeStyle = "#ffd54a";
+    ctx.lineWidth = 3;
+    ctx.globalAlpha = 0.75 + 0.25 * Math.sin(fx.time * 5);
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, r + 6 + Math.sin(fx.time * 5) * 1.2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.font = "bold 12px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#ffd54a";
+    ctx.fillText(`x${(1 + bonus / 100).toFixed(1)}`, e.x, e.y - r - 14);
+  }
   // Eyes look where the player walks.
   const lx = clamp(e.vx, -1, 1) * 3, ly = clamp(e.vy, -1, 1) * 3;
   ctx.fillStyle = "#0b0e14";
@@ -515,9 +530,10 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, fx: Fx): void {
   const rd = dataOf(latest["round"]);
   const players = Object.values(latest).filter((e) => e.kind === "player");
   const name = (id: string) => fx.names?.[id] ?? "player";
-  const ko = (e: Entity) => num(dataOf(e).ko, 0);
+  const score = (e: Entity) => num(dataOf(e).score, 0);
+  const fmt = (s: number) => String(Math.round(s * 10) / 10);
   const deaths = (e: Entity) => num(dataOf(e).deaths, 0);
-  const ranked = [...players].sort((a, b) => ko(b) - ko(a) || deaths(a) - deaths(b) || (a.id < b.id ? -1 : 1));
+  const ranked = [...players].sort((a, b) => score(b) - score(a) || deaths(a) - deaths(b) || (a.id < b.id ? -1 : 1));
   const me = fx.me ? latest[fx.me] : undefined;
 
   ctx.save();
@@ -557,7 +573,7 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, fx: Fx): void {
   const secs = Math.max(0, Math.ceil(num(rd.ticksLeft, 0) / config.tickHz));
   const timer = play ? `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}` : "RESULTS";
   const myRank = me ? ranked.findIndex((p) => p.id === me.id) + 1 : 0;
-  const sub = me ? `Your KOs: ${ko(me)}  ·  #${myRank} of ${ranked.length}` : `Round ${num(rd.round, 1)}  ·  ${players.length} bombers`;
+  const sub = me ? `Your score: ${fmt(score(me))}  ·  #${myRank} of ${ranked.length}` : `Round ${num(rd.round, 1)}  ·  ${players.length} bombers`;
   ctx.font = "15px system-ui, sans-serif";
   const pw = Math.max(130, ctx.measureText(sub).width + 30);
   panel(ctx, W / 2 - pw / 2, py, pw, 58);
@@ -579,7 +595,7 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, fx: Fx): void {
     panel(ctx, bx, by, bw, top.length * 24 + 30);
     ctx.fillStyle = "rgba(255,255,255,0.6)";
     ctx.font = "bold 12px system-ui, sans-serif";
-    ctx.fillText("KNOCKOUTS", bx + 12, by + 13);
+    ctx.fillText("SCORE", bx + 12, by + 13);
     ctx.font = "15px system-ui, sans-serif";
     top.forEach((p, i) => {
       const y = by + 32 + i * 24;
@@ -592,7 +608,7 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, fx: Fx): void {
       ctx.fillText(rows[i], bx + 30, y, bw - 80);
       ctx.textAlign = "right";
       ctx.fillStyle = "#ffd54a";
-      ctx.fillText(String(ko(p)), bx + bw - 12, y);
+      ctx.fillText(fmt(score(p)), bx + bw - 12, y);
     });
   }
 
@@ -627,7 +643,7 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, fx: Fx): void {
     ctx.font = "bold 12px system-ui, sans-serif";
     ctx.fillStyle = "rgba(255,255,255,0.6)";
     ctx.textAlign = "right";
-    ctx.fillText("KO", bx + bw - 70, by + 56);
+    ctx.fillText("SCORE", bx + bw - 70, by + 56);
     ctx.fillText("OUT", bx + bw - 18, by + 56);
     ctx.font = "16px system-ui, sans-serif";
     rows.forEach((p, i) => {
@@ -641,7 +657,7 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, fx: Fx): void {
       ctx.fillText(`${i + 1}. ${name(p.id)}`, bx + 36, y, bw - 150);
       ctx.textAlign = "right";
       ctx.fillStyle = "#ffd54a";
-      ctx.fillText(String(ko(p)), bx + bw - 70, y);
+      ctx.fillText(fmt(score(p)), bx + bw - 70, y);
       ctx.fillStyle = "rgba(255,255,255,0.7)";
       ctx.fillText(String(deaths(p)), bx + bw - 18, y);
     });
