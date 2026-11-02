@@ -5,5 +5,34 @@
     "The ring fades out as it expands and is gone after 2 seconds, with no ring left once the bomb has exploded",
     "The ring is visible in the before/after clip for bombs of any player and does not hide players"
   ],
-  "rounds": []
+  "rounds": [
+    {
+      "verdict": "pass",
+      "score": 3,
+      "playerImpact": true,
+      "visible": true,
+      "criteria": [
+        {
+          "text": "Every lit bomb shows a ring centred on it whose radius grows from 0 to 3 tiles over its first 2 seconds",
+          "met": true,
+          "evidence": "after/shot-1 and shot-3: orange rings centred on freshly dropped bombs at different growth stages; assets.ts drawBomb uses age 0..30 ticks (2s at 15Hz) and R = t*3*cell."
+        },
+        {
+          "text": "The ring fades out as it expands and is gone after 2 seconds, with no ring left once the bomb has exploded",
+          "met": true,
+          "evidence": "alpha = 1 - t in assets.ts; the ring is only drawn for age <= 30 of the 45-tick fuse, and older bombs in after/shot-2 and shot-3 have no ring."
+        },
+        {
+          "text": "The ring is visible in the before/after clip for bombs of any player and does not hide players",
+          "met": true,
+          "evidence": "after/shot-2: ring around the new bomb where before/shot-2 has none; after/shot-3 shows three rings on bombs of different players; the ring is a thin stroke with a 12% fill, and players and labels stay readable."
+        }
+      ],
+      "findings": [
+        "Optional polish: the ring is circular but real blasts are cross-shaped, so it can overstate danger diagonally. In assets.ts drawBomb, consider clipping or marking the lanes. No test was added, but the change is visual only."
+      ],
+      "packagesTree": "f63c2e3677e5dbdf0cdccebdef50c5d6bbd25f4b+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-02T09:22:05.272Z"
+    }
+  ]
 }
