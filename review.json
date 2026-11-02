@@ -1,69 +1,10 @@
 {
-  "intent": "Every bomber leaves a thin fading ghost trail behind them, so players can read where rivals have been and are heading before dodging blasts.",
+  "intent": "When a bomb chain reaction finishes, a number popup showing how many bombs were in the chain rises above the player whose bomb started it, fading out over 3 seconds. Every player gets it, not just the local one.",
   "accept": [
-    "Each player has a thin 1px trail path behind them following their recent positions (max 20 points, one per ~16ms)",
-    "The trail fades linearly from alpha 0.6 at the newest point to 0 over 2 seconds",
-    "The trail is visible in the after clip behind moving players and disappears when they stand still"
+    "When a chain of bombs has finished exploding, the player who started it has a popup above them showing the chain's bomb count (a single bomb shows 1)",
+    "The popup floats upward, fades gradually over 3 seconds and then disappears",
+    "It appears for every player equally, including bots and other players, not only the local player",
+    "A test shows the chain count and event counter on the starting player's data increase after a chain of 3 bombs"
   ],
-  "rounds": [
-    {
-      "verdict": "fix",
-      "score": 2,
-      "playerImpact": false,
-      "visible": false,
-      "criteria": [
-        {
-          "text": "Each player has a thin 1px trail path behind them following their recent positions (max 20 points, one per ~16ms)",
-          "met": true,
-          "evidence": "diff assets.ts drawTrail: pts capped at 20, 0.016s spacing, lineWidth 1, per-player map. Code only; no test."
-        },
-        {
-          "text": "The trail fades linearly from alpha 0.6 at the newest point to 0 over 2 seconds",
-          "met": true,
-          "evidence": "diff: alpha = max(0, 0.6*(1-age/2)) per segment."
-        },
-        {
-          "text": "The trail is visible in the after clip behind moving players and disappears when they stand still",
-          "met": false,
-          "evidence": "after/shot-2 and shot-3 vs before: effectively identical. Only a few faint pixels near bot4 (shot-3) and under bot5 ghost. With 20 points at 16ms the trail spans about 0.3s, a few pixels long. A phone viewer cannot tell it apart. Also, standing players keep their stale points for up to 2s, so it doe"
-        }
-      ],
-      "findings": [
-        "Trail is invisible in practice: in packages/games/bomber-20261101/assets.ts drawTrail, the 20-point cap with 16ms spacing keeps only about 0.3s of history, so the line is only a few px long. Keep the 1px/alpha 0.6 to 0 fade but record points by distance or time (e.g. one point per movement step or ~100ms) while still keeping 20 points, so the trail covers 1-2 cells behind a moving bomber.",
-        "Points are only added when the player moves but old ones are only expired by age; make a stationary player's trail clearly vanish by aging with fx.time and not adding the live head segment at full alpha when still.",
-        "Pure cosmetic: it does not change what a player does or decides. Make the trail contrast with the green floor (e.g. brighter or lighter colour than the player colour, drawn before the player body) so rivals' movement direction is readable."
-      ],
-      "packagesTree": "7e476964c6f75daf7e3ab875606b9e60083f6692+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
-      "at": "2026-11-01T23:16:03.927Z"
-    },
-    {
-      "verdict": "pass",
-      "score": 3,
-      "playerImpact": true,
-      "visible": true,
-      "criteria": [
-        {
-          "text": "Each player has a thin 1px trail path behind them following their recent positions (max 20 points, one per ~16ms)",
-          "met": true,
-          "evidence": "assets.ts drawTrail: lineWidth 1, per-player points capped at 20, drawn in drawPlayer. Sampling is every 0.1s rather than ~16ms, which keeps 20 points spanning the 2s fade. after/shot-3: thin lines behind bot5, bot4 and bot10."
-        },
-        {
-          "text": "The trail fades linearly from alpha 0.6 at the newest point to 0 over 2 seconds",
-          "met": true,
-          "evidence": "assets.ts: alpha = max(0, 0.6*(1-age/2)) per segment, and points older than 2s are dropped."
-        },
-        {
-          "text": "The trail is visible in the after clip behind moving players and disappears when they stand still",
-          "met": true,
-          "evidence": "after/shot-1 and shot-2 show faint lines behind bot0, bot2, bot8 and bot10, absent in before/shot-2. Stationary players add no new points, and old ones age out within 2s. The lines are subtle, but 1px and alpha 0.6 are fixed by the spec."
-        }
-      ],
-      "findings": [
-        "Optional: the trail is very faint on a phone. If the spec is relaxed later, raise lineWidth or alpha in drawTrail in assets.ts.",
-        "No test covers the trail. The code is in assets.ts, so this is not a blocker."
-      ],
-      "packagesTree": "f924aaa2ed7d5507823179aea0412b052e879293+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
-      "at": "2026-11-01T23:19:05.971Z"
-    }
-  ]
+  "rounds": []
 }
