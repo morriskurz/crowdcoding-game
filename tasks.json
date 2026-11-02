@@ -1,20 +1,12 @@
 [
   {
     "id": "t1",
-    "title": "assets: expanding fading blast-warning ring around each bomb",
+    "title": "assets: chain victim gold sparkle + 5-victim golden screen flash",
     "tier": "muse",
     "files": [
       "packages/games/bomber-20261101/assets.ts"
     ],
-    "estMin": 10,
-    "actualMin": 2.2,
-    "done": true,
-    "attempts": [
-      {
-        "tier": "muse",
-        "ok": true,
-        "minutes": 2.2
-      }
-    ]
+    "estMin": 15,
+    "done": false
   }
 ]
