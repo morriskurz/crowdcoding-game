@@ -29,6 +29,9 @@ export const config = {
   respawnTicks: 45, // 3 s as a ghost before respawning
   protectTicks: 30, // 2 s of blinking protection after a (re)spawn
 
+  // Crown
+  crownTicks: 75, // ticks the leader's gold crown lasts (5 s)
+
   // Round loop
   roundSeconds: 180,
   resultsSeconds: 5,
