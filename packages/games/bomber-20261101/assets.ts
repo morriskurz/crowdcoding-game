@@ -20,6 +20,7 @@ let latest: Ents = {};
 interface Popup { x: number; y: number; text: string; color: string; t0: number; life?: number; size?: number; outline?: boolean }
 const popups: Popup[] = [];
 let leader: string | null = null;
+const trails = new Map<string, { x: number; y: number; t: number }[]>();
 
 function num(v: unknown, d: number): number {
   return typeof v === "number" && Number.isFinite(v) ? v : d;
@@ -37,6 +38,12 @@ function playerColor(id: string): string {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
   return `hsl(${(h >>> 0) % 360} 85% 62%)`;
+}
+
+function trailColor(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return `hsl(${(h >>> 0) % 360} 90% 80%)`;
 }
 
 const centre = (c: number) => c * C + C / 2;
@@ -110,6 +117,45 @@ export function drawBackground(ctx: CanvasRenderingContext2D, fx: Fx): void {
   }
 }
 
+function drawTrail(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
+  const id = e.id;
+  let pts = trails.get(id);
+  if (!pts) {
+    pts = [];
+    trails.set(id, pts);
+  }
+  if (pts.length > 0) {
+    const last = pts[pts.length - 1];
+    if (Math.hypot(e.x - last.x, e.y - last.y) > C) pts.length = 0;
+  }
+  if (pts.length === 0) {
+    pts.push({ x: e.x, y: e.y, t: fx.time });
+  } else {
+    const last = pts[pts.length - 1];
+    if (fx.time - last.t >= 0.1 && (e.x !== last.x || e.y !== last.y)) {
+      pts.push({ x: e.x, y: e.y, t: fx.time });
+    }
+  }
+  while (pts.length > 0 && fx.time - pts[0].t > 2) pts.shift();
+  while (pts.length > 20) pts.shift();
+  trails.set(id, pts);
+  const line = [...pts, { x: e.x, y: e.y, t: fx.time }];
+  if (line.length < 2) return;
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = trailColor(id);
+  for (let i = 0; i < line.length - 1; i++) {
+    const age = fx.time - line[i].t;
+    const alpha = Math.max(0, 0.6 * (1 - age / 2));
+    if (alpha <= 0) continue;
+    ctx.globalAlpha = alpha;
+    ctx.beginPath();
+    ctx.moveTo(line[i].x, line[i].y);
+    ctx.lineTo(line[i + 1].x, line[i + 1].y);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
 function drawPlayer(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
   const d = dataOf(e);
   const color = playerColor(e.id);
@@ -117,6 +163,7 @@ function drawPlayer(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
   const dead = d.dead === true;
   const protect = num(d.protect, 0);
   ctx.save();
+  drawTrail(ctx, e, fx);
   if (dead) {
     // Ghost: faded, floating, X eyes.
     const bob = Math.sin(fx.time * 4 + e.x) * 3;

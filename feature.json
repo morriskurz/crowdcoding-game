@@ -1,9 +1,9 @@
 {
-  "id": "22",
-  "spec": "When a bomb chain knockout occurs, a floating \"+1\" and the chain starter's name tag appear above the victim's position for 1.5 seconds, visible to all players and spectators so they can follow who scored each knockout in the chain.",
+  "id": "23",
+  "spec": "Each player leaves a fading ghost trail behind them: the last 20 positions are recorded (one point per 16ms), drawn as a 1px path with alpha fading linearly from 0.6 to 0 over 2s, so all players can read movement before dodging.",
   "slug": "bomber-20261101",
   "game": "bomber-20261101",
-  "branch": "f/22-bomber-20261101",
+  "branch": "f/23-bomber-20261101",
   "status": "ready",
-  "updatedAt": "2026-11-01T21:18:27.184Z"
+  "updatedAt": "2026-11-01T23:19:34.074Z"
 }
