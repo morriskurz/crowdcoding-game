@@ -190,6 +190,18 @@ function drawPlayer(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
     ctx.restore();
     return;
   }
+  const mult = num(d.mult, 0);
+  if (mult > 0) {
+    if (mult < 30) ctx.globalAlpha = Math.sin(fx.time * 24) > 0 ? 1 : 0.25;
+    else ctx.globalAlpha = 0.6 + 0.4 * pulse(fx.time, 0.5);
+    drawGlow(ctx, e.x, e.y, r * 2.6, "#ffe45c", 0.5);
+    ctx.strokeStyle = "#ffe45c";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, r + 9, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
   if (protect > 0) {
     ctx.globalAlpha = Math.sin(fx.time * 28) > 0 ? 1 : 0.35;
     drawGlow(ctx, e.x, e.y, r * 2.2, "#9be7ff", 0.5);
