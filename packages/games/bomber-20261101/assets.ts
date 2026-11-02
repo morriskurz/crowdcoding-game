@@ -320,6 +320,26 @@ function drawBomb(ctx: CanvasRenderingContext2D, e: Entity, fx: Fx): void {
   const s = 1 + 0.08 * Math.sin(fx.time * rate) + (1 - left) * 0.08;
   const r = e.r * s;
   const late = left < 1 / 3;
+  ctx.save();
+  {
+    const age = fuseMax - num(d.fuse, fuseMax);
+    if (age >= 0 && age <= 30) {
+      const t = age / 30;
+      const R = t * 3 * C;
+      const alpha = 1 - t;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = 'rgba(255,122,26,' + (alpha * 0.12) + ')';
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, R, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ff7a1a';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, R, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
   if (late) drawGlow(ctx, e.x, e.y, r * 2.4, "#ff3b1f", 0.35 + 0.35 * pulse(fx.time, 0.2));
   ctx.save();
   ctx.fillStyle = "rgba(0,0,0,0.35)";

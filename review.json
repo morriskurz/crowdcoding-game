@@ -1,47 +1,11 @@
 {
-  "intent": "A player whose bomb chain reaches 3 or more earns a 1.5x score multiplier for 10 seconds, shown to everyone as a glowing ring around that player; a later short chain or the timeout ends it.",
+  "intent": "When any player drops a bomb, a ring spreads out from it and fades, so everyone (players and spectators) sees the danger zone before the blast knocks players out.",
   "accept": [
-    "Finishing a chain of 3+ bombs gives that player a 1.5x score multiplier on knockouts for 10 seconds",
-    "A glowing ring is visible around the multiplier holder while it is active",
-    "The multiplier ends after 10 seconds or when the player's next chain is shorter than 3",
-    "Tests show a knockout scoring 1.5x during the multiplier and 1x after it ends"
+    "Every lit bomb shows a ring centred on it whose radius grows from 0 to 3 tiles over its first 2 seconds",
+    "The ring fades out as it expands and is gone after 2 seconds, with no ring left once the bomb has exploded",
+    "The ring is visible in the before/after clip for bombs of any player and does not hide players"
   ],
   "rounds": [
-    {
-      "verdict": "fix",
-      "score": 2,
-      "playerImpact": true,
-      "visible": false,
-      "criteria": [
-        {
-          "text": "Finishing a chain of 3+ bombs gives that player a 1.5x score multiplier on knockouts for 10 seconds",
-          "met": true,
-          "evidence": "rules.ts explodeBombs sets mult=chainMultTicks when n>=3, knockOut multiplies by chainMultFactor; test 'a chain of 3 sets the multiplier and its knockout scores 1.5x'. No after shot shows it happening (all chains are '1 chain')."
-        },
-        {
-          "text": "A glowing ring is visible around the multiplier holder while it is active",
-          "met": false,
-          "evidence": "assets.ts drawPlayer draws a yellow ring plus glow when mult>0 (code looks right, drawn after the dead early-return), but after/shot-1..3 show no ring on any player; only 1-chain popups occur. Not demonstrated visually, so not counted as met. The yellow ring is also close to the existing gold crown/"
-        },
-        {
-          "text": "The multiplier ends after 10 seconds or when the player's next chain is shorter than 3",
-          "met": true,
-          "evidence": "tests 'expires after chainMultTicks ticks; later knockouts score 1x' and 'a later chain under 3 clears the multiplier'; rules.ts decrements mult each tick and resets it per chain."
-        },
-        {
-          "text": "Tests show a knockout scoring 1.5x during the multiplier and 1x after it ends",
-          "met": true,
-          "evidence": "rules.test.ts chain multiplier describe block: score 1.5 during, score delta 1 after expiry."
-        }
-      ],
-      "findings": [
-        "The preview scenario never produces a 3+ chain, so before and after clips look identical: the viewer cannot see the feature. Make the effect reachable and obvious in the first minute: in rules.ts botInput let bots deliberately line up/trigger chains (or lower config.chainMultMinChain to 2 in config.ts) so a ring appears in the sampled scenario.",
-        "Ring is only a thin 3px yellow circle at r+9, similar in colour to the crown and pickups. In assets.ts drawPlayer make it larger and distinct (e.g. thicker, orange/magenta, rotating dashes or a 'x1.5' label above the player via nameStyle/text) so it is readable on a phone.",
-        "The multiplier effect is invisible in the score: scores are small numbers (1 vs 1.5) shown as integers in the leaderboard (e.g. '2'). Show a popup like '+1.5' or 'x1.5' on a multiplier knockout in assets.ts so players notice the gain."
-      ],
-      "packagesTree": "4561894b9fd29f889d155f98cf06aa68378d6740+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
-      "at": "2026-11-02T07:24:08.832Z"
-    },
     {
       "verdict": "pass",
       "score": 3,
@@ -49,31 +13,26 @@
       "visible": true,
       "criteria": [
         {
-          "text": "Finishing a chain of 3+ bombs gives that player a 1.5x score multiplier on knockouts for 10 seconds",
+          "text": "Every lit bomb shows a ring centred on it whose radius grows from 0 to 3 tiles over its first 2 seconds",
           "met": true,
-          "evidence": "rules.ts explodeBombs sets mult=chainMultTicks(150) when n>=3; knockOut multiplies by 1.5; test 'a chain of 3 sets the multiplier and its knockout scores 1.5x'"
+          "evidence": "after/shot-1 and shot-3: orange rings centred on freshly dropped bombs at different growth stages; assets.ts drawBomb uses age 0..30 ticks (2s at 15Hz) and R = t*3*cell."
         },
         {
-          "text": "A glowing ring is visible around the multiplier holder while it is active",
+          "text": "The ring fades out as it expands and is gone after 2 seconds, with no ring left once the bomb has exploded",
           "met": true,
-          "evidence": "assets.ts drawPlayer: 5px magenta ring r+12, glow r*3.2, 8 orbiting dots, 'x1.5' label, blink in last 2s, plus '+1.5 x1.5' popup. Not seen in after shots (only 1-chains occur, no ring), so code evidence only."
+          "evidence": "alpha = 1 - t in assets.ts; the ring is only drawn for age <= 30 of the 45-tick fuse, and older bombs in after/shot-2 and shot-3 have no ring."
         },
         {
-          "text": "The multiplier ends after 10 seconds or when the player's next chain is shorter than 3",
+          "text": "The ring is visible in the before/after clip for bombs of any player and does not hide players",
           "met": true,
-          "evidence": "rules.ts update decrements mult each tick; chain <3 sets mult=0; tests 'expires after chainMultTicks ticks' and 'a later chain under 3 clears the multiplier'"
-        },
-        {
-          "text": "Tests show a knockout scoring 1.5x during the multiplier and 1x after it ends",
-          "met": true,
-          "evidence": "rules.test.ts: 'a chain of 3 sets the multiplier and its knockout scores 1.5x' and 'expires after chainMultTicks ticks; later knockouts score 1x'"
+          "evidence": "after/shot-2: ring around the new bomb where before/shot-2 has none; after/shot-3 shows three rings on bombs of different players; the ring is a thin stroke with a 12% fill, and players and labels stay readable."
         }
       ],
       "findings": [
-        "Caveat: the seeded scenario never shows a 3-chain, so the ring does not appear in after shots 1-3; 3-chains are fairly rare so the effect is occasional but loud when it fires."
+        "Optional polish: the ring is circular but real blasts are cross-shaped, so it can overstate danger diagonally. In assets.ts drawBomb, consider clipping or marking the lanes. No test was added, but the change is visual only."
       ],
-      "packagesTree": "906eeb36d16b7a59f1b6081a85725e5949cf6274+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
-      "at": "2026-11-02T07:27:32.947Z"
+      "packagesTree": "f63c2e3677e5dbdf0cdccebdef50c5d6bbd25f4b+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-02T09:22:05.272Z"
     }
   ]
 }
