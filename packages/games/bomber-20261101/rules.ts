@@ -32,6 +32,8 @@ export interface PlayerData {
   killer: string; // who knocked this player out last ("" = nobody / self)
   home: number; // cell index of the last (re)spawn
   born: number; // tick of the last (re)spawn
+  chain: number; // bomb count of the last chain this player started
+  chainSeq: number; // increments each time a chain this player started finishes (client popup trigger)
 }
 
 export interface PickupType {
@@ -428,6 +430,16 @@ function explodeBombs(w: World, r: RoundData): void {
       data: { owner: b.data.rootOwner, ticksLeft: config.blastTicks, cx: b.data.cx, cy: b.data.cy, ...arms },
     });
   }
+  // Chain finished: record its size on each root owner (Map keeps insertion order: deterministic).
+  const sizes = new Map<string, number>();
+  for (const b of queue) sizes.set(b.data.rootOwner, (sizes.get(b.data.rootOwner) ?? 0) + 1);
+  for (const [owner, n] of sizes) {
+    const p = get<PlayerData>(w, owner);
+    if (p && p.kind === "player") {
+      p.data.chain = n;
+      p.data.chainSeq++;
+    }
+  }
 }
 
 function ageBlasts(w: World): void {
@@ -586,7 +598,7 @@ function botInput(w: World, id: string, n: number): Input {
 // --- rules -----------------------------------------------------------------------------------------------
 
 export function newPlayerData(): PlayerData {
-  return { ko: 0, deaths: 0, dead: false, respawn: 0, protect: 0, range: config.blastRange, bombs: config.bombsPerPlayer, bomb: BOMB_TYPES[0].name, held: false, killer: "", home: -1, born: 0 };
+  return { ko: 0, deaths: 0, dead: false, respawn: 0, protect: 0, range: config.blastRange, bombs: config.bombsPerPlayer, bomb: BOMB_TYPES[0].name, held: false, killer: "", home: -1, born: 0, chain: 0, chainSeq: 0 };
 }
 
 export const rules: GameRules = {

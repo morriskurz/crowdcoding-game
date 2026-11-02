@@ -341,7 +341,7 @@ export function nameStyle(e: Entity, _name: string, _fx: Fx): NameStyle {
 
 function popup(x: number, y: number, text: string, color: string, fx: Fx, life = 1.4, size?: number, outline?: boolean): void {
   popups.push({ x, y, text, color, t0: fx.time, life, size, outline });
-  if (popups.length > 30) popups.shift();
+  if (popups.length > 40) popups.shift();
 }
 
 function nearMe(next: Readonly<Ents>, x: number, y: number, fx: Fx): number {
@@ -423,6 +423,9 @@ export function onSnapshot(prev: Readonly<Ents> | null, next: Readonly<Ents>, fx
       popup(p.x, p.y - 30, `+${num(b.ko, 0) - num(a.ko, 0)} KO`, "#ffd54a", fx);
       if (mine) fx.sfx.play("coin");
     }
+    if (num(b.chainSeq, 0) > num(a.chainSeq, 0)) {
+      popup(p.x, p.y - 34, `${num(b.chain, 0)} chain`, playerColor(p.id), fx, 3, 22, true);
+    }
     if (a.dead === true && b.dead !== true && mine) fx.sfx.play("powerup", { volume: 0.5 });
   }
 }
@@ -486,7 +489,7 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, fx: Fx): void {
     const life = p.life ?? 1.4;
     if (age > life) { popups.splice(i, 1); continue; }
     const s = fx.camera.worldToScreen(p.x, p.y);
-    ctx.globalAlpha = clamp(life - age, 0, 1);
+    ctx.globalAlpha = clamp(1 - age / life, 0, 1);
     const py = s.y - age * 28;
     if (p.size) ctx.font = `bold ${p.size}px system-ui, sans-serif`;
     if (p.outline) {

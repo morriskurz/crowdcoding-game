@@ -1,9 +1,9 @@
 {
-  "id": "23",
-  "spec": "Each player leaves a fading ghost trail behind them: the last 20 positions are recorded (one point per 16ms), drawn as a 1px path with alpha fading linearly from 0.6 to 0 over 2s, so all players can read movement before dodging.",
+  "id": "24",
+  "spec": "When a player's chain ends, a small popup appears above their character showing their current chain count. It floats upward and fades out over 3 seconds, then disappears. Applies to all players equally.",
   "slug": "bomber-20261101",
   "game": "bomber-20261101",
-  "branch": "f/23-bomber-20261101",
+  "branch": "f/24-bomber-20261101",
   "status": "ready",
-  "updatedAt": "2026-11-01T23:19:34.074Z"
+  "updatedAt": "2026-11-02T01:18:11.721Z"
 }

@@ -1,37 +1,43 @@
 [
   {
     "id": "t1",
-    "title": "assets: record last 20 positions per player (16ms spacing) and draw 1px fading ghost trail",
-    "tier": "muse",
+    "title": "rules: when a chain of bombs finishes exploding, record its bomb count on the root owner player (chain count + incrementing counter) + tests",
+    "tier": "sonnet",
     "files": [
-      "packages/games/bomber-20261101/assets.ts"
+      "packages/games/bomber-20261101/rules.ts",
+      "packages/games/bomber-20261101/rules.test.ts"
     ],
     "estMin": 15,
-    "actualMin": 2.5,
+    "actualMin": 1.4,
     "done": true,
     "attempts": [
       {
-        "tier": "muse",
+        "tier": "sonnet",
+        "ok": false,
+        "minutes": 0.8
+      },
+      {
+        "tier": "sonnet",
         "ok": true,
-        "minutes": 2.5
+        "minutes": 0.6
       }
     ]
   },
   {
     "id": "t2",
-    "title": "assets: trail samples every ~100ms (max 20 pts), light colour, stale trail fades",
-    "tier": "muse",
+    "title": "assets: chain-count popup above the owner, rising and fading over 3s",
+    "tier": "sonnet",
     "files": [
       "packages/games/bomber-20261101/assets.ts"
     ],
-    "estMin": 10,
-    "actualMin": 1.8,
+    "estMin": 15,
+    "actualMin": 1,
     "done": true,
     "attempts": [
       {
-        "tier": "muse",
+        "tier": "sonnet",
         "ok": true,
-        "minutes": 1.8
+        "minutes": 1
       }
     ]
   }
