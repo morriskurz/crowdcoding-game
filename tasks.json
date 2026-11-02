@@ -89,7 +89,15 @@
       "packages/games/bomber-20261101/rules.test.ts"
     ],
     "estMin": 8,
-    "done": false
+    "actualMin": 0.9,
+    "done": true,
+    "attempts": [
+      {
+        "tier": "sonnet",
+        "ok": true,
+        "minutes": 0.9
+      }
+    ]
   },
   {
     "id": "t7",

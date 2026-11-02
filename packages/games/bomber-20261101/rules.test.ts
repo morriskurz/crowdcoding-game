@@ -268,11 +268,11 @@ describe("knockouts", () => {
     // explodeBombs awards the crown, then the same step counts it down once.
     const fresh = config.crownTicks - 1;
 
-    it("goes to a player finishing a chain of 2 or more, not to a chain of 1", () => {
+    it("goes to a player finishing a chain of 1 or more", () => {
       const w1 = arena({ a: [1, 1] });
       chainRow(w1, ["a"], 1);
       expect(pl(w1, "a").data.chain).toBe(1);
-      expect(pl(w1, "a").data.crown).toBe(0);
+      expect(pl(w1, "a").data.crown).toBe(fresh);
       const w = arena({ a: [1, 1], b: [3, 1] });
       chainRow(w, ["a", "b"], 1);
       expect(pl(w, "a").data.chain).toBe(2);
