@@ -70,5 +70,35 @@
         "minutes": 1.9
       }
     ]
+  },
+  {
+    "id": "t5",
+    "title": "rules: crown threshold from chain>=2 to chain>=1",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/bomber-20261101/rules.ts"
+    ],
+    "estMin": 5,
+    "done": false
+  },
+  {
+    "id": "t6",
+    "title": "rules tests: update crown tests for chain of 1",
+    "tier": "sonnet",
+    "files": [
+      "packages/games/bomber-20261101/rules.test.ts"
+    ],
+    "estMin": 8,
+    "done": false
+  },
+  {
+    "id": "t7",
+    "title": "assets: enlarge crown about 1.5x",
+    "tier": "muse",
+    "files": [
+      "packages/games/bomber-20261101/assets.ts"
+    ],
+    "estMin": 5,
+    "done": false
   }
 ]
