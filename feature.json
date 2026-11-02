@@ -1,9 +1,9 @@
 {
-  "id": "27",
-  "spec": "When any player's chain reaches 3 or more, that chain leader gains a 1.5x score multiplier for 10 seconds. During this time a glowing ring is shown around their bomb origin, visible to all players. The multiplier ends after 10 seconds or when the chain drops below 3.",
+  "id": "28",
+  "spec": "When a bomb lands, draw an expanding circle ring at its position: radius grows from 0 to 3 tiles over 2 seconds, fading out as it expands, showing the blast range to all players and spectators before knockouts start.",
   "slug": "bomber-20261101",
   "game": "bomber-20261101",
-  "branch": "f/27-bomber-20261101",
-  "status": "ready",
-  "updatedAt": "2026-11-02T07:28:05.217Z"
+  "branch": "f/28-bomber-20261101",
+  "status": "building",
+  "updatedAt": "2026-11-02T09:18:36.500Z"
 }
