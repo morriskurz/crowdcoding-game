@@ -16,5 +16,15 @@
         "minutes": 2.3
       }
     ]
+  },
+  {
+    "id": "t2",
+    "title": "assets: make chain sparkle distinct, count flash kills over 1s window",
+    "tier": "muse",
+    "files": [
+      "packages/games/bomber-20261101/assets.ts"
+    ],
+    "estMin": 10,
+    "done": false
   }
 ]
