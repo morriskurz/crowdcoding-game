@@ -36,6 +36,7 @@ export interface PlayerData {
   born: number; // tick of the last (re)spawn
   chain: number; // bomb count of the last chain this player started
   crown: number; // ticks of gold crown left (0 = none)
+  mult: number; // ticks of chain score multiplier left (0 = none)
   chainSeq: number; // increments each time a chain this player started finishes (client popup trigger)
 }
 
@@ -291,6 +292,7 @@ function startRound(w: World, r: Entity<RoundData>): void {
     d.killer = "";
     d.chain = 0;
     d.crown = 0;
+    d.mult = 0;
     placePlayer(w, r.data, p);
   }
 }
@@ -446,6 +448,7 @@ function explodeBombs(w: World, r: RoundData): void {
       p.data.chain = n;
       p.data.bonus = Math.min(100, Math.max(0, n - 3) * 10);
       p.data.chainSeq++;
+      p.data.mult = n >= config.chainMultMinChain ? config.chainMultTicks : 0;
     }
   }
   // Crown: the longest chain (at least 1 bomb) wears it. A player who just finished a chain that
@@ -482,7 +485,7 @@ function knockOut(w: World, p: Entity<PlayerData>, killer: string): void {
   const k = killer !== p.id ? get<PlayerData>(w, killer) : undefined;
   if (k && k.kind === "player") {
     k.data.ko++;
-    k.data.score += 1 + k.data.bonus / 100;
+    k.data.score += (1 + k.data.bonus / 100) * (k.data.mult > 0 ? config.chainMultFactor : 1);
   }
 }
 
@@ -624,7 +627,7 @@ function botInput(w: World, id: string, n: number): Input {
 // --- rules -----------------------------------------------------------------------------------------------
 
 export function newPlayerData(): PlayerData {
-  return { ko: 0, deaths: 0, dead: false, respawn: 0, protect: 0, range: config.blastRange, bombs: config.bombsPerPlayer, bomb: BOMB_TYPES[0].name, held: false, killer: "", home: -1, born: 0, chain: 0, crown: 0, chainSeq: 0, bonus: 0, score: 0 };
+  return { ko: 0, deaths: 0, dead: false, respawn: 0, protect: 0, range: config.blastRange, bombs: config.bombsPerPlayer, bomb: BOMB_TYPES[0].name, held: false, killer: "", home: -1, born: 0, chain: 0, crown: 0, mult: 0, chainSeq: 0, bonus: 0, score: 0 };
 }
 
 export const rules: GameRules = {
@@ -653,6 +656,7 @@ export const rules: GameRules = {
       const d = p.data;
       const inp = inputs[p.id];
       if (d.crown > 0) d.crown--;
+      if (d.mult > 0) d.mult--;
       if (d.dead) {
         p.vx = 0;
         p.vy = 0;
