@@ -40,6 +40,39 @@
       ],
       "packagesTree": "28d12219839ade3307ea52d4d09e5b5edc2f4d55+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
       "at": "2026-11-02T03:22:58.278Z"
+    },
+    {
+      "verdict": "pass",
+      "score": 3,
+      "playerImpact": true,
+      "visible": true,
+      "criteria": [
+        {
+          "text": "A player whose bomb chain is longer than every other player's current chain gets a gold crown drawn above them",
+          "met": true,
+          "evidence": "after/shot-2: gold crown over bot10 (1 chain) absent in before/shot-2; rules.ts explodeBombs awards crown to the max chain (>=1); tests added"
+        },
+        {
+          "text": "When another player completes a longer chain, the crown moves to them and leaves the previous holder",
+          "met": true,
+          "evidence": "rules.ts explodeBombs clears crown on all others when a max-chain finisher is found; rules.test.ts covers it"
+        },
+        {
+          "text": "The crown fades out and disappears 5 seconds after it was awarded",
+          "met": true,
+          "evidence": "config.crownTicks=75 (5 s), decremented per tick in rules.ts; shot-3 crown on bot0 only"
+        },
+        {
+          "text": "In the after clip a crown is visible over a player after a chain reaction",
+          "met": true,
+          "evidence": "after/shot-2 crown over bot10, after/shot-3 crown over bot0 with 1 chain popups; before shots have none"
+        }
+      ],
+      "findings": [
+        "Minor: crown is cosmetic only and at chain>=1 is awarded for trivial single-bomb chains with ties going to the first finisher; consider requiring chain>=2 or a bonus effect in rules.ts if more impact is wanted."
+      ],
+      "packagesTree": "e17f84d0657428c9c1a29ccbbde719e116771c09+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-02T03:27:28.536Z"
     }
   ]
 }
