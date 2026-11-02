@@ -42,6 +42,41 @@
       ],
       "packagesTree": "daea0ffa3beddccb99e9ebbe127054341db61257+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
       "at": "2026-11-02T11:23:12.951Z"
+    },
+    {
+      "verdict": "fix",
+      "score": 2,
+      "playerImpact": false,
+      "visible": false,
+      "criteria": [
+        {
+          "text": "A player knocked out by a chain (killer's chain of 2+ bombs) emits a 12-particle gold burst, 0.6s life, 3px size at their position",
+          "met": true,
+          "evidence": "diff assets.ts onSnapshot: emit count 12, #ffd54a, speed 150, life 0.6, size 3 at victim when killer chain >= 2, plus extra ring and CHAIN KO! popup. Not seen in after/shot-1..3: shot-3 shows a death (bot5 ghost) with only '1 chain' popups and no gold."
+        },
+        {
+          "text": "A non-chain knockout keeps only the existing effect, no gold sparkle",
+          "met": true,
+          "evidence": "diff: new emit, popup and chainHits are inside the killer chain >= 2 guard; the existing death burst is untouched."
+        },
+        {
+          "text": "When 5 or more players are knocked out by the same chain in one snapshot, a full-screen golden flash fades over 0.3s for all viewers",
+          "met": true,
+          "evidence": "diff: chainHits per killer within a 1s window, n>=5 sets flashStart; drawOverlay fills #ffd54a at alpha 0.55 fading over 0.3s. No flash in any after shot."
+        },
+        {
+          "text": "Flash never blocks the view for long and does not appear for smaller chains",
+          "met": true,
+          "evidence": "diff: 0.3s duration, peak alpha 0.55, needs 5 hits from one killer inside 1s, reset on new round."
+        }
+      ],
+      "findings": [
+        "Chain sparkle never shows in the clip: in the after shots every bomber has only '1 chain' and the single death in after/shot-3 has no gold, so the chain>=2 gate rarely fires in the scenario. In assets.ts check what 'chain' counts in the killer data (it may be the count of the current bomb chain, not 2+). If the gate is too strict, trigger on killer chain >= 2 OR on 2+ victims in one snapshot, so t",
+        "The 5+ flash needs 5 kills from one killer inside 1s, which essentially never happens with 12 bots. After shot-3 shows no flash. The spec fixes 5+ and 0.3s, so keep those, but make sure the clip scenario can reach it, or accept that the flash is a rare bonus and make the sparkle (finding 1) the visible part.",
+        "No tests cover the new onSnapshot branches (chain sparkle emit, popup, flash trigger for 5+, none for smaller chains). Add them in packages/games/bomber-20261101/assets.test.ts with a mock fx."
+      ],
+      "packagesTree": "30c26a59603c2d6a6042b87bfba3377e454aa96b+0d4251e492870d0018a0d6ac24d72df22c9cd2c3",
+      "at": "2026-11-02T11:26:45.082Z"
     }
   ]
 }
