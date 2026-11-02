@@ -33,6 +33,7 @@ export interface PlayerData {
   home: number; // cell index of the last (re)spawn
   born: number; // tick of the last (re)spawn
   chain: number; // bomb count of the last chain this player started
+  crown: number; // ticks of gold crown left (0 = none)
   chainSeq: number; // increments each time a chain this player started finishes (client popup trigger)
 }
 
@@ -284,6 +285,8 @@ function startRound(w: World, r: Entity<RoundData>): void {
     d.bombs = config.bombsPerPlayer;
     d.bomb = BOMB_TYPES[0].name;
     d.killer = "";
+    d.chain = 0;
+    d.crown = 0;
     placePlayer(w, r.data, p);
   }
 }
@@ -438,6 +441,21 @@ function explodeBombs(w: World, r: RoundData): void {
     if (p && p.kind === "player") {
       p.data.chain = n;
       p.data.chainSeq++;
+    }
+  }
+  // Crown: the longest chain (at least 2 bombs) wears it. A player who just finished a chain that
+  // matches the max takes it from the holder; a shorter chain never steals it.
+  let max = 0;
+  const all = bodies<PlayerData>(w, "player");
+  for (const p of all) if (p.data.chain > max) max = p.data.chain;
+  if (max >= 2) {
+    let leader: Entity<PlayerData> | undefined;
+    for (const owner of sizes.keys()) {
+      const p = get<PlayerData>(w, owner);
+      if (p && p.kind === "player" && p.data.chain === max) { leader = p; break; }
+    }
+    if (leader) {
+      for (const p of all) p.data.crown = p === leader ? config.crownTicks : 0;
     }
   }
 }
@@ -598,7 +616,7 @@ function botInput(w: World, id: string, n: number): Input {
 // --- rules -----------------------------------------------------------------------------------------------
 
 export function newPlayerData(): PlayerData {
-  return { ko: 0, deaths: 0, dead: false, respawn: 0, protect: 0, range: config.blastRange, bombs: config.bombsPerPlayer, bomb: BOMB_TYPES[0].name, held: false, killer: "", home: -1, born: 0, chain: 0, chainSeq: 0 };
+  return { ko: 0, deaths: 0, dead: false, respawn: 0, protect: 0, range: config.blastRange, bombs: config.bombsPerPlayer, bomb: BOMB_TYPES[0].name, held: false, killer: "", home: -1, born: 0, chain: 0, crown: 0, chainSeq: 0 };
 }
 
 export const rules: GameRules = {
@@ -626,6 +644,7 @@ export const rules: GameRules = {
     for (const p of players) {
       const d = p.data;
       const inp = inputs[p.id];
+      if (d.crown > 0) d.crown--;
       if (d.dead) {
         p.vx = 0;
         p.vy = 0;
