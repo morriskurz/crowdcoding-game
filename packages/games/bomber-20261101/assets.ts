@@ -453,13 +453,21 @@ export function onSnapshot(prev: Readonly<Ents> | null, next: Readonly<Ents>, fx
       } else {
         popup(p.x, p.y - 18, "KO!", "#ff6b6b", fx);
       }
+      const killerEnt = killer ? next[killer] : undefined;
+      if (killerEnt && num(dataOf(killerEnt).bonus, 0) > 0) {
+        const links = Math.max(0, num(dataOf(killerEnt).chain, 0) - 3);
+        for (let k = 0; k < links; k++) {
+          fx.particles.emit({ x: p.x, y: p.y, count: 18, color: "#ffd54a", speed: 200 + k * 15, life: 0.8, size: 3, drag: 2 });
+        }
+      }
     }
     if (num(b.ko, 0) > num(a.ko, 0)) {
       popup(p.x, p.y - 30, `+${num(b.ko, 0) - num(a.ko, 0)} KO`, "#ffd54a", fx);
       if (mine) fx.sfx.play("coin");
     }
     if (num(b.chainSeq, 0) > num(a.chainSeq, 0)) {
-      popup(p.x, p.y - 34, `${num(b.chain, 0)} chain`, playerColor(p.id), fx, 3, 22, true);
+      const bonus = num(b.bonus, 0);
+      popup(p.x, p.y - 34, bonus > 0 ? `${num(b.chain, 0)} chain +${bonus}%` : `${num(b.chain, 0)} chain`, playerColor(p.id), fx, 3, 22, true);
     }
     if (a.dead === true && b.dead !== true && mine) fx.sfx.play("powerup", { volume: 0.5 });
   }
